@@ -1,60 +1,21 @@
 # Levente 3D · 3D nyomtatás Szeged
 
-Levente 3D üzleti weboldala és kampányzási pultja.
+- **`web/`**: nyilvános weboldal (`index.html` + `img/`). Élő: https://claude.ai/artifact/WZLdSDK19twEH9KM9WbH56
+- **`dashboard/`**: kampánypult (címlista, Gmail-küldés, sablonok, rendelések, árkalkulátor, 3D-generátor). Élő: https://claude.ai/artifact/44semk3pH1ffrYo8XycBoS
 
-## Projekt struktúra
+A kampánypult a claude.ai-on futva éri el a közös adatbázist és a Gmailt. Helyben megnyitva (`file://`) a felület működik, de nem ment.
 
-- **`web/`** - Nyilvános weboldal (index.html + assets)
-- **`dashboard/`** - Kampánypult és CRM alkalmazás (index.html)
-- **`img/`** - Közös képek és média fájlok
+## Címek felvétele
 
-## Weboldal
+- **Címlista → Gyors felvétel**: beírsz egy e-mail címet, Enter. A pult a domain, a név és a környező szöveg alapján kategóriába és városba sorolja, és felveszi kiküldendőnek. A Részletek alatt a kategória átírható.
+- **Új címek → Okos felvétel**: bármilyen szöveg beilleszthető (aláírás, kapcsolat-oldal, több cím). Felvétel előtt soronként átnézheted, és a „Felvétel és kijelölés küldésre” gomb rögtön a küldés megerősítéséhez visz.
+- A már szereplő cím, az azonos cégdomain és a tiltólistás cím nem kerül be.
+- Cégnevet csak akkor tölt ki, ha a szövegben szerepel (például „Kovács Pékség Bt.”), mert a név a levélbe is bekerül.
 
-Az `web/index.html` a teljes, termékkész 3D nyomtatási weboldal:
-- Leszállító szekciók (szolgáltatások, portfólió, folyamat)
-- Átvételi lehetőségek (személyesen, automata, posta)
-- FAQ és ajánlatkérő forma
-- Reszponzív dizájn (mobile-first)
-- Sötét mód támogatás
+## Arculat
 
-## Kampánypult
-
-Az `dashboard/index.html` egy teljes CRM/email kampánykezelő alkalmazás:
-- Címlista kezelés
-- E-mail sablonok
-- Ajánlatok és rendelések kezelése
-- 3D generátor (szöveg → STL)
-- Árkalkulátor
-- Gyártástervező
-- Célkövetés és analitika
-- Gmail integráció
-
-## Fejlesztés
-
-```bash
-# Weboldal indítása
-cd web
-python3 -m http.server 8000
-
-# Kampánypult indítása
-cd dashboard
-python3 -m http.server 8001
-```
-
-## Branding
-
-**Szín палета:**
-- Oliva: `#5f6239` (dark) / `#c4c792` (light)
-- Homok: `#b8976d` (dark) / `#cbac83` (light)
-- Háttér: `#f6f5f0` (light) / `#15160f` (dark)
-
-**Betűtípusok:**
-- Display: Archivo (font-stretch: 100–125%)
-- UI: Instrument Sans
-- Mono: JetBrains Mono
+Oliva `#5f6239`, homok `#b8976d`, törtfehér `#f6f5f0`. Betűk: Archivo, Instrument Sans, JetBrains Mono.
 
 ## Kapcsolat
 
-📧 levente3d.szeged@gmail.com
-📞 +36 70 596 1640
-📍 Szeged, Magyarország
+levente3d.szeged@gmail.com · +36 70 596 1640 · Szeged

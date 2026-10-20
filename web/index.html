@@ -1,32 +1,399 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Levente 3D Szeged</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Egyedi műanyag alkatrész, prototípus és logós kiegészítő 3D nyomtatással Szegeden. Átvétel személyesen vagy csomagautomatában.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='3 3 26 28'%3E%3Crect width='32' height='34' x='0' y='0' fill='%236f7245'/%3E%3Crect x='3' y='3' width='8' height='5.5' rx='1.4' fill='%23f3f2ea'/%3E%3Crect x='3' y='10.5' width='8' height='5.5' rx='1.4' fill='%23f3f2ea'/%3E%3Crect x='3' y='18' width='8' height='5.5' rx='1.4' fill='%23f3f2ea'/%3E%3Crect x='3' y='25.5' width='26' height='5.5' rx='1.4' fill='%23d6bc96'/%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="hu_HU">
+<meta property="og:title" content="Levente 3D · 3D nyomtatás Szeged">
+<meta property="og:description" content="Egyedi műanyag alkatrész, prototípus és logós kiegészítő. Ajánlat 24 órán belül, átvétel Szegeden vagy csomagautomatában.">
+<meta property="og:image" content="img/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: quiet single column on off-white, olive used sparingly. Hero claim + line drawing; hairline-separated sections; one quote form with delivery choice. Brand from the business card: olive, sand, off-white. */
+:root{
+  --bg:#f6f5f0; --surface:#fdfcf9; --ink:#22241a; --muted:#66675a; --rule:#e2e0d6;
+  --olive:#5f6239; --olive-ink:#fdfcf9; --sand:#b8976d; --sand-ink:#86683e; --soft:#ecebe1;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#15160f; --surface:#1c1d15; --ink:#ecebe3; --muted:#a3a291; --rule:#2e3023;
+  --olive:#c4c792; --olive-ink:#15160f; --sand:#cbac83; --sand-ink:#cbac83; --soft:#24261b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15160f; --surface:#1c1d15; --ink:#ecebe3; --muted:#a3a291; --rule:#2e3023;
+  --olive:#c4c792; --olive-ink:#15160f; --sand:#cbac83; --sand-ink:#cbac83; --soft:#24261b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.w{max-width:1080px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--olive);outline-offset:3px}
 
-<p style="max-width:1200px;margin:40px auto;padding:0 20px;font-family:sans-serif;line-height:1.6;color:#333">
-  <strong>Levente 3D Szeged</strong><br>
-  3D nyomtatási szolgáltatás<br><br>
-  
-  <strong>Szolgáltatások:</strong><br>
-  ✓ Egyedi alkatrészek gyártása<br>
-  ✓ Prototípusok és kis szériák (1–100 db)<br>
-  ✓ Logós ajándékok és termékek<br>
-  ✓ Gyors ajánlat (24 órán belül)<br><br>
-  
-  <strong>Kontakt:</strong><br>
-  📧 levente3d.szeged@gmail.com<br>
-  📞 +36 70 596 1640<br>
-  📍 Szeged, Magyarország<br><br>
-  
-  <strong>Átvétel:</strong><br>
-  • Szegeden személyesen (díjmentes)<br>
-  • Csomagautomata (Foxpost, Packeta, MPL)<br>
-  • Postai küldés<br><br>
-  
-  <em>Valósodjon meg az ötleteid! Küldd el a fotót és a méreteket, és 24 órán belül árajánlatot küldök.</em>
-</p>
+header.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:22px}
+.navwrap{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid transparent;transition:border-color .2s,padding .2s}
+.navwrap.stuck{border-bottom-color:var(--rule)}
+.navwrap.stuck header.nav{padding-block:12px}
+html{scroll-padding-top:76px}
+.mark{display:inline-flex;align-items:baseline;font-family:var(--f-display);font-weight:700;font-stretch:118%;font-size:20px;letter-spacing:.06em;text-decoration:none}
+.lmark{height:.74em;width:auto;margin-right:.08em;flex:none}
+.mark i{font-style:normal;color:var(--sand)}
+.navlinks{display:flex;gap:26px;align-items:center}
+.navlinks a{text-decoration:none;color:var(--muted);font-size:15px}
+.navlinks a:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:500 15px/1 var(--f-body);padding:14px 22px;border-radius:999px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);text-decoration:none;cursor:pointer;transition:opacity .15s}
+.btn.olive{background:var(--olive);border-color:var(--olive);color:var(--olive-ink)}
+.btn.line{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn:hover{opacity:.86}
+.navlinks .btn{padding:11px 18px}
+
+.hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:56px;align-items:center;padding-block:72px 88px}
+.eyebrow{font-family:var(--f-mono);font-size:clamp(16px,2.2vw,20px);font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:var(--olive);margin:0 0 22px}
+h1{font-family:var(--f-display);font-weight:500;font-stretch:108%;font-size:clamp(36px,5.2vw,60px);line-height:1.04;letter-spacing:-.02em;margin:0 0 24px;text-wrap:balance}
+h1 em{font-style:normal;color:var(--olive)}
+.lede{font-size:19px;color:var(--muted);max-width:32em;margin:0 0 34px}
+.ctas{display:flex;flex-wrap:wrap;gap:10px}
+.facts{display:flex;flex-wrap:wrap;gap:8px 22px;margin:28px 0 0;padding:18px 0 0;border-top:1px solid var(--rule);list-style:none;font-size:14.5px;color:var(--muted)}
+.facts b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.heroimg{margin:0;position:relative;border-radius:2px;overflow:hidden;background:var(--soft)}
+.heroimg img{display:block;width:100%;height:auto;aspect-ratio:4/5;max-height:560px;object-fit:cover}
+.heroimg figcaption{position:absolute;left:12px;right:12px;bottom:12px;display:grid;gap:2px;padding:12px 14px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:2px;font-size:14px}
+.heroimg figcaption span{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.heroimg figcaption b{font-weight:600}
+
+section{padding-block:80px 0}
+.sec-head{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:56px;align-items:end;margin-bottom:40px}
+.label{font-family:var(--f-mono);font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--sand-ink);margin:0 0 14px}
+h2{font-family:var(--f-display);font-weight:500;font-stretch:106%;font-size:clamp(28px,3.4vw,40px);line-height:1.1;letter-spacing:-.015em;margin:0;text-wrap:balance}
+.sec-lede{color:var(--muted);margin:0;max-width:34em}
+hr.rule{border:0;border-top:1px solid var(--rule);margin:0}
+
+.offer{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid var(--ink)}
+.offer article{padding:26px 24px 8px 0;display:grid;gap:10px;align-content:start;min-width:0}
+.offer article+article{padding-left:24px;border-left:1px solid var(--rule)}
+.offer h3{font-family:var(--f-display);font-weight:600;font-stretch:104%;font-size:18px;line-height:1.25;margin:0}
+.offer p{margin:0;color:var(--muted);font-size:15.5px}
+.offer ul{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px;font-size:14.5px}
+.offer li::before{content:"— ";color:var(--sand)}
+
+.ref{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:center}
+.ref p{margin:0 0 18px}
+.ref dl{display:grid;grid-template-columns:auto 1fr;gap:12px 28px;margin:28px 0 0;padding-top:24px;border-top:1px solid var(--rule)}
+.ref dt{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding-top:3px}
+.ref dd{margin:0;font-variant-numeric:tabular-nums}
+.ref img{display:block;width:100%;height:auto;max-height:560px;object-fit:cover;border-radius:2px}
+
+.gal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 24px}
+.gal figure{margin:0;min-width:0}
+.gal img{display:block;width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;border-radius:2px;max-width:100%}
+.gal figcaption{padding-top:12px;display:grid;gap:2px}
+.gal figcaption b{font-weight:600;font-size:15.5px}
+.gal figcaption span{font-size:14px;color:var(--muted)}
+.galcta{display:flex;flex-direction:column;justify-content:flex-end;gap:12px;aspect-ratio:4/5;padding:28px;background:var(--surface);border:1px dashed var(--olive);border-radius:2px;text-decoration:none;min-width:0}
+.galcta .label{margin:0}
+.galcta b{font-family:var(--f-display);font-weight:600;font-size:24px;line-height:1.15}
+.galcta>span:not(.label):not(.btn){color:var(--muted);font-size:15.5px}
+.galcta .btn{align-self:flex-start;margin-top:6px}
+.galcta:hover{border-style:solid}
+
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:32px;counter-reset:s}
+.step{border-top:1px solid var(--ink);padding-top:18px;min-width:0}
+.step .n{font-family:var(--f-mono);font-size:12px;color:var(--sand-ink);letter-spacing:.1em}
+.step h3{font-family:var(--f-display);font-weight:600;font-size:18px;margin:10px 0 8px}
+.step p{margin:0;color:var(--muted);font-size:15.5px}
+
+.ship{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.ship article{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:26px;display:grid;gap:10px;align-content:start;min-width:0}
+.ship article.main{border-color:var(--olive)}
+.ship .tag{font-family:var(--f-mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.ship article.main .tag{color:var(--olive)}
+.ship h3{font-family:var(--f-display);font-weight:600;font-size:20px;margin:0}
+.ship p{margin:0;color:var(--muted);font-size:15.5px}
+.ship .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.ship .links a{font-size:13.5px;text-decoration:none;border:1px solid var(--rule);border-radius:999px;padding:6px 12px;background:var(--bg)}
+.ship .links a:hover{border-color:var(--ink)}
+
+.faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 56px}
+.faq details{border-top:1px solid var(--rule);padding:18px 0}
+.faq summary{cursor:pointer;font-weight:500;list-style:none;display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-family:var(--f-mono);color:var(--sand-ink)}
+.faq details[open] summary::after{content:"−"}
+.faq p{margin:10px 0 0;color:var(--muted);font-size:15.5px}
+
+.quote{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:40px;align-items:start}
+form.q{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:32px;display:grid;gap:18px}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+label.f{display:grid;gap:7px;font-size:13.5px;font-weight:500}
+label.f .h{font-weight:400;color:var(--muted)}
+input,textarea,select{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:2px;padding:12px 14px;width:100%;min-width:0}
+input:focus,textarea:focus,select:focus{border-color:var(--olive);outline:none}
+textarea{resize:vertical;min-height:110px}
+fieldset{border:0;margin:0;padding:0;display:grid;gap:10px;min-width:0}
+legend{font-size:13.5px;font-weight:500;padding:0;margin-bottom:10px}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.seg label{position:relative;display:grid;gap:2px;border:1px solid var(--rule);border-radius:2px;padding:12px 14px;cursor:pointer;background:var(--bg);min-width:0}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg b{font-weight:500;font-size:15px}
+.seg small{color:var(--muted);font-size:13px}
+.seg label:has(input:checked){border-color:var(--olive);box-shadow:inset 0 0 0 1px var(--olive)}
+.seg label:has(input:focus-visible){outline:2px solid var(--olive);outline-offset:2px}
+.subpanel{display:grid;gap:14px;padding:18px;background:var(--soft);border-radius:2px}
+.subpanel .note{margin:0}
+.contact{display:grid;gap:0;border-top:1px solid var(--ink)}
+.cline{padding:18px 0;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.cline span{display:block;font-family:var(--f-mono);font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.cline b{font-weight:500;overflow-wrap:anywhere;user-select:all}
+.copy{font:500 13px var(--f-body);background:none;border:1px solid var(--rule);border-radius:999px;padding:7px 12px;color:var(--ink);cursor:pointer}
+.note{font-size:14px;color:var(--muted)}
+.formmsg{font-size:14px;color:var(--olive);min-height:1.2em;margin:0}
+
+footer{margin-top:96px;border-top:1px solid var(--rule);padding-block:28px 44px;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+@media (max-width:900px){
+  .hero,.ref,.quote,.sec-head{grid-template-columns:minmax(0,1fr);gap:32px}
+  .hero{padding-block:40px 56px}
+  .heroimg img{aspect-ratio:1/1;max-height:420px;object-position:50% 45%}
+  .offer{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .offer article:nth-child(3){padding-left:0;border-left:0}
+  .gal{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ship{grid-template-columns:minmax(0,1fr)}
+  .faq{grid-template-columns:minmax(0,1fr)}
+  .navlinks a.hide-s{display:none}
+  section{padding-block:60px 0}
+}
+@media (max-width:560px){
+  .galcta{aspect-ratio:auto;padding:22px;grid-column:1/-1}
+  .gal{gap:20px 14px}
+  .facts{gap:6px 16px}
+  .offer,.steps,.row2,.seg{grid-template-columns:minmax(0,1fr)}
+  .offer article,.offer article+article{padding-left:0;border-left:0}
+  .offer article+article{border-top:1px solid var(--rule)}
+  form.q{padding:20px}
+}
+</style>
+
+<div class="navwrap" id="navwrap"><div class="w">
+  <header class="nav">
+    <a class="mark" href="#top" id="top" aria-label="Levente 3D"><svg class="lmark" viewBox="3 3 26 28" aria-hidden="true"><rect x="3" y="3" width="8" height="5.5" rx="1.4" fill="currentColor"/><rect x="3" y="10.5" width="8" height="5.5" rx="1.4" fill="currentColor"/><rect x="3" y="18" width="8" height="5.5" rx="1.4" fill="currentColor"/><rect x="3" y="25.5" width="26" height="5.5" rx="1.4" fill="var(--sand)"/></svg><span>EVENTE<i>·</i>3D</span></a>
+    <nav class="navlinks">
+      <a class="hide-s" href="#munkak">Munkák</a>
+      <a class="hide-s" href="#folyamat">Folyamat</a>
+      <a class="hide-s" href="#atvetel">Átvétel</a>
+      <a class="hide-s" href="#gyik">Kérdések</a>
+      <a class="btn olive" href="#ajanlat">Ajánlatkérés</a>
+    </nav>
+  </header>
+</div></div>
+
+<div class="w">
+
+  <div class="hero">
+    <div>
+      <p class="eyebrow">3D nyomtatás · Szeged</p>
+      <h1>Egyedi darabok, <em>gyorsan, Szegedről.</em></h1>
+      <p class="lede">Pótalkatrészt, prototípust és saját logós terméket gyártok egy darabtól a kis szériáig. Egy fotó és néhány méret alapján 24 órán belül ajánlatot küldök, a darabok jellemzően 2–3 munkanap alatt elkészülnek.</p>
+      <div class="ctas">
+        <a class="btn olive" href="#ajanlat">Ajánlatot kérek</a>
+        <a class="btn line" href="#munkak">Munkák megtekintése</a>
+      </div>
+      <ul class="facts">
+        <li><b>24 órán</b> belül ajánlat</li>
+        <li><b>1–100 db</b>, mintadarabbal</li>
+        <li>Szegeden <b>díjmentes</b> átadás</li>
+      </ul>
+    </div>
+    <figure class="heroimg">
+      <img src="img/lampa-spiral.jpg" alt="Bekapcsolt, spirálmintás fehér asztali lámpa, 3D nyomtatva" width="1200" height="1600" fetchpriority="high">
+      <figcaption><span>Valódi darab, retusálás nélkül</span><b>Spirálmintás lámpa · fehér PLA</b></figcaption>
+    </figure>
+  </div>
+</div>
+
+<div class="w">
+  <hr class="rule">
+
+  <section id="szolgaltatas">
+    <div class="sec-head">
+      <div><p class="label">Szolgáltatás</p><h2>Amit leginkább készítek</h2></div>
+      <p class="sec-lede">Olyan darabokat, amelyekből kevés kell, gyorsan, és máshol nem kaphatók, vagy aránytalanul drágák lennének.</p>
+    </div>
+    <div class="offer">
+      <article><h3>Gyártás és karbantartás</h3><p>Eltört vagy már nem gyártott alkatrészek pótlása, szerelési sablonok, tartók és burkolatok.</p><ul><li>pótalkatrész</li><li>sablon, készülék</li><li>prototípus</li></ul></article>
+      <article><h3>Nyomda és csomagolás</h3><p>A géphez és az anyaghoz igazított apró elemek, amelyek készen nem kaphatók.</p><ul><li>tekercs-összefogó kapocs</li><li>távtartó</li><li>vezetőelem</li></ul></article>
+      <article><h3>Ajándék és rendezvény</h3><p>Kis szériás termékek polcra, logós céges ajándékok, esküvői és alkalmi darabok.</p><ul><li>logós ajándék</li><li>könyvjelző</li><li>tortadísz</li></ul></article>
+      <article><h3>Üzlet, szállás, rendelő</h3><p>Az arculathoz illő táblák és kiegészítők, amelyek a vendégnek is feltűnnek.</p><ul><li>ajtó- és névtábla</li><li>QR-kódos tábla</li><li>pultdísz</li></ul></article>
+    </div>
+  </section>
+
+  <section id="referencia">
+    <div class="ref">
+      <div>
+        <p class="label">Referencia</p>
+        <h2 style="margin-bottom:22px">Tekercs-összefogó kapocs egy szegedi nyomdának</h2>
+        <p>A nyomdának a saját tekercsátmérőjükhöz hiányzott a megfelelő kapocs, készen ilyet nem lehetett kapni.</p>
+        <p class="note" style="font-size:16px">A meglévő darab alapján új változatot terveztem 110 mm-es átmérőre és 20 mm-es magasságra.</p>
+        <dl>
+          <dt>Méret</dt><dd>Ø 110 × 20 mm</dd>
+          <dt>Átfutás</dt><dd>3 munkanap</dd>
+          <dt>Ár</dt><dd>1 000 Ft / db</dd>
+        </dl>
+      </div>
+      <img src="img/kapocs.jpg" alt="A legyártott tekercs-összefogó kapocs kézben" width="900" height="1200" loading="lazy">
+    </div>
+  </section>
+
+  <section id="munkak">
+    <div class="sec-head">
+      <div><p class="label">Munkák</p><h2>Néhány elkészült darab</h2></div>
+      <p class="sec-lede">Valódi fotók, retusálás nélkül. A felület és a részletek a kézbe vett darabon is ilyenek.</p>
+    </div>
+    <div class="gal">
+      <figure><img src="img/konyvjelzo.jpg" alt="Áttört, könyvespolc mintás könyvjelző" width="900" height="1200" loading="lazy"><figcaption><b>Áttört könyvjelző</b><span>Könyvesboltnak, ajándéknak, logóval is</span></figcaption></figure>
+      <figure><img src="img/ekszertarto.jpg" alt="Masnis ékszertartó tál" width="900" height="1200" loading="lazy"><figcaption><b>Masnis ékszertartó</b><span>Ajándékboltba, szalonba, pultra</span></figcaption></figure>
+      <figure><img src="img/szobor.jpg" alt="Ölelkező pár szobor" width="900" height="1195" loading="lazy"><figcaption><b>Ölelkező pár</b><span>Esküvői ajándék, tortadísz, évforduló</span></figcaption></figure>
+      <figure><img src="img/polc-kozmetikai.jpg" alt="Kétszintes rózsaszín polc parfümmel és kozmetikumokkal" width="1280" height="1830" loading="lazy"><figcaption><b>Kétszintes polc</b><span>Kozmetikumok, parfüm, fürdőszoba</span></figcaption></figure>
+      <figure><img src="img/lampa-gyuru.jpg" alt="Gyűrött felületű fehér asztali lámpa USB kábellel" width="1280" height="1800" loading="lazy"><figcaption><b>Textúrált lámpa</b><span>USB-s asztali lámpa · gyűrött felület</span></figcaption></figure>
+      <a class="galcta" href="#ajanlat"><span class="label">Az Ön darabja</span><b>Mit készítsek legközelebb?</b><span>Egy fotó és pár méret elég. 24 órán belül árat küldök.</span><span class="btn olive">Ajánlatot kérek</span></a>
+    </div>
+  </section>
+
+  <section id="folyamat">
+    <div class="sec-head">
+      <div><p class="label">Folyamat</p><h2>Az ötlettől az átvételig</h2></div>
+      <p class="sec-lede">Műszaki rajzra nincs szükség. Egy fotó vonalzóval vagy néhány méret elég az induláshoz.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n">01 · Ön</div><h3>Fotó és méretek</h3><p>Küldjön képet a darabról vagy egy vázlatot, a fő méretekkel és a darabszámmal.</p></div>
+      <div class="step"><div class="n">02 · 24 órán belül</div><h3>Ajánlat</h3><p>Pontos árat és átadási napot küldök. Sorozat előtt kérésre mintadarabot is.</p></div>
+      <div class="step"><div class="n">03 · 2–3 munkanap</div><h3>Gyártás</h3><p>A jóváhagyás után legyártom a darabokat, és tolómérővel ellenőrzöm a méreteket.</p></div>
+      <div class="step"><div class="n">04 · Átvétel</div><h3>Kézbesítés</h3><p>Szegeden személyesen átadom, máshová csomagautomatába vagy postán küldöm.</p></div>
+    </div>
+  </section>
+
+  <section id="atvetel">
+    <div class="sec-head">
+      <div><p class="label">Átvétel</p><h2>Személyesen vagy csomagautomatában</h2></div>
+      <p class="sec-lede">Az ország bármely részére küldök. Az ajánlatkérésnél válassza ki, hogyan kéri, és a szállítási díjat az ajánlatban külön feltüntetem.</p>
+    </div>
+    <div class="ship">
+      <article><span class="tag">Szeged</span><h3>Személyes átadás</h3><p>Szegeden díjmentesen, egyeztetett helyen és időpontban adom át a darabokat.</p></article>
+      <article class="main"><span class="tag">Országosan</span><h3>Csomagautomata</h3><p>A kész rendelést a választott automatába adom fel, a nyitókódot SMS-ben vagy e-mailben kapja meg. Az automata nevét vagy címét az ajánlatkérő űrlapon adhatja meg.</p>
+        <div class="links"><a href="https://foxpost.hu" target="_blank" rel="noopener">Foxpost</a><a href="https://www.packeta.hu" target="_blank" rel="noopener">Packeta</a><a href="https://www.posta.hu" target="_blank" rel="noopener">MPL</a></div></article>
+      <article><span class="tag">Országosan</span><h3>Postai küldés</h3><p>Nagyobb vagy több részből álló rendelésnél házhoz szállítással, a megadott címre.</p></article>
+    </div>
+  </section>
+
+  <section id="gyik">
+    <div class="sec-head">
+      <div><p class="label">Kérdések</p><h2>Gyakori kérdések</h2></div>
+    </div>
+    <div class="faq">
+      <details><summary>Mennyibe kerül egy darab?</summary><p>Az ár a mérettől, az anyagmennyiségtől és a darabszámtól függ. Példa: a tekercs-összefogó kapocs darabja 1 000 Ft volt. A fotó és a méretek alapján 24 órán belül pontos ajánlatot küldök. Nagyobb mennyiségre és visszatérő megrendelésre kedvezményt adok.</p></details>
+      <details><summary>Mi kell az ajánlathoz?</summary><p>Egy fotó a darabról, lehetőleg vonalzóval mellette, a fő méretek és a darabszám. Ha van rajz vagy 3D fájl (STL, 3MF), az még gyorsabb.</p></details>
+      <details><summary>Mekkora lehet egy darab?</summary><p>Egy darabban legfeljebb 18 × 18 × 18 cm. A nagyobb tárgyakat részekre bontva gyártom, és pontosan illeszkedő elemekként adom át.</p></details>
+      <details><summary>Kérhetek saját logót vagy feliratot?</summary><p>Igen. Küldje el a logót PNG, SVG vagy PDF formátumban, és kiemelt vagy bemélyített változatot tervezek belőle.</p></details>
+      <details><summary>Van lehetőség mintadarabra?</summary><p>Sorozatgyártás előtt egy mintadarabot készítek, hogy élőben ellenőrizhesse a méretet és az illeszkedést.</p></details>
+      <details><summary>Hogyan kapom meg a rendelést?</summary><p>Szegeden személyesen adom át. Más településre csomagautomatába (Foxpost, Packeta, MPL) vagy postán küldöm.</p></details>
+    </div>
+  </section>
+
+  <section id="ajanlat">
+    <div class="sec-head">
+      <div><p class="label">Ajánlatkérés</p><h2>Írja le, mire van szüksége</h2></div>
+      <p class="sec-lede">Az űrlap egy kész levelet állít össze. A fotót ahhoz a levélhez csatolja.</p>
+    </div>
+    <div class="quote">
+      <form class="q" id="qf" novalidate>
+        <div class="row2">
+          <label class="f"><span>Név <span class="h">*</span></span><input id="q-name" autocomplete="name" required></label>
+          <label class="f"><span>Cég <span class="h">(nem kötelező)</span></span><input id="q-co" autocomplete="organization"></label>
+        </div>
+        <label class="f"><span>Mire van szüksége? <span class="h">*</span></span><textarea id="q-what" placeholder="Pl. eltört műanyag fogantyú egy gépről, ugyanilyen kellene" required></textarea></label>
+        <div class="row2">
+          <label class="f">Darabszám<input id="q-qty" inputmode="numeric" placeholder="pl. 10"></label>
+          <label class="f"><span>Fő méretek <span class="h">(mm)</span></span><input id="q-size" placeholder="pl. 110 × 20"></label>
+        </div>
+        <label class="f">Mikorra van rá szükség?<input id="q-when" placeholder="pl. jövő hét péntek"></label>
+
+        <fieldset>
+          <legend>Átvétel módja</legend>
+          <div class="seg">
+            <label><input type="radio" name="q-ship" id="q-ship-sz" value="szeged" checked><b>Személyesen</b><small>Szegeden, díjmentes</small></label>
+            <label><input type="radio" name="q-ship" id="q-ship-ca" value="automata"><b>Csomagautomata</b><small>Országosan</small></label>
+            <label><input type="radio" name="q-ship" id="q-ship-po" value="posta"><b>Posta</b><small>Házhoz szállítás</small></label>
+          </div>
+          <div class="subpanel" id="sp-automata" hidden>
+            <div class="row2">
+              <label class="f">Szolgáltató<select id="q-prov"><option>Foxpost</option><option>Packeta</option><option>MPL</option><option>Mindegy</option></select></label>
+              <label class="f">Irányítószám, település<input id="q-city" placeholder="pl. 1117 Budapest"></label>
+            </div>
+            <label class="f"><span>Automata neve vagy címe <span class="h">(ha már tudja)</span></span><input id="q-locker" placeholder="pl. Foxpost, Allee bevásárlóközpont"></label>
+            <p class="note">Ha nem tudja, melyik automata van a közelben, hagyja üresen, és a település alapján javaslok egyet.</p>
+          </div>
+          <div class="subpanel" id="sp-posta" hidden>
+            <label class="f">Szállítási cím<input id="q-addr" autocomplete="street-address" placeholder="Irányítószám, település, utca, házszám"></label>
+          </div>
+        </fieldset>
+
+        <label class="f"><span>Telefonszám <span class="h">(nem kötelező)</span></span><input id="q-phone" autocomplete="tel" inputmode="tel"></label>
+        <div class="ctas">
+          <button class="btn olive" type="submit">Levél megnyitása Gmailben</button>
+          <button class="btn line" type="button" id="q-copy">Szöveg másolása</button>
+        </div>
+        <p class="formmsg" id="q-msg" role="status"></p>
+      </form>
+      <div>
+        <div class="contact">
+          <div class="cline"><div><span>E-mail</span><b id="c-mail">levente3d.szeged@gmail.com</b></div><button class="copy" type="button" data-copy="c-mail">Másolás</button></div>
+          <div class="cline"><div><span>Telefon</span><b id="c-tel">+36 70 596 1640</b></div><button class="copy" type="button" data-copy="c-tel">Másolás</button></div>
+          <div class="cline"><div><span>Helyszín</span><b>Szeged · országos kiszállítás</b></div></div>
+        </div>
+        <p class="note">Ha nem Gmailt használ, másolja ki a szöveget, és küldje el a fenti címre a saját levelezőjéből.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Levente 3D · Levente · Szeged</span>
+    <span><a href="#ajanlat">Ajánlatkérés</a> · +36 70 596 1640</span>
+  </footer>
+</div>
 
 <script>
-  // A teljes weboldal JavaScript és HTML tartalma innen indul fel
-  console.log('Levente 3D weboldal indítása...');
+const TO="levente3d.szeged@gmail.com";
+const $=id=>document.getElementById(id);
+const v=id=>($(id)?.value||"").trim();
+const ship=()=>document.querySelector('input[name="q-ship"]:checked')?.value||"szeged";
+function syncShip(){const s=ship();$("sp-automata").hidden=s!=="automata";$("sp-posta").hidden=s!=="posta"}
+document.querySelectorAll('input[name="q-ship"]').forEach(r=>r.addEventListener("change",syncShip));syncShip();
+function build(){
+  const subj="Ajánlatkérés 3D nyomtatásra"+(v("q-co")?" – "+v("q-co"):"");
+  const L=["Jó napot kívánok!","",`Árajánlatot szeretnék kérni a következőre: ${v("q-what")}`,""];
+  if(v("q-qty"))L.push("Darabszám: "+v("q-qty"));
+  if(v("q-size"))L.push("Fő méretek: "+v("q-size")+" mm");
+  if(v("q-when"))L.push("Határidő: "+v("q-when"));
+  const s=ship();
+  if(s==="szeged")L.push("Átvétel: személyesen, Szegeden");
+  if(s==="automata"){L.push("Átvétel: csomagautomata ("+v("q-prov")+")");if(v("q-city"))L.push("Település: "+v("q-city"));L.push("Automata: "+(v("q-locker")||"kérem, javasoljon egyet a közelben"))}
+  if(s==="posta"){L.push("Átvétel: postai küldés");if(v("q-addr"))L.push("Szállítási cím: "+v("q-addr"))}
+  L.push("","A fotót csatolom.","","Üdvözlettel:",v("q-name")+(v("q-co")?", "+v("q-co"):""));
+  if(v("q-phone"))L.push(v("q-phone"));
+  return {subj,body:L.join("\n")};
+}
+function valid(){const m=$("q-msg");if(!v("q-name")||!v("q-what")){m.textContent="Adja meg a nevét, és írja le röviden, mire van szüksége.";return false}
+  if(ship()==="automata"&&!v("q-city")&&!v("q-locker")){m.textContent="Csomagautomatához adja meg a települést vagy az automata nevét.";return false}
+  if(ship()==="posta"&&!v("q-addr")){m.textContent="Postai küldéshez adja meg a szállítási címet.";return false}
+  m.textContent="";return true}
+$("qf").addEventListener("submit",e=>{e.preventDefault();if(!valid())return;const {subj,body}=build();
+  const a=document.createElement("a");a.href="https://mail.google.com/mail/?view=cm&fs=1&to="+encodeURIComponent(TO)+"&su="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
+  $("q-msg").textContent="A levél egy új lapon nyílik meg. Csatolja a fotót, és küldje el. Ha nem nyílt meg, használja a Szöveg másolása gombot.";});
+$("q-copy").addEventListener("click",async()=>{if(!valid())return;const {subj,body}=build();try{await navigator.clipboard.writeText("Tárgy: "+subj+"\n\n"+body);$("q-msg").textContent="Kimásolva. Küldje el a "+TO+" címre a fotóval együtt."}catch(e){$("q-msg").textContent="A másolás nem sikerült. Írjon közvetlenül a "+TO+" címre."}});
+document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",async()=>{const t=$(b.dataset.copy).textContent;try{await navigator.clipboard.writeText(t);b.textContent="Kimásolva"}catch(e){b.textContent="Jelölje ki"}setTimeout(()=>b.textContent="Másolás",1800)}));
+const nw=$("navwrap");if(nw){const onS=()=>nw.classList.toggle("stuck",scrollY>8);addEventListener("scroll",onS,{passive:true});onS()}
 </script>
+
 </body></html>
