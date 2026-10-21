@@ -20,7 +20,7 @@ let apiKey = store.get('bf-key', '');
 const S = {
   tab: 'attekintes', cur: store.get('bf-cur2', 'USD'), theme: store.get('bf-theme', 'auto'),
   range: store.get('bf-range', 'all'), mode: store.get('bf-mode', 'idx'), bench: store.get('bf-bench', true),
-  hide: store.get('bf-hide', false), ps: store.get('bf-ps', 'value'), scroll: {}, an: store.get('bf-an', 'trend'), hm: store.get('bf-hm', 'all'), bd: store.get('bf-bd', 'sector'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
+  hide: store.get('bf-hide', false), tr: 'all', ps: store.get('bf-ps', 'value'), scroll: {}, an: store.get('bf-an', 'trend'), hm: store.get('bf-hm', 'all'), bd: store.get('bf-bd', 'sector'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
 };
 const OLDTAB = { eredmenyek: 'eredmeny', sp500: 'sp', koltsegek: 'koltseg' };
 try { const h = location.hash.slice(1); if (OLDTAB[h]) { S.tab = 'elemzes'; S.an = OLDTAB[h]; } else if (h) S.tab = h; } catch (e) {}
@@ -69,15 +69,16 @@ async function waitCredits(n) {
     await sleep(Math.min(wait, 5000));
   }
 }
-async function getJson(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok && r.status !== 429) throw new Error('HTTP ' + r.status); return r.json(); }
+async function getJson(url) { let r; try { r = await fetch(url, { cache: 'no-store' }); } catch (e) { throw new Error('Hálózati hiba vagy letiltott kérés (' + (e.message || e) + ')'); } if (!r.ok && r.status !== 429) { let t = ''; try { t = (await r.text()).slice(0, 120); } catch (_) {} throw new Error('HTTP ' + r.status + (t ? ': ' + t : '')); } return r.json(); }
 
+const diag = (k, v) => { market.diag = market.diag || {}; market.diag[k] = { at: Date.now(), ...v }; };
 async function fetchFx() {
   if (!M) return;
   const first = M.tx[0].date; const have = Object.keys(market.fx).sort();
   const from = have.length ? Engine.addDays(have[have.length - 1], -3) : Engine.addDays(first, -7);
   const urls = [`https://api.frankfurter.dev/v1/${from}..?base=USD&symbols=HUF,EUR`, `https://api.frankfurter.app/${from}..?from=USD&to=HUF,EUR`];
   for (const u of urls) {
-    try { const j = await getJson(u); if (j && j.rates) { Object.assign(market.fx, j.rates); break; } } catch (e) { /* következő forrás */ }
+    try { const j = await getJson(u); if (j && j.rates) { Object.assign(market.fx, j.rates); diag('fx', { ok: true, msg: Object.keys(j.rates).length + ' nap' }); break; } else diag('fx', { ok: false, msg: JSON.stringify(j).slice(0, 160) }); } catch (e) { diag('fx', { ok: false, msg: e.message || String(e) }); }
   }
   const ds = Object.keys(market.fx).sort(); if (ds.length) market.usdhuf = market.fx[ds[ds.length - 1]].HUF;
 }
@@ -108,12 +109,12 @@ async function fetchPrices(force) {
     let tries = 0, j;
     for (;;) {
       await waitCredits(batch.length);
-      const url = `https://api.twelvedata.com/time_series?symbol=${batch.map(b => encodeURIComponent(b.s)).join(',')}&interval=1day&start_date=${start}&order=ASC&outputsize=5000&apikey=${encodeURIComponent(apiKey)}`;
+      const url = `https://api.twelvedata.com/time_series?symbol=${batch.map(b => encodeURIComponent(b.s)).join(',')}&interval=1day&start_date=${start}&order=asc&outputsize=5000&apikey=${encodeURIComponent(apiKey)}`;
       j = await getJson(url);
       if (j && j.status === 'error' && (j.code === 429 || /credits|minute/i.test(j.message || '')) && tries++ < 3) { credits.length = 0; for (let k = 0; k < 8; k++) credits.push(Date.now()); continue; }
       break;
     }
-    if (j && j.status === 'error') { if (j.code === 401 || /api ?key/i.test(j.message || '')) throw new Error('Érvénytelen Twelve Data kulcs.'); errs.push(j.message || 'hiba'); continue; }
+    if (j && j.status === 'error') { if (j.code === 401 || /api ?key/i.test(j.message || '')) { diag('td', { ok: false, msg: j.message || 'Érvénytelen kulcs' }); throw new Error('Érvénytelen Twelve Data kulcs.'); } errs.push(j.message || 'hiba'); continue; }
     const per = batch.length === 1 ? { [batch[0].s]: j } : j;
     for (const b of batch) {
       const d = per[b.s];
@@ -122,7 +123,17 @@ async function fetchPrices(force) {
       d.values.forEach(v => { const c = parseFloat(v.close); if (c > 0) h[v.datetime.slice(0, 10)] = c; });
     }
   }
+  // S&P 500 tartalék: ha az SPY nem jön le az ingyenes csomagban, VOO / IVV / SPX
+  if (!market.history.SPY || Object.keys(market.history.SPY).length < 5) {
+    for (const alt of ['VOO', 'IVV', 'SPX']) {
+      try { await waitCredits(1); const j = await getJson(`https://api.twelvedata.com/time_series?symbol=${alt}&interval=1day&start_date=${Engine.addDays(M.tx[0].date, -7)}&order=asc&outputsize=5000&apikey=${encodeURIComponent(apiKey)}`);
+        if (j && Array.isArray(j.values) && j.values.length > 5) { const h = market.history.SPY = {}; j.values.forEach(v => { const c = parseFloat(v.close); if (c > 0) h[v.datetime.slice(0, 10)] = c; }); market.benchSym = alt; (market.fetched = market.fetched || {}).SPY = Date.now(); break; }
+        errs.push(alt + ': ' + ((j && j.message) || 'nincs adat')); } catch (e) { errs.push(alt + ': ' + e.message); }
+    }
+  } else if (!market.benchSym) market.benchSym = 'SPY';
   market.errors = errs;
+  const nh = Object.keys(market.history).filter(k => Object.keys(market.history[k]).length > 1).length;
+  diag('td', { ok: nh > 0, msg: `${nh} részvény előzménye megvan${errs.length ? ' · hibák: ' + errs.slice(0, 3).join('; ') : ''}` });
 }
 
 async function refresh(opts = {}) {
@@ -155,6 +166,13 @@ function drawStatus() {
 
 /* ---------- charts (Chart.js a mellékdiagramokhoz) ---------- */
 let charts = [];
+const moneyShort = (v, sign) => S.hide ? '' : (sign && v > 0.0049 ? '+' : v < -0.0049 ? '−' : '') + (S.cur === 'HUF' ? nf(Math.abs(v * R()) / 1000, Math.abs(v * R()) < 10000 ? 1 : 0) + 'e' : '$' + nf(Math.abs(v), Math.abs(v) < 100 ? 2 : 0));
+const VL = { id: 'vl', afterDatasetsDraw(ch, _a, o) {
+  if (!o || !o.fmt) return; const c = ch.ctx; c.save(); c.font = `700 10.5px ${getComputedStyle(document.body).fontFamily}`; c.fillStyle = css('--ink');
+  ch.data.datasets.forEach((ds, di) => { if (o.only != null && o.only !== di) return; ch.getDatasetMeta(di).data.forEach((el, i) => {
+    const v = ds.data[i]; const raw = Array.isArray(v) ? v[1] - v[0] : v; const t = o.fmt(raw, i, di); if (!t) return; const p = el.getProps(['x', 'y', 'base'], true);
+    if (ch.options.indexAxis === 'y') { c.textAlign = raw >= 0 ? 'left' : 'right'; c.textBaseline = 'middle'; c.fillText(t, (raw >= 0 ? Math.max(p.x, p.base) : Math.min(p.x, p.base)) + (raw >= 0 ? 6 : -6), p.y); }
+    else { c.textAlign = 'center'; c.textBaseline = 'bottom'; c.fillText(t, p.x, Math.min(p.y, p.base) - 4); } }); }); c.restore(); } };
 function chart(id, cfg) {
   const el = $(id); if (!el) return;
   if (!window.Chart) { loadScript(CDN.chart).then(() => render(true)).catch(() => {}); return; }
@@ -162,6 +180,8 @@ function chart(id, cfg) {
   cfg.options = Object.assign({ responsive: true, maintainAspectRatio: false, animation: { duration: 300 } }, cfg.options || {});
   const tt = { backgroundColor: css('--surface'), titleColor: css('--ink'), bodyColor: css('--ink'), footerColor: css('--muted'), borderColor: css('--line'), borderWidth: 1, padding: 10, cornerRadius: 8, boxPadding: 4 };
   cfg.options.plugins = Object.assign({ legend: { display: false } }, cfg.options.plugins || {}); cfg.options.plugins.tooltip = Object.assign(tt, cfg.options.plugins.tooltip || {});
+  if (!chart.reg) { Chart.register(VL); chart.reg = true; }
+  cfg.options.layout = Object.assign({ padding: { top: 18, right: cfg.options.indexAxis === 'y' ? 56 : 4, left: cfg.options.indexAxis === 'y' ? 4 : 0 } }, cfg.options.layout || {});
   charts.push(new Chart(el, cfg));
 }
 const grid = () => ({ color: css('--line'), drawTicks: false });
@@ -217,6 +237,10 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
 
   function frame(prog) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    if (opt.grid !== false) { const st = niceStep((hi - lo) / 3.2); ctx.font = `500 10px ${fam}`; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) { const yy = Y(v); if (yy < T + 8 || yy > T + h - 6) continue; ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L, yy); ctx.lineTo(L + w, yy); ctx.stroke();
+        if (!(S.hide && !idx) && !(opt.endTag !== false && Math.abs(yy - Y(ys[ys.length - 1])) < 16)) { ctx.fillStyle = muted; ctx.fillText(opt.price ? '$' + nf(v, v < 20 ? 2 : 0) : idx ? (v > 0 ? '+' : v < 0 ? '−' : '') + nf(Math.abs(v), st < 1 ? 1 : 0) + '%' : compact(v), L + w - TP, yy - 3); } }
+      ctx.textBaseline = 'alphabetic'; }
     // kiindulási szint
     ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.setLineDash([1, 4]); ctx.beginPath(); ctx.moveTo(L, Y(ys[0])); ctx.lineTo(L + w, Y(ys[0])); ctx.stroke(); ctx.setLineDash([]);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, L + w * prog + 1, H); ctx.clip();
@@ -242,13 +266,18 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
     ctx.textAlign = 'left'; ctx.fillText(dShort(pts[0].d), L + TP, H - 6); ctx.textAlign = 'right'; ctx.fillText(dShort(pts[pts.length - 1].d), L + w - TP, H - 6);
   }
   const dot = (i, c, r = 4) => { const x = X(i), yy = Y(ys[i]); ctx.beginPath(); ctx.arc(x, yy, r + 5, 0, 7); ctx.fillStyle = c + '26'; ctx.fill(); ctx.beginPath(); ctx.arc(x, yy, r, 0, 7); ctx.fillStyle = c; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = surf; ctx.stroke(); };
-  const rest = () => { frame(1); dot(ys.length - 1, col); };
+  const endTag = () => { if (S.hide && !idx) return; const i = ys.length - 1, t = fmtY(ys[i]); ctx.font = `700 11px ${fam}`; const tw = ctx.measureText(t).width + 14, th = 20;
+    let x = X(i) - tw - 12, yy = Y(ys[i]) - th / 2; yy = Math.max(2, Math.min(H - B - th, yy)); if (x < 4) x = X(i) + 12;
+    ctx.beginPath(); ctx.roundRect(x, yy, tw, th, 10); ctx.fillStyle = col; ctx.fill(); ctx.fillStyle = inkOn(col); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(t, x + 7, yy + th / 2 + .5); ctx.textBaseline = 'alphabetic'; };
+  const rest = () => { frame(1); dot(ys.length - 1, col); if (opt.endTag !== false) endTag(); };
   if (opt.animate && !REDUCED && pts.length > 2) { const t0 = performance.now(); const step = t => { const k = Math.min(1, (t - t0) / 700); frame(1 - Math.pow(1 - k, 3)); if (k < 1) requestAnimationFrame(step); else rest(); }; requestAnimationFrame(step); }
   else rest();
   const scrubTo = i => {
     if (i == null) { rest(); onScrub(null); return; }
     frame(1);
-    const x = X(i); ctx.strokeStyle = muted; ctx.globalAlpha = .5; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, T - 8); ctx.lineTo(x, T + h); ctx.stroke(); ctx.globalAlpha = 1;
+    const x = X(i), yv = Y(ys[i]); ctx.strokeStyle = muted; ctx.globalAlpha = .55; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, T - 8); ctx.lineTo(x, T + h); ctx.stroke();
+    ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(L, yv); ctx.lineTo(L + w, yv); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    { const t = dShort(pts[i].d); ctx.font = `600 10.5px ${fam}`; const tw = ctx.measureText(t).width + 14; const bx = Math.max(2, Math.min(W - tw - 2, x - tw / 2)); ctx.beginPath(); ctx.roundRect(bx, H - 22, tw, 19, 9); ctx.fillStyle = surf; ctx.fill(); ctx.strokeStyle = line; ctx.stroke(); ctx.fillStyle = pal.text || css('--ink'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(t, bx + 7, H - 12); ctx.textBaseline = 'alphabetic'; }
     if (bs[i] != null) { ctx.beginPath(); ctx.arc(x, Y(bs[i]), 3.5, 0, 7); ctx.fillStyle = bench; ctx.fill(); }
     dot(i, col); onScrub(i, X(i), Y(ys[i]), W);
   };
@@ -396,7 +425,7 @@ V.attekintes.after = m => {
   const rail = $('rail'); if (rail) { rail.onwheel = e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { rail.scrollLeft += e.deltaY; e.preventDefault(); } }; }
   document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.range = b.dataset.r; store.set('bf-range', S.range); animNext = true; render(true); });
   document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); animNext = true; render(true); });
-  $('benchBtn').onclick = () => { S.bench = !S.bench; store.set('bf-bench', S.bench); render(true); };
+  $('benchBtn').onclick = () => { if (!market.history.SPY) { explainNoData('spy'); return; } S.bench = !S.bench; store.set('bf-bench', S.bench); render(true); };
   $('eyeBtn').onclick = () => { S.hide = !S.hide; store.set('bf-hide', S.hide); render(true); };
   $('qaImport').onclick = () => $('fileIn').click(); $('qaRefresh').onclick = () => refresh({}); $('qaAlert').onclick = openAlerts; $('qaMore').onclick = openActions;
   const tk = $('tipKey'); if (tk) tk.onclick = openSettings;
@@ -407,7 +436,7 @@ V.attekintes.after = m => {
   const SH = { 'Befizetve': 'Befiz.', 'Realizált': 'Real.', 'Nem realizált': 'Nyitott', 'Osztalék': 'Oszt.', 'Egyéb': 'Egyéb', 'Mai érték': 'Ma' };
   chart('wf', { type: 'bar', data: { labels: steps.map(s => innerWidth < 600 ? SH[s[0]] : s[0]), datasets: [{ data, backgroundColor: steps.map(([l, v, b]) => b ? css('--accent') : v >= 0 ? css('--gain') : css('--loss')), borderRadius: 8, borderSkipped: false, barPercentage: .7 }] },
     options: { scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: false, font: { size: 10.5 } } }, y: { min: lo * 0.97, max: hi * 1.01, grid: grid(), border: { display: false }, ticks: S.hide ? { display: false } : axisMoney() } },
-      plugins: { tooltip: { callbacks: { title: i => steps[i[0].dataIndex][0], label: c => { const s = steps[c.dataIndex]; return s[2] ? money(s[1]) : money(s[1], { sign: true }); } } } } } });
+      plugins: { vl: { fmt: (r, i) => moneyShort(steps[i][1], !steps[i][2]) }, tooltip: { callbacks: { title: i => steps[i[0].dataIndex][0], label: c => { const s = steps[c.dataIndex]; return s[2] ? money(s[1]) : money(s[1], { sign: true }); } } } } } });
   bindTickers();
 };
 function bindGo(scope) { (scope || document).querySelectorAll('[data-go]').forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.go, a.dataset.sub); }); }
@@ -531,7 +560,7 @@ V.portfolio = m => {
       <span class="pv"><b class="num">${money(p.value)}</b><span class="pp ${p.pnl >= 0 ? 'up' : 'down'} num">${pct(p.pct)}</span></span></button>`).join('')}</div></section>
   ${breakdownCard(m)}
   <section class="card"><div class="card-h"><div><h2>Hőtérkép</h2><p class="sub">Méret = érték, szín = változás</p></div>
-    <div class="seg" role="group" aria-label="Időszak">${[['all', 'Mind'], ['ytd', 'YTD'], ['day', 'Mai']].map(([k, l]) => `<button data-hm="${k}" aria-pressed="${S.hm === k}" ${k === 'day' && !daily ? 'disabled title="Ehhez élő árfolyam kell"' : ''}>${l}</button>`).join('')}</div></div>
+    <div class="seg" role="group" aria-label="Időszak">${[['all', 'Mind'], ['ytd', 'YTD'], ['day', 'Mai']].map(([k, l]) => `<button data-hm="${k}" aria-pressed="${S.hm === k}" ${k === 'day' && !daily ? 'class="soft"' : ''}>${l}</button>`).join('')}</div></div>
     <div class="tm" id="tm"></div><div class="legend"><span>${S.hm === 'day' ? '−4%' : '−40%'}</span><i></i><span>${S.hm === 'day' ? '+4%' : '+40%'}</span></div></section>`;
 };
 V.portfolio.after = m => {
@@ -542,7 +571,7 @@ V.portfolio.after = m => {
     const small = r.w < 70 || r.h < 48;
     return `<button class="tile" data-t="${r.tkr}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${c}" aria-label="${r.tkr} ${pct(r.pct)}"><b>${r.tkr}</b>${small ? (r.w > 44 && r.h > 34 ? `<span class="num">${pct(r.pct)}</span>` : '') : `<span class="num"><b class="tp">${pct(r.pct)}</b>${r.w > 120 ? `<br>${money(r.abs, { sign: true })}` : ''}<br><span class="tvv">${money(r.value)}</span></span>`}</button>`; }).join('');
   bindTickers();
-  document.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => { S.hm = b.dataset.hm; store.set('bf-hm', S.hm); render(true); });
+  document.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => { if (b.dataset.hm === 'day' && !m.positions.some(p => p.dayChg != null)) { explainNoData('day'); return; } S.hm = b.dataset.hm; store.set('bf-hm', S.hm); render(true); });
   document.querySelectorAll('[data-ps]').forEach(b => b.onclick = () => { S.ps = b.dataset.ps; store.set('bf-ps', S.ps); render(true); });
   donut(m);
   const days = M.series.map(x => x.d).slice(-66);
@@ -599,7 +628,7 @@ V.eredmenyek.after = m => {
   chart('rb', { type: 'bar', data: { labels: rows.map(r => r.lab), datasets: [{ data: rows.map(r => r.total * K()), backgroundColor: rows.map(r => css(r.total >= 0 ? '--gain' : '--loss')), borderRadius: 4, barPercentage: .75 }] },
     options: { indexAxis: 'y', onClick: (e, els) => { if (els[0]) openTicker(rows[els[0].index].tkr); },
       scales: { x: { grid: grid(), border: { display: false }, ticks: axisMoney() }, y: { grid: { display: false }, ticks: { color: css('--ink') } } },
-      plugins: { tooltip: { callbacks: { title: i => nm(rows[i[0].dataIndex].tkr), label: c => money(c.raw / K(), { sign: true }), afterLabel: c => { const t = rows[c.dataIndex].t; return t ? [`Realizált ${money(t.real, { sign: true })}`, `Nem realizált ${money(t.unreal, { sign: true })}`, `Osztalék ${money(t.div, { sign: true })}`] : ''; } } } } } });
+      plugins: { vl: { fmt: r => moneyShort(r / K(), true) }, tooltip: { callbacks: { title: i => nm(rows[i[0].dataIndex].tkr), label: c => money(c.raw / K(), { sign: true }), afterLabel: c => { const t = rows[c.dataIndex].t; return t ? [`Realizált ${money(t.real, { sign: true })}`, `Nem realizált ${money(t.unreal, { sign: true })}`, `Osztalék ${money(t.div, { sign: true })}`] : ''; } } } } } });
   bindTickers();
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { S.rmode = b.dataset.m; render(true); });
   const thr = $('thr'); thr.oninput = () => { $('thrv').textContent = (+thr.value).toFixed(1); }; thr.onchange = () => { S.thr = +thr.value; render(true); $('thr').focus(); };
@@ -609,7 +638,7 @@ V.sp500 = m => {
   const last = m.series[m.series.length - 1];
   if (!market.history.SPY || last.spyVal == null) return `
     <section class="card"><h2>Mi lett volna, ha mindent S&P 500-ba teszel?</h2><p class="sub">Minden befizetést ugyanazon a napon SPY-ba fektetve, a mai áron értékelve.</p></section>
-    <div class="empty">Ehhez élő árfolyam kell. ${apiKey ? 'Az SPY árai még nem töltődtek le, nyomd meg a frissítés gombot.' : '<a href="#" id="spKey">Add meg az ingyenes Twelve Data kulcsot</a>, és az összehasonlítás magától elkészül.'}</div>`;
+    <button class="insight" id="spWhy"><span class="in-ic">${ic('trend')}</span><span><b>Még nincs S&P 500 adat</b><small>Koppints ide: megmutatom, mi hiányzik, és egy gombbal letöltöm.</small></span>${ic('chev')}</button>`;
   const spy = Engine.asOfLookup(market.history.SPY);
   const rows = m.flows.map(f => { const c = spy(f.date); return { ...f, close: c, val: c ? f.usd / c * spy(M.today) : 0 }; });
   const sv = sum(rows, r => r.val), sres = sv - m.dep, diff = m.value - sv;
@@ -623,12 +652,12 @@ V.sp500 = m => {
   <section class="card"><div class="card-h"><div><h2>Befizetésenként</h2><p class="sub">Mennyit érne ma az adott befizetés SPY-ban</p></div></div><div class="cv"><canvas id="sp" role="img" aria-label="Befizetések értéke SPY-ban"></canvas></div></section>`;
 };
 V.sp500.after = m => {
-  const k = $('spKey'); if (k) k.onclick = e => { e.preventDefault(); openSettings(); };
+  const k = $('spWhy'); if (k) k.onclick = () => explainNoData('spy');
   if (!market.history.SPY) return;
   const spy = Engine.asOfLookup(market.history.SPY);
   const rows = m.flows.map(f => { const c = spy(f.date); return { ...f, val: c ? f.usd / c * spy(M.today) : 0 }; });
   chart('sp', { type: 'bar', data: { labels: rows.map(r => dhu(r.date)), datasets: [{ label: 'Befizetve', data: rows.map(r => r.usd * K()), backgroundColor: css('--tile'), borderRadius: 4 }, { label: 'Ma SPY-ban', data: rows.map(r => r.val * K()), backgroundColor: css('--accent'), borderRadius: 4 }] },
-    options: { scales: { x: { grid: { display: false } }, y: { grid: grid(), border: { display: false }, ticks: axisMoney() } }, plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, color: css('--ink') } }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + money(c.raw / K()) } } } } });
+    options: { scales: { x: { grid: { display: false } }, y: { grid: grid(), border: { display: false }, ticks: axisMoney() } }, plugins: { vl: { only: 1, fmt: r => moneyShort(r / K()) }, legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, color: css('--ink') } }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + money(c.raw / K()) } } } } });
 };
 
 V.koltsegek = m => {
@@ -767,7 +796,8 @@ function openTicker(t) {
     ${p ? `<div><div class="big num" style="font-size:2rem">${money(p.value)}</div><div class="pill ${cls(p.pnl)}">${arr(p.pnl)} ${money(p.pnl, { sign: true })} · ${pct(p.pct)}</div></div>
     <dl class="kv"><dt>Mennyiség</dt><dd class="num">${nf(p.qty, 4)} db</dd><dt>Átlagos bekerülés</dt><dd class="num">${usd(p.cost / p.qty)}</dd><dt>Mai ár</dt><dd class="num">${usd(p.price)}${p.dayChg != null ? ` <span class="${cls(p.dayChg)}">${pct(p.dayChg)}</span>` : ''}</dd><dt>Bekerülési érték</dt><dd class="num">${money(p.cost)}</dd></dl>`
     : `<div class="pill ${cls(tk.total)}" style="align-self:flex-start">Lezárt pozíció · ${money(tk.total, { sign: true })}</div>`}
-    <div class="chart" style="height:220px;margin:0"><canvas id="tkc" aria-label="${esc(t)} árfolyam vételi és eladási pontokkal"></canvas><div class="ftip" id="tkTip" hidden></div></div>
+    <div class="tk-head"><div class="tkh" id="tkHead"></div><div class="seg" role="group" aria-label="Időszak">${[['1m', '1H'], ['3m', '3H'], ['6m', '6H'], ['1y', '1É'], ['all', 'Mind']].map(([k, l]) => `<button data-tr="${k}" aria-pressed="${(S.tr || 'all') === k}">${l}</button>`).join('')}</div></div>
+    <div class="chart" style="height:240px;margin:0"><canvas id="tkc" aria-label="${esc(t)} árfolyam vételi és eladási pontokkal"></canvas><div class="ftip" id="tkTip" hidden></div></div>
     <div class="keys" style="margin-top:-4px"><span><b class="pos">▲</b> vétel</span><span><b class="neg">▼</b> eladás</span>${p ? '<span><i style="border-top-style:dashed;border-color:var(--muted)"></i>átlagos bekerülési ár</span>' : ''}</div>
     <dl class="kv"><dt>Realizált</dt><dd class="num ${cls(tk.real)}">${money(tk.real, { sign: true })}</dd><dt>Nem realizált</dt><dd class="num ${cls(tk.unreal)}">${money(tk.unreal, { sign: true })}</dd><dt>Osztalék (nettó)</dt><dd class="num pos">${money(tk.div, { sign: true })}</dd><dt><b>Összesen</b></dt><dd class="num ${cls(tk.total)}"><b>${money(tk.total, { sign: true })}</b></dd></dl>
     <div><h2 style="font-size:.95rem;margin-bottom:6px">Vételek és eladások időzítése</h2><div class="list" id="timing"></div></div>
@@ -776,7 +806,7 @@ function openTicker(t) {
 }
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
-function openSettings() {
+function openSettings(focus) {
   const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Beállítások</div><h2 style="font-size:1.3rem">Adatok és frissítés</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
     <div class="field"><label>Kivonatok</label>
       <div class="list">${statements.map((st, i) => `<div class="li" style="cursor:default"><span class="tk">${esc((st.label || '').slice(-2) || 'LY')}</span><span><div class="n">${esc(st.label || st.acct)}</div><div class="s">${esc(st.acct)} · ${dhu(st.from)}–${dhu(st.to)} · ${st.rows.length} tétel</div></span><button class="ibtn" data-del="${i}" aria-label="Törlés">✕</button></div>`).join('')}</div>
@@ -790,10 +820,13 @@ function openSettings() {
       <input type="password" id="fkey" value="${esc(fhKey)}" placeholder="pl. c1a2b3…" autocomplete="off" spellcheck="false">
       <div><button class="btn" id="saveF">Mentés és frissítés</button></div>
       <p class="sub">Ingyenes kulcs: <a href="https://finnhub.io/register" target="_blank" rel="noopener">finnhub.io/register</a>, belépés után a Dashboard főoldalán látod. Ebből jönnek a gyorsjelentések időpontjai és a cégek hírei.</p></div>
+    <div class="field" id="diagField"><label>Adatforrások állapota</label>${diagHtml()}</div>
     <div class="field"><label>Megjelenés</label><div class="seg" role="group" aria-label="Téma">${[['auto', 'Rendszer'], ['light', 'Világos'], ['dark', 'Sötét']].map(([k, l]) => `<button data-th="${k}" aria-pressed="${S.theme === k}">${l}</button>`).join('')}</div></div>
     <div class="field"><label>Telepítés</label>${installEvt ? '<button class="btn ghost" id="install">App telepítése a kezdőképernyőre</button>' : ''}<p class="sub">Androidon a Chrome menüjében (⋮) válaszd a „Hozzáadás a kezdőképernyőhöz” vagy „App telepítése” lehetőséget. iPhone-on a Safari Megosztás gombja → „Főképernyőhöz adás”.</p></div>
     <div class="field"><label>Adatok törlése</label><button class="btn danger" id="wipe">Minden adat törlése erről a készülékről</button></div>`);
   $('addSt').onclick = () => { s.close(); $('fileIn').click(); };
+  $('dgTest').onclick = diagTest;
+  if (focus === 'diag') setTimeout(() => $('diagField').scrollIntoView({ block: 'start', behavior: 'smooth' }), 120);
   $('saveF').onclick = () => { fhKey = $('fkey').value.trim(); store.set('bf-fhkey', fhKey); if (market.cal) market.cal.at = 0; s.close(); refresh(); };
   s.root.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const i = +b.dataset.del; if (b.dataset.sure) { statements.splice(i, 1); store.set('bf-st', statements); s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztos?'; } });
   $('saveKey').onclick = () => { apiKey = $('key').value.trim(); store.set('bf-key', apiKey); s.close(); drawStatus(); refresh(); };
@@ -929,6 +962,7 @@ async function fetchCalendar(force) {
     try { const j = await getJson(`https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(t)}&from=${nf7}&to=${M.today}&token=${encodeURIComponent(fhKey)}`); if (Array.isArray(j)) j.slice(0, 4).forEach(n => news.push({ t, at: n.datetime * 1000, h: n.headline, src: n.source, url: n.url })); } catch (e) {}
   }
   market.cal = { at: Date.now(), earnings, news };
+  diag('fh', { ok: earnings.length + news.length > 0, msg: `${earnings.length} jelentés, ${news.length} hír` });
 }
 function estDividends() {
   const out = []; const by = {};
@@ -976,18 +1010,23 @@ V.naptar.after = () => {
 
 /* ---------- részletes részvénygrafikon ---------- */
 function tickerChart(t, p) {
-  const c = $('tkc'); if (!c) return;
+  const c = $('tkc'); if (!c) return; const TR = { '1m': 31, '3m': 92, '6m': 183, '1y': 366 };
   const tx = M.tx.filter(r => r.tkr === t && (r.type === 'B' || r.type === 'S'));
   const h = market.history[t]; const hasH = h && Object.keys(h).length > 5;
   const first = tx.length ? tx[0].date : M.today; const lastTx = tx.length ? tx[tx.length - 1].date : M.today;
   const end = p ? M.today : (Engine.addDays(lastTx, 45) < M.today ? Engine.addDays(lastTx, 45) : M.today);
-  const ds = hasH ? Object.keys(h).sort().filter(d => d >= Engine.addDays(first, -30) && d <= end) : M.series.map(x => x.d).filter(d => d >= Engine.addDays(first, -30) && d <= end);
+  const fromR = TR[S.tr] ? Engine.addDays(end, -TR[S.tr]) : Engine.addDays(first, -30);
+  const ds = hasH ? Object.keys(h).sort().filter(d => d >= fromR && d <= end) : M.series.map(x => x.d).filter(d => d >= fromR && d <= end);
   if (ds.length < 3) { c.parentElement.hidden = true; return; }
   const pts = ds.map(d => { const v = hasH ? h[d] : M.priceAt(t, d); return { d, value: v, invested: 0, nav: v }; });
   const idxOf = d => { const i = ds.findIndex(x => x >= d); return i < 0 ? ds.length - 1 : i; };
-  const markers = tx.map(r => ({ i: idxOf(r.date), type: r.type, price: r.ccy === 'EUR' ? r.price * 1.16 : r.price, r }));
+  const markers = tx.filter(r => r.date >= ds[0]).map(r => ({ i: idxOf(r.date), type: r.type, price: r.ccy === 'EUR' ? r.price * 1.16 : r.price, r }));
+  const hd = $('tkHead'); const headAt = i => { const q = pts[i == null ? pts.length - 1 : i]; const ch = (q.nav / pts[0].nav - 1) * 100; hd.innerHTML = `<b class="num">${usd(q.nav)}</b><span class="pp ${ch >= 0 ? 'up' : 'down'} num">${pct(ch)}</span><small>${i == null ? (TR[S.tr] ? 'az időszakban' : 'az első vétel óta') : dShort(q.d)}</small>`; };
+  if (hd) headAt(null);
+  document.querySelectorAll('[data-tr]').forEach(b => b.onclick = () => { S.tr = b.dataset.tr; document.querySelectorAll('[data-tr]').forEach(x => x.setAttribute('aria-pressed', x === b)); tickerChart(t, p); });
   const tip = $('tkTip');
   stockChart(c, pts, (i, x, y, W) => {
+    if (hd) headAt(i);
     if (i == null) { tip.hidden = true; return; }
     const mk = markers.filter(k => k.i === i);
     tip.innerHTML = `<div class="td">${dShort(pts[i].d)}</div><div class="tv num">${usd(pts[i].nav)}</div>${mk.map(k => `<div class="num ${k.type === 'B' ? 'pos' : 'neg'}">${k.type === 'B' ? 'Vétel' : 'Eladás'} ${nf(k.r.qty, 3)} db @ ${usd(k.price)}</div>`).join('')}`;
@@ -1004,6 +1043,37 @@ function tickerChart(t, p) {
     const since = r.type === 'B' && now ? (now / price - 1) * 100 : null;
     return `<div class="li" style="cursor:default"><span class="tag ${r.type === 'B' ? 'tb-b' : 'tb-s'}">${r.type === 'B' ? 'Vétel' : 'Eladás'}</span><span><div class="n num">${dhu(r.date)} · ${usd(price)}</div><div class="s num">${nf(r.qty, 4)} db · ${usd(r.gross * (r.ccy === 'EUR' ? 1.16 : 1))}${since != null ? ` · azóta <span class="${cls(since)}">${pct(since)}</span>` : ''}</div></span><span class="r">${badge}</span></div>`;
   }).join('') + (hasH ? '' : '<p class="sub">Az időzítés értékeléséhez élő árfolyam (Twelve Data) kell.</p>');
+}
+
+/* ---------- hiányzó adat magyarázata ---------- */
+function explainNoData(kind) {
+  const d = (market.diag || {}).td; const what = kind === 'spy' ? 'Az S&P 500 összehasonlításhoz' : 'A mai változáshoz';
+  let why, act = '';
+  if (!apiKey) { why = 'Nincs megadva Twelve Data kulcs.'; act = '<button class="btn" id="ndSet">Kulcs megadása</button>'; }
+  else if (S.busy) why = 'A letöltés éppen folyamatban van. Néhány perc, és megjelenik.';
+  else if (d && !d.ok) { why = 'A legutóbbi letöltés nem sikerült: ' + esc(d.msg); act = '<button class="btn" id="ndRef">Újrapróbálom</button>'; }
+  else if (kind === 'spy') { why = 'Az S&P 500 adatai még nem jöttek le' + (market.errors && market.errors.length ? ': ' + esc(market.errors.filter(e => /SPY|VOO|IVV|SPX/.test(e)).join('; ') || market.errors[0]) : '.'); act = '<button class="btn" id="ndRef">Letöltés most</button>'; }
+  else { why = 'Még nincsenek napi árak.'; act = '<button class="btn" id="ndRef">Letöltés most</button>'; }
+  const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Hiányzó adat</div><h2 style="font-size:1.25rem">${what} élő árfolyam kell</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+    <p>${why}</p><div style="display:flex;gap:8px;flex-wrap:wrap">${act}<button class="btn ghost" id="ndDiag">Adatforrások állapota</button></div>`);
+  const a = $('ndSet'); if (a) a.onclick = () => { s.close(); setTimeout(openSettings, 50); };
+  const r = $('ndRef'); if (r) r.onclick = () => { s.close(); refresh({ force: kind === 'spy' }); };
+  $('ndDiag').onclick = () => { s.close(); setTimeout(() => openSettings('diag'), 50); };
+}
+function diagHtml() {
+  const D = market.diag || {}; const row = (k, l) => { const d = D[k]; return `<div class="dg"><i class="${!d ? '' : d.ok ? 'ok' : 'bad'}"></i><span><b>${l}</b><small>${d ? esc(d.msg) + ' · ' + new Date(d.at).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'még nem futott'}</small></span></div>`; };
+  const spy = market.history.SPY ? Object.keys(market.history.SPY).sort() : [];
+  return `${row('td', 'Twelve Data (árfolyamok)')}${row('fx', 'ECB (USD/HUF)')}${row('fh', 'Finnhub (naptár, hírek)')}
+    <div class="dg"><i class="${spy.length ? 'ok' : 'bad'}"></i><span><b>S&P 500 (${esc(market.benchSym || 'SPY')})</b><small>${spy.length ? `${spy.length} nap · utolsó ${dhu(spy[spy.length - 1])}` : 'nincs adat'}</small></span></div>
+    <button class="btn ghost" id="dgTest">Kapcsolat tesztelése</button><pre class="dgout" id="dgOut" hidden></pre>`;
+}
+async function diagTest() {
+  const o = $('dgOut'); o.hidden = false; o.textContent = 'Teszt fut…';
+  const out = [];
+  for (const [l, u] of [['Twelve Data', `https://api.twelvedata.com/time_series?symbol=AAPL,SPY&interval=1day&outputsize=2&apikey=${encodeURIComponent(apiKey || 'demo')}`], ['ECB', 'https://api.frankfurter.dev/v1/latest?base=USD&symbols=HUF']]) {
+    try { const r = await fetch(u, { cache: 'no-store' }); const t = await r.text(); out.push(`${l}: HTTP ${r.status}\n${t.slice(0, 380)}`); } catch (e) { out.push(`${l}: HIBA ${e.message || e}`); }
+  }
+  o.textContent = out.join('\n\n');
 }
 
 /* ---------- chrome ---------- */

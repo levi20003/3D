@@ -408,6 +408,15 @@ button,a{-webkit-tap-highlight-color:transparent}
 .qa button,.acard,.prow,.txr,.chip,.bw,.insight{transition:transform .15s ease,background .15s}
 .chip:active,.insight:active,.bw:active,.txr:active{transform:scale(.97)}
 html{scroll-behavior:auto}
+
+/* ---- diagnosztika, részvénylap fejléc ---- */
+.dg{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.dg i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--muted);margin-top:6px} .dg i.ok{background:var(--gain)} .dg i.bad{background:var(--loss)}
+.dg b{display:block;font-size:.88rem} .dg small{display:block;color:var(--muted);font-size:.78rem;word-break:break-word}
+.dgout{background:var(--surface-2);border-radius:12px;padding:10px;font-size:.72rem;white-space:pre-wrap;word-break:break-all;max-height:240px;overflow:auto;margin:0}
+.tk-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.tkh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap} .tkh b{font-size:1.35rem;font-weight:800;letter-spacing:-.02em} .tkh small{color:var(--muted);font-size:.78rem}
+.seg button.soft{opacity:.55}
 @media (max-width:480px){.tools{gap:6px}.ibtn{width:38px;height:38px;min-width:38px}.seg button{padding:5px 9px}.hello small{max-width:150px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
