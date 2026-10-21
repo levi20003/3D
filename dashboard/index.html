@@ -6,17 +6,17 @@
 <style>
 /* Layout: sticky stat strip, then a work queue of contact rows; templates and import live in tabs. Brand: olive, sand and off-white (same as the business card). */
 :root{
-  --bg:#f2f1ea; --panel:#fbfaf6; --ink:#23251a; --muted:#66675a; --line:#dfddd2; --silver:#b9b6a3; --tan:#c1a37d; --on-accent:#fbfaf6;
+  --bg:#f2f1ea; --panel:#fbfaf6; --ink:#23251a; --muted:#66675a; --line:#dfddd2; --silver:#b9b6a3; --tan:#c1a37d; --on-accent:#fbfaf6; --shadow:0 1px 2px rgba(35,37,26,.05),0 6px 20px rgba(35,37,26,.05); --rev2:#c1a37d;
   --accent:#5f6239; --accent-soft:#e7e8d5; --ok:#1f7a4d; --ok-soft:#e1f3e9; --warn:#a15c00; --warn-soft:#fdf0d9; --info:#2d5fa8; --info-soft:#e4ecf8;
   --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
   --f-ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#14150f; --panel:#1d1f16; --ink:#edece4; --muted:#a8a794; --line:#303224; --silver:#55574a; --tan:#c9ab84; --on-accent:#14150f;
+  --bg:#14150f; --panel:#1d1f16; --ink:#edece4; --muted:#a8a794; --line:#303224; --silver:#55574a; --tan:#c9ab84; --on-accent:#14150f; --shadow:0 1px 2px rgba(0,0,0,.3); --rev2:#c9ab84;
   --accent:#c3c78f; --accent-soft:#2c2f1e; --ok:#5fd39a; --ok-soft:#173326; --warn:#f2b45a; --warn-soft:#3a2a12; --info:#86aef0; --info-soft:#1a2740; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#14150f; --panel:#1d1f16; --ink:#edece4; --muted:#a8a794; --line:#303224; --silver:#55574a; --tan:#c9ab84; --on-accent:#14150f;
+  --bg:#14150f; --panel:#1d1f16; --ink:#edece4; --muted:#a8a794; --line:#303224; --silver:#55574a; --tan:#c9ab84; --on-accent:#14150f; --shadow:0 1px 2px rgba(0,0,0,.3); --rev2:#c9ab84;
   --accent:#c3c78f; --accent-soft:#2c2f1e; --ok:#5fd39a; --ok-soft:#173326; --warn:#f2b45a; --warn-soft:#3a2a12; --info:#86aef0; --info-soft:#1a2740; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.45}
@@ -192,13 +192,100 @@ table.cov{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-nume
   #catChips .chip{flex:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Shell: sticky left rail (grouped nav + daily goal card), main column with header bar, KPI cards and an overview grid */
+.app{display:grid;grid-template-columns:240px minmax(0,1fr);gap:20px;max-width:1460px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 56px;align-items:start}
+main.wrap{max-width:none;margin:0;padding:0;min-width:0}
+.side{position:sticky;top:calc(16px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px 12px;box-shadow:var(--shadow);max-height:calc(100vh - 32px);overflow:auto}
+.side-brand{display:flex;flex-direction:column;gap:2px;padding:4px 10px 8px;font-size:20px;font-weight:700}
+.side-brand .bt{font-size:12.5px;font-weight:500;color:var(--muted);letter-spacing:.02em}
+.side .tabs{display:flex;flex-direction:column;gap:2px;margin:0;border:0;overflow:visible;-webkit-mask-image:none;mask-image:none}
+.navlbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:12px 10px 4px}
+.side .tab{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:9px 10px;border-radius:11px;border:0;font-weight:500;font-size:14.5px;color:var(--muted)}
+.side .tab svg{width:18px;height:18px;flex:none}
+.side .tab>span:not(.nb){flex:1;min-width:0}
+.side .tab .nb{flex:none}
+.side .tab:hover{background:var(--bg);color:var(--ink)}
+.side .tab[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
+.side .tab .nb{margin-left:auto;font-size:11.5px;font-weight:700;border-radius:999px;padding:1px 7px;background:var(--warn-soft);color:var(--warn);font-variant-numeric:tabular-nums}
+.side .tab[aria-selected="true"] .nb{background:var(--panel);color:var(--accent)}
+.side-card{margin-top:14px;background:var(--accent-soft);border-radius:14px;padding:14px;display:grid;gap:8px}
+.side-card .bar{height:6px;background:var(--panel);border-radius:3px;overflow:hidden}
+.side-card .bar i{display:block;height:100%;width:0;background:var(--accent)}
+.side-card .btn{justify-content:center}
+header.top{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px 16px;box-shadow:var(--shadow);align-items:center;gap:14px 18px}
+.hello{flex:1 1 260px;min-width:0}
+.hello h1{font-family:var(--f-display);font-size:22px;font-weight:700;margin:0}
+.gsearch{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:0 6px 0 12px;flex:0 1 320px;min-width:0}
+.gsearch svg{width:16px;height:16px;color:var(--muted);flex:none}
+.gsearch input{border:0;background:none;padding:9px 6px;flex:1;min-width:0}
+.gsearch input:focus-visible{outline:none}
+.gsearch:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.who-chip{display:flex;align-items:center;gap:10px;font-size:13.5px;line-height:1.25}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:700;font-family:var(--f-display)}
+.stats{position:static;background:none;border:0;padding-block:0;margin-top:16px;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.stat{border-radius:16px;padding:14px;box-shadow:var(--shadow);gap:8px}
+.stat .hd{display:flex;align-items:center;gap:9px}
+.stat .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
+.stat .ic svg{width:16px;height:16px}
+.stat .l{text-transform:none;letter-spacing:0;font-size:13.5px;font-weight:600;color:var(--ink)}
+.stat .n{font-family:var(--f-display);font-size:30px;line-height:1.05}
+.stat .s{font-size:12px;color:var(--muted);min-height:1.2em}
+.stat .s .up{color:var(--ok);font-weight:600}
+.tabs+section,main.wrap>section{margin-top:16px}
+main.wrap .card{border-radius:16px;box-shadow:var(--shadow)}
+.ov{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.ov .wide{grid-column:span 2}
+.ovh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ovh h3{margin:0;font-size:15.5px}
+.ovk{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline}
+.ovk .big{font-family:var(--f-display);font-size:30px}
+.ovk .lab{font-size:12px;color:var(--muted)}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--f-ui);font-size:11px}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:baseline}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;text-align:center;font-size:12.5px;font-variant-numeric:tabular-nums}
+.cal .dn{font-size:11px;color:var(--muted);padding:4px 0}
+.cal .d{position:relative;padding:6px 0 9px;border-radius:9px;color:var(--ink)}
+.cal .d.o{color:var(--silver)}
+.cal .d.t{background:var(--accent);color:var(--on-accent);font-weight:700}
+.cal .d .dots{position:absolute;left:0;right:0;bottom:3px;display:flex;justify-content:center;gap:2px}
+.cal .d .dots i{width:4px;height:4px;border-radius:50%;background:var(--warn)}
+.cal .d .dots i.k{background:var(--ok)}
+.cal .d.t .dots i{background:var(--on-accent)}
+.evl{display:grid;gap:6px;font-size:13px}
+.evl div{display:flex;justify-content:space-between;gap:10px;background:var(--bg);border-radius:9px;padding:7px 10px}
+.evl span{color:var(--muted);white-space:nowrap}
+.iconbtn{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;font:inherit;display:grid;place-items:center}
+.catbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;font-size:13px;align-items:center}
+.catbar .tr{grid-column:1/-1;height:7px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.catbar .tr i{display:block;height:100%;background:var(--accent);border-radius:4px}
+table.lt td{text-align:left}
+table.lt th{text-align:left}
+table.lt tr.lr{cursor:pointer}
+table.lt tr.lr:hover td{background:var(--bg)}
+@media (max-width:1180px){.ov{grid-template-columns:repeat(2,minmax(0,1fr))}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr);gap:12px;padding-block:10px 40px}
+  .side{position:static;max-height:none;padding:8px;border-radius:14px}
+  .side-brand,.navlbl,.side-card{display:none}
+  .side .tabs{flex-direction:row;overflow-x:auto;scrollbar-width:none}
+  .side .tabs::-webkit-scrollbar{display:none}
+  .side .tab{width:auto;white-space:nowrap;flex:none}
+  .ov{grid-template-columns:minmax(0,1fr)}.ov .wide{grid-column:auto}
+  .who-chip{display:none}
+  .gsearch{flex:1 1 100%}
+}
 @media print{
   :root{--bg:#fff;--panel:#fff;--line:#d6d4c8}
   body{font-size:11pt;color:#000;background:#fff}
   .wrap{max-width:none;padding:0}
   .stats{position:static;grid-template-columns:repeat(5,minmax(0,1fr));border:0}
   .stat,.card,.row,.orow,.kpi{break-inside:avoid;box-shadow:none}
-  .tabs,.bar-tools,#bulk,.acts,.toast,#sync,#tForm,.selbox,.more,.btn,input[type=search]{display:none!important}
+  .side,.gsearch,.tabs,.bar-tools,#bulk,.acts,.toast,#sync,#tForm,.selbox,.more,.btn,input[type=search]{display:none!important}
+  .app{display:block}
   .stat .bar{display:none}
   .todo input{accent-color:#5f6239}
   .grid2{grid-template-columns:1fr}
@@ -206,36 +293,47 @@ table.cov{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-nume
 }
 </style>
 
-<div class="wrap">
-  <header class="top">
-    <div>
-      <h1 class="brand"><span class="wm" aria-label="Levente 3D"><svg class="lmark" viewBox="3 3 26 28" aria-hidden="true"><rect x="3" y="3" width="8" height="5.5" rx="1.4" fill="currentColor"/><rect x="3" y="10.5" width="8" height="5.5" rx="1.4" fill="currentColor"/><rect x="3" y="18" width="8" height="5.5" rx="1.4" fill="currentColor"/><rect x="3" y="25.5" width="26" height="5.5" rx="1.4" fill="var(--tan)"/></svg>EVENTE<i>·</i>3D</span><span class="bt">Kampánypult</span></h1>
-      <p class="sub">Levente · Szeged, Csongrád-Csanád, Békés · B2B megkeresések</p>
+<div class="app">
+  <aside class="side" aria-label="Menü">
+    <div class="side-brand"><span class="wm" aria-label="Levente 3D"><svg class="lmark" viewBox="3 3 26 28" aria-hidden="true"><rect x="3" y="3" width="8" height="5.5" rx="1.4" fill="currentColor"/><rect x="3" y="10.5" width="8" height="5.5" rx="1.4" fill="currentColor"/><rect x="3" y="18" width="8" height="5.5" rx="1.4" fill="currentColor"/><rect x="3" y="25.5" width="26" height="5.5" rx="1.4" fill="var(--tan)"/></svg>EVENTE<i>·</i>3D</span><span class="bt">Kampánypult</span></div>
+    <nav class="tabs" role="tablist" aria-orientation="vertical">
+      <div class="navlbl">Főmenü</div>
+      <button class="tab" role="tab" id="t-todo" aria-selected="true" data-tab="todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Áttekintés</span><span class="nb" id="nb-todo" hidden></span></button>
+      <button class="tab" role="tab" id="t-queue" aria-selected="false" data-tab="queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Címlista</span><span class="nb" id="nb-queue" hidden></span></button>
+      <button class="tab" role="tab" id="t-cov" aria-selected="false" data-tab="cov"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M6 17V9M11 17V5M16 17v-6M21 17v-3"/></svg><span>Lefedettség</span></button>
+      <button class="tab" role="tab" id="t-orders" aria-selected="false" data-tab="orders" title="Pénzügy és rendelések"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></svg><span>Rendelések</span><span class="nb" id="nb-orders" hidden></span></button>
+      <button class="tab" role="tab" id="t-goals" aria-selected="false" data-tab="goals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8"/></svg><span>Célok</span></button>
+      <div class="navlbl">Eszközök</div>
+      <button class="tab" role="tab" id="t-plan" aria-selected="false" data-tab="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg><span>Tervező</span></button>
+      <button class="tab" role="tab" id="t-calc" aria-selected="false" data-tab="calc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h2M12 12h2M16 12h0M8 16h2M12 16h2M16 16h0"/></svg><span>Árkalkulátor</span></button>
+      <button class="tab" role="tab" id="t-gen" aria-selected="false" data-tab="gen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg><span>3D-generátor</span></button>
+      <button class="tab" role="tab" id="t-tpl" aria-selected="false" data-tab="tpl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><span>Sablonok</span></button>
+      <button class="tab" role="tab" id="t-add" aria-selected="false" data-tab="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 20c0-3.3 3.1-6 7-6s7 2.7 7 6M19 8v6M16 11h6"/></svg><span>Új címek</span></button>
+      <div class="navlbl">Általános</div>
+      <button class="tab" role="tab" id="t-set" aria-selected="false" data-tab="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Beállítások</span></button>
+    </nav>
+    <div class="side-card">
+      <b>Mai cél</b>
+      <div class="small" id="sc-txt">Betöltés…</div>
+      <div class="bar"><i id="sc-bar"></i></div>
+      <button class="btn primary" type="button" data-go="uj">Kiküldés folytatása</button>
     </div>
+  </aside>
+<main class="wrap">
+  <header class="top">
+    <div class="hello"><h1>Szia, Levente!</h1><p class="sub" id="hello-sub">Szeged, Csongrád-Csanád, Békés · B2B megkeresések</p></div>
+    <form class="gsearch" id="gsearch" role="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input type="search" id="gq" placeholder="Cég, e-mail vagy város keresése" aria-label="Keresés a címek között"></form>
     <div class="small" id="sync">Kapcsolódás az adatbázishoz…</div>
+    <div class="who-chip"><span class="avatar" aria-hidden="true">L</span><span><b>Levente</b><br><span class="small">levente3d.szeged@gmail.com</span></span></div>
   </header>
 
   <div class="stats" id="stats">
-    <button class="stat" data-go="uj"><div class="l">Kiküldendő</div><div class="n" id="st-uj">–</div></button>
-    <button class="stat goal" data-go="ma"><div class="l">Ma elküldve</div><div class="n" id="st-ma">–</div><div class="bar"><i id="st-bar"></i></div></button>
-    <button class="stat" data-go="fu"><div class="l">Follow-up esedékes</div><div class="n" id="st-fu">–</div></button>
-    <button class="stat" data-go="valaszolt"><div class="l">Válaszolt</div><div class="n" id="st-val">–</div></button>
-    <button class="stat" data-go="all"><div class="l">Összes cím</div><div class="n" id="st-all">–</div></button>
+    <button class="stat" data-go="uj"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span><div class="l">Kiküldendő</div></div><div class="n" id="st-uj">–</div><div class="s" id="st-uj-s"></div></button>
+    <button class="stat goal" data-go="ma"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></span><div class="l">Ma elküldve</div></div><div class="n" id="st-ma">–</div><div class="bar"><i id="st-bar"></i></div></button>
+    <button class="stat" data-go="fu"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="l">Follow-up esedékes</div></div><div class="n" id="st-fu">–</div><div class="s" id="st-fu-s"></div></button>
+    <button class="stat" data-go="valaszolt"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg></span><div class="l">Válaszolt</div></div><div class="n" id="st-val">–</div><div class="s" id="st-val-s"></div></button>
+    <button class="stat" data-go="all"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span><div class="l">Összes cím</div></div><div class="n" id="st-all">–</div><div class="s" id="st-all-s"></div></button>
   </div>
-
-  <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" id="t-todo" aria-selected="true" data-tab="todo">Teendőim</button>
-    <button class="tab" role="tab" id="t-queue" aria-selected="false" data-tab="queue">Címlista</button>
-    <button class="tab" role="tab" id="t-cov" aria-selected="false" data-tab="cov">Lefedettség</button>
-    <button class="tab" role="tab" id="t-orders" aria-selected="false" data-tab="orders">Pénzügy és rendelések</button>
-    <button class="tab" role="tab" id="t-goals" aria-selected="false" data-tab="goals">Célok</button>
-    <button class="tab" role="tab" id="t-plan" aria-selected="false" data-tab="plan">Tervező</button>
-    <button class="tab" role="tab" id="t-calc" aria-selected="false" data-tab="calc">Árkalkulátor</button>
-    <button class="tab" role="tab" id="t-gen" aria-selected="false" data-tab="gen">3D-generátor</button>
-    <button class="tab" role="tab" id="t-tpl" aria-selected="false" data-tab="tpl">Sablonok</button>
-    <button class="tab" role="tab" id="t-add" aria-selected="false" data-tab="add">Új címek</button>
-    <button class="tab" role="tab" id="t-set" aria-selected="false" data-tab="set">Beállítások</button>
-  </nav>
 
   <section id="p-queue" hidden>
     <div class="bar-tools grp" id="groupChips"></div>
@@ -393,7 +491,15 @@ table.cov{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-nume
   </section>
 
   <section id="p-todo">
+    <div class="ov">
+      <div class="card wide" id="ov-rev"></div>
+      <div class="card" id="ov-rate"></div>
+      <div class="card" id="ov-donut"></div>
+      <div class="card" id="ov-cal"></div>
+      <div class="card" id="ov-cats"></div>
+    </div>
     <div class="inbox" id="tInbox"></div>
+    <div class="card" style="margin-top:14px"><div class="ovh"><h3>Legutóbbi megkeresések</h3><button class="btn ghost" type="button" data-go="all">Címlista</button></div><div class="covwrap" style="box-shadow:none;border:0"><table class="cov lt" id="ov-table"></table></div></div>
     <div class="grid2" style="margin-top:14px">
       <div class="card"><h3>Növekedési lépések <span class="small" id="tProg"></span></h3><div id="tList" class="todo"></div>
         <form id="tForm" class="bar-tools" style="margin:6px 0 0"><input type="text" id="t-new" placeholder="Új teendő" style="flex:1 1 200px;min-width:0"><button class="btn" type="submit">Hozzáadás</button></form>
@@ -539,6 +645,7 @@ Szeged</textarea></label>
       </div>
     </div>
   </section>
+</main>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -1428,6 +1535,15 @@ function renderStats(){
   const {all,st,ma}=counts();const g=+settings.goal||30;
   $("#st-uj").textContent=st.uj||0;$("#st-fu").textContent=st.fu||0;$("#st-val").textContent=(st.valaszolt||0)+(st.ugyfel||0);
   $("#st-all").textContent=all.filter(c=>!PRE.has(c.status)).length;$("#st-ma").textContent=ma+" / "+g;$("#st-bar").style.width=Math.min(100,ma/g*100)+"%";
+  const nJ=all.filter(c=>c.status==="javasolt").length,f2=all.filter(c=>fuStage(c)===2).length,S=goalStats(),nq=(st.uj||0)+(st.fu||0);
+  $("#st-uj-s").textContent=nJ?nJ+" javaslat vár jóváhagyásra":st.dmq?st.dmq+" cég DM-re vár":"";
+  $("#st-fu-s").textContent=st.fu?(f2?`${st.fu-f2} első, ${f2} második kör`:"első kör"):"nincs esedékes";
+  $("#st-val-s").innerHTML=S.sent?`<span class="up">${(S.rep/S.sent*100).toLocaleString("hu-HU",{maximumFractionDigits:1})}%</span> válaszarány`:"";
+  $("#st-all-s").textContent=new Set(all.filter(c=>!PRE.has(c.status)).map(c=>c.cat)).size+" kategória";
+  $("#sc-txt").textContent=`${ma} / ${g} levél ment ki ma`+(nq?`, ${nq} vár még`:"");$("#sc-bar").style.width=Math.min(100,ma/g*100)+"%";
+  const qb=$("#nb-queue");qb.hidden=!nq;qb.textContent=nq;
+  const oo=[...orders.values()].filter(o=>["keres","ajanlat","elfogadva","gyartas"].includes(o.status)).length,ob=$("#nb-orders");ob.hidden=!oo;ob.textContent=oo;
+  $("#hello-sub").textContent=new Date().toLocaleDateString("hu-HU",{weekday:"long",month:"long",day:"numeric"})+` · ${st.uj||0} kiküldendő cím, ${st.fu||0} esedékes follow-up`+(nJ?`, ${nJ} javaslat`:"");
 }
 function inGroup(c){return fGroup==="dm"?isDM(c):!isDM(c)}
 function cityOf(c){return (c.city||"").trim()}
@@ -1518,7 +1634,7 @@ async function save(c,patch){
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-act],[data-s],[data-c],[data-g],[data-tab],[data-go]");
   if(!b){if(menuId){menuId=null;renderList()}return}
-  if(b.dataset.tab){document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===b.dataset.tab));["queue","cov","orders","goals","plan","calc","gen","todo","tpl","add","set"].forEach(k=>$("#p-"+k).hidden=k!==b.dataset.tab);if(b.dataset.tab==="cov")renderCov();if(b.dataset.tab==="goals")renderGoals();if(b.dataset.tab==="gen"&&window.genOpen)window.genOpen();return}
+  if(b.dataset.tab){document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===b.dataset.tab));["queue","cov","orders","goals","plan","calc","gen","todo","tpl","add","set"].forEach(k=>$("#p-"+k).hidden=k!==b.dataset.tab);if(b.dataset.tab==="cov")renderCov();if(b.dataset.tab==="todo")renderOverview();if(b.dataset.tab==="goals")renderGoals();if(b.dataset.tab==="gen"&&window.genOpen)window.genOpen();return}
   if(b.dataset.g){listLimit=LIST_STEP;fGroup=b.dataset.g;fStatus="uj";fCat="all";sel.clear();renderAll();return}
   if(b.dataset.go){listLimit=LIST_STEP;const g=b.dataset.go;fGroup=g==="dmq"?"dm":"email";if(g==="javasolt")fCity="all";fStatus=g==="ma"?"elkuldve":g==="dmq"?"uj":g;fCat="all";$("#t-queue").click();renderAll();return}
   if(b.dataset.s){listLimit=LIST_STEP;fStatus=b.dataset.s;fCat="all";renderAll();return}
@@ -1958,6 +2074,8 @@ function renderInbox(){
   os.filter(o=>o.status==="fizetve"&&!o.reorderDone&&daysSince(o.paidAt||o.date)>=45).forEach(o=>items.push({k:"ujra",title:`Kérdezz rá az újrarendelésre: ${o.company}`,detail:`${daysSince(o.paidAt||o.date)} napja fizetett: ${o.qty} db ${o.item}`,link:GM(o.email,"Kellene még belőle? – Levente 3D",reorderText(o)),oid:o.id,of:"reorderDone"}));
   const label={javaslat:"Új címek",koszon:"Köszönet",ujra:"Újrarendelés",valasz:"Válaszolj",fu:"Follow-up",dm:"DM",havi:"Havi zárás",kuld:"Kiküldés",ajanlat:"Ajánlat",gyart:"Gyártás",penz:"Pénz"};
   const shownInbox=items.filter(i=>i.id||i.oid||!isAcked(ackKey(i)));
+  {const nb=$("#nb-todo");nb.hidden=!shownInbox.length;nb.textContent=shownInbox.length}
+  try{renderOverview()}catch(e){console.error(e)}
   $("#tInbox").innerHTML=`<div class="card"><h3>Mire kell ma válaszolnod, mit kell megcsinálnod</h3>${shownInbox.length?shownInbox.map(i=>`<div class="irow i-${i.k}"><span class="pill ik">${label[i.k]}</span><div class="who"><b>${esc(i.title)}</b>${i.detail?`<div class="note">${esc(i.detail)}</div>`:""}</div><div class="acts">${i.link?`<a class="btn primary" href="${esc(i.link)}" target="_blank" rel="noopener">Megnyitás Gmailben</a>`:""}${i.id?`<button class="btn" data-tdone="${esc(i.id)}">Kész</button>`:(i.oid?"":`<button class="btn" data-ack="${esc(ackKey(i))}" title="Nem aktuális vagy már megvan, eltűnik a listából">Kész</button>`)}${i.oid?`<button class="btn" data-odone="${esc(i.oid)}" data-of="${i.of}">Elküldtem</button>`:""}${i.go?`<button class="btn" data-go="${i.go}">Megnyitás</button>`:""}${i.tab?`<button class="btn" data-tab="${i.tab}">Megnyitás</button>`:""}</div></div>`).join(""):`<p class="small">Most nincs semmi sürgős. Nincs megválaszolatlan levél, esedékes follow-up vagy nyitott rendelés.</p>`}</div>`;
 }
 document.addEventListener("click",async e=>{const id=e.target.dataset?.tdone;if(!id||!todos.get(id))return;const t={...todos.get(id),done:true,doneAt:today()};todos.set(id,t);renderTodos();try{await db?.collection("todos").doc(id).set(t);toast("Kész")}catch(err){toast("Mentés nem sikerült")}});
@@ -2004,8 +2122,6 @@ function renderTodos(){
   const pg=$("#tProg");if(pg)pg.textContent=all.length?`· ${done.length} / ${all.length} kész`:"";
   $("#tList").innerHTML=open.length?open.map(row).join(""):`<p class="small">Nincs nyitott teendő.</p>`;
   $("#tDone").innerHTML=done.length?done.map(row).join(""):`<p class="small">A kipipált teendők ide kerülnek.</p>`;
-  const urgent=[...todos.values()].filter(t=>t.type==="valasz"&&!t.done).length;
-  $("#t-todo").textContent=`Teendőim${urgent?" ("+urgent+")":""}`;
 }
 document.addEventListener("click",async e=>{const id=e.target.dataset?.tdel;if(!id)return;e.preventDefault();const t=todos.get(id);if(!t)return;todos.delete(id);renderTodos();
   try{await db?.collection("todos").doc(id).delete()}catch(err){todos.set(id,t);renderTodos();toast("Törlés nem sikerült");return}
@@ -2074,7 +2190,7 @@ document.addEventListener("click",async e=>{const k=e.target.dataset?.bulk;if(!k
 
 /* ---------- Pénzügy (ledger) ---------- */
 let ledger=new Map();
-function renderLedger(){
+function renderLedger(){try{renderOverview()}catch(e){}
   const all=[...ledger.values()];
   const sum=t=>all.filter(x=>x.type===t).reduce((a,x)=>a+(+x.amount||0),0);
   const inc=sum("bevetel"),exp=sum("kiadas"),res=inc-exp;
@@ -2304,6 +2420,74 @@ document.addEventListener("click",async e=>{
     await Promise.all([...idea.ids].map(async id=>{const c=contacts.get(id);if(!c)return;const nx={...c,...patch};contacts.set(id,nx);try{await db?.collection("contacts").doc(id).set(nx)}catch(err){}}));
     fillCatSelect();renderAll();renderCov();renderTpl();toast(`Új kategória: ${patch.catLabel} (${idea.ids.size} cím). A Sablonok fülön saját levelet is írhatsz neki.`)}
 });
+
+/* ---------- Áttekintés ---------- */
+const HU_MON=["jan.","febr.","márc.","ápr.","máj.","jún.","júl.","aug.","szept.","okt.","nov.","dec."];
+const HU_MONL=["január","február","március","április","május","június","július","augusztus","szeptember","október","november","december"];
+let calOff=0;
+function niceMax(v){if(v<=0)return 10000;const p=Math.pow(10,Math.floor(Math.log10(v))),f=v/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+const ftk=n=>n>=1e6?(n/1e6).toLocaleString("hu-HU",{maximumFractionDigits:1})+" M":n>=1000?Math.round(n/1000)+" e":String(Math.round(n));
+function fuDue(c){if(c.bounced||c.status!=="elkuldve"||!c.sentAt)return "";if(!c.followupAt)return addDays(c.sentAt,+settings.fuDays||6);if(!c.followup2At)return addDays(c.followupAt,+settings.fu2Days||8);return ""}
+function renderOverview(){
+  if(!$("#ov-rev"))return;
+  const now=new Date(),td=today(),months=[];
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"))}
+  const inc={},exp={};let tI=0,tE=0;
+  for(const x of ledger.values()){const k=(x.date||"").slice(0,7),a=+x.amount||0;if(x.type==="bevetel"){tI+=a;inc[k]=(inc[k]||0)+a}else if(x.type==="kiadas"){tE+=a;exp[k]=(exp[k]||0)+a}}
+  const cw=$("#ov-rev").clientWidth,W=cw>200?Math.round(cw-28):600,H=W<480?190:210,L=62,R=16,T=14,B=26,iw=W-L-R,ih=H-T-B;
+  const mx=niceMax(Math.max(1,...months.map(m=>Math.max(inc[m]||0,exp[m]||0))));
+  const X=i=>L+iw*i/(months.length-1),Y=v=>T+ih*(1-v/mx);
+  const pts=o=>months.map((m,i)=>[X(i),Y(o[m]||0)]),line=p=>p.map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1)).join(" ");
+  const pi=pts(inc),pe=pts(exp),lp=pi[pi.length-1],curI=inc[months[5]]||0,prevI=inc[months[4]]||0,res=tI-tE;
+  $("#ov-rev").innerHTML=`<div class="ovh"><h3>Bevétel és kiadás</h3><button class="btn ghost" type="button" data-tab="orders">Pénzügy</button></div>
+    <div class="ovk"><div><div class="big">${ft(tI)}</div><div class="lab">összes bevétel</div></div><div><div class="big" style="font-size:20px">${ft(tE)}</div><div class="lab">összes kiadás</div></div><div><div class="big" style="font-size:20px;color:${res>=0?"var(--ok)":"var(--warn)"}">${res>=0?"+":""}${ft(res)}</div><div class="lab">eredmény</div></div></div>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Havi bevétel és kiadás az elmúlt hat hónapban">
+    ${[0,.5,1].map(f=>`<line class="grid" x1="${L}" x2="${W-R}" y1="${Y(mx*f).toFixed(1)}" y2="${Y(mx*f).toFixed(1)}"/><text x="${L-8}" y="${(Y(mx*f)+4).toFixed(1)}" text-anchor="end">${ftk(mx*f)} Ft</text>`).join("")}
+    <path d="${line(pi)} L${X(5)} ${Y(0)} L${X(0)} ${Y(0)} Z" fill="var(--accent)" fill-opacity=".14"/>
+    <path d="${line(pi)}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="${line(pe)}" fill="none" stroke="var(--rev2)" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round"/>
+    <circle cx="${lp[0]}" cy="${lp[1]}" r="5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/>
+    ${months.map((m,i)=>`<text x="${X(i)}" y="${H-7}" text-anchor="${i===0?"start":i===5?"end":"middle"}">${HU_MON[+m.slice(5)-1]}</text>`).join("")}</svg>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Bevétel</span><span><i style="background:var(--rev2)"></i>Kiadás</span><span>Ebben a hónapban ${ft(curI)} bevétel, előző hónapban ${ft(prevI)}</span></div>`;
+  const S=goalStats(),rate=S.sent?S.rep/S.sent:0,scale=rate>.5?1:rate>.25?.5:.25,N=22,cx=110,cy=106,r1=64,r2=88,on=Math.round(Math.min(1,rate/scale)*N);
+  let seg="";for(let i=0;i<N;i++){const a=Math.PI*(1-(i+.5)/N);seg+=`<line x1="${(cx+r1*Math.cos(a)).toFixed(1)}" y1="${(cy-r1*Math.sin(a)).toFixed(1)}" x2="${(cx+r2*Math.cos(a)).toFixed(1)}" y2="${(cy-r2*Math.sin(a)).toFixed(1)}" stroke="${i<on?"var(--accent)":"var(--line)"}" stroke-width="7" stroke-linecap="round"/>`}
+  const tk=[0,.5,1].map(f=>{const a=Math.PI*(1-f);return `<text x="${(cx+(r2+13)*Math.cos(a)).toFixed(1)}" y="${(cy-(r2+13)*Math.sin(a)+4).toFixed(1)}" text-anchor="middle">${(scale*f*100).toLocaleString("hu-HU",{maximumFractionDigits:1})}%</text>`}).join("");
+  $("#ov-rate").innerHTML=`<div class="ovh"><h3>Válaszarány</h3><span class="small">${S.sent} kiküldött levél</span></div>
+    <svg class="chart" viewBox="-18 0 256 130" role="img" aria-label="Válaszarány">${seg}${tk}<text x="${cx}" y="${cy-8}" text-anchor="middle" style="font-family:var(--f-display);font-size:30px;font-weight:700;fill:var(--ink)">${(rate*100).toLocaleString("hu-HU",{maximumFractionDigits:1})}%</text><text x="${cx}" y="${cy+14}" text-anchor="middle">${S.rep} válasz, ${S.cust} ügyfél</text></svg>
+    <p class="small" style="margin:0">A mutató 0 és ${Math.round(scale*100)}% között méri a válaszok arányát a kiküldött levelekhez (e-mail és DM együtt, visszapattanók nélkül).</p>`;
+  const {st}=counts(),parts=[["Kiküldendő",st.uj||0,"var(--accent)"],["Follow-up esedékes",st.fu||0,"var(--warn)"],["Elküldve, válaszra vár",st.elkuldve||0,"var(--tan)"],["Válaszolt vagy ügyfél",(st.valaszolt||0)+(st.ugyfel||0),"var(--ok)"],["Lezárva",st.lezarva||0,"var(--silver)"]];
+  const tot=parts.reduce((a,q)=>a+q[1],0),Cc=2*Math.PI*58,nz=parts.filter(q=>q[1]).length;let off=0;
+  const arcs=parts.filter(q=>q[1]).map(q=>{const len=Cc*q[1]/tot,g=nz>1?2.5:0,l=Math.max(0.5,len-g);const el=`<circle cx="80" cy="80" r="58" fill="none" stroke="${q[2]}" stroke-width="20" stroke-dasharray="${l.toFixed(2)} ${(Cc-l).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 80 80)"/>`;off+=len;return el}).join("");
+  $("#ov-donut").innerHTML=`<div class="ovh"><h3>Címek állapota</h3><button class="btn ghost" type="button" data-go="all">Címlista</button></div>
+    <div style="display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:14px;align-items:center"><svg class="chart" viewBox="0 0 160 160" role="img" aria-label="Címek állapot szerint">${tot?arcs:`<circle cx="80" cy="80" r="58" fill="none" stroke="var(--line)" stroke-width="20"/>`}<text x="80" y="80" text-anchor="middle" style="font-family:var(--f-display);font-size:28px;font-weight:700;fill:var(--ink)">${tot}</text><text x="80" y="99" text-anchor="middle">cím</text></svg>
+    <div class="legend" style="display:grid;gap:6px">${parts.map(q=>`<span style="display:flex;justify-content:space-between;gap:8px"><span><i style="background:${q[2]}"></i>${q[0]}</span><b style="color:var(--ink);font-variant-numeric:tabular-nums">${q[1]}</b></span>`).join("")}</div></div>`;
+  const base=new Date(now.getFullYear(),now.getMonth()+calOff,1),y=base.getFullYear(),mo=base.getMonth(),ev={};
+  const addEv=(d,k)=>{if(d)(ev[d]=ev[d]||{fu:0,ord:0})[k]++};
+  for(const c of contacts.values()){let d=fuDue(c);if(d)addEv(d<td?td:d,"fu")}
+  for(const o of orders.values())if(o.deadline&&!["fizetve","atadva","elveszett"].includes(o.status))addEv(o.deadline,"ord");
+  const first=(new Date(y,mo,1).getDay()+6)%7,dim=new Date(y,mo+1,0).getDate();
+  let cells=["H","K","Sze","Cs","P","Szo","V"].map(d=>`<div class="dn">${d}</div>`).join("")+"<div></div>".repeat(first);
+  for(let d=1;d<=dim;d++){const ds=y+"-"+String(mo+1).padStart(2,"0")+"-"+String(d).padStart(2,"0"),e=ev[ds];
+    cells+=`<div class="d${ds===td?" t":ds<td?" o":""}"${e?` title="${[e.fu?e.fu+" follow-up":"",e.ord?e.ord+" határidő":""].filter(Boolean).join(", ")}"`:""}>${d}${e?`<span class="dots">${e.fu?"<i></i>":""}${e.ord?'<i class="k"></i>':""}</span>`:""}</div>`}
+  const up=Object.keys(ev).filter(d=>d>=td).sort().slice(0,3);
+  $("#ov-cal").innerHTML=`<div class="ovh"><h3>Naptár</h3><div style="display:flex;gap:6px;align-items:center"><button class="iconbtn" type="button" data-cal="-1" aria-label="Előző hónap">‹</button><span style="font-weight:600;font-size:13.5px;min-width:8.5em;text-align:center">${y}. ${HU_MONL[mo]}</span><button class="iconbtn" type="button" data-cal="1" aria-label="Következő hónap">›</button></div></div>
+    <div class="cal">${cells}</div>
+    <div class="evl">${up.length?up.map(d=>{const e=ev[d];return `<div><b>${d===td?"Ma":huDate(d)}</b><span>${[e.fu?e.fu+" follow-up":"",e.ord?e.ord+" rendelési határidő":""].filter(Boolean).join(" · ")}</span></div>`}).join(""):`<div><b>Nincs esedékes teendő</b><span>follow-up, határidő</span></div>`}</div>
+    <div class="legend"><span><i style="background:var(--warn)"></i>Follow-up</span><span><i style="background:var(--ok)"></i>Rendelési határidő</span></div>`;
+  const cs=catStats().st,rows=Object.entries(cs).filter(([,x])=>x.sent>=3).sort((a,b)=>b[1].rep/b[1].sent-a[1].rep/a[1].sent).slice(0,5),top=Math.max(1e-4,...rows.map(([,x])=>x.rep/x.sent));
+  $("#ov-cats").innerHTML=`<div class="ovh"><h3>Legjobban válaszoló kategóriák</h3><button class="btn ghost" type="button" data-tab="cov">Lefedettség</button></div>
+    <div class="catbar">${rows.length?rows.map(([k,x])=>`<span>${esc(CATS[k]?.label||k)}</span><b style="font-variant-numeric:tabular-nums">${Math.round(x.rep/x.sent*100)}% <span class="small">(${x.rep}/${x.sent})</span></b><div class="tr"><i style="width:${(x.rep/x.sent/top*100).toFixed(0)}%"></i></div>`).join(""):`<p class="small">Egy kategóriához legalább 3 kiküldött levél kell.</p>`}</div>`;
+  const act=c=>[c.sentAt,c.followupAt,c.followup2At].filter(Boolean).sort().pop()||"";
+  const list=[...contacts.values()].filter(c=>act(c)).sort((a,b)=>act(b).localeCompare(act(a))).slice(0,8);
+  $("#ov-table").innerHTML=`<thead><tr><th>Cég</th><th>Kategória</th><th>Város</th><th>Állapot</th><th>Utolsó levél</th><th>Következő lépés</th></tr></thead><tbody>`+(list.map(c=>{const s=effStatus(c),nx=fuDue(c);
+    return `<tr class="lr" data-find="${esc(c.email)}"><td><b>${esc(displayName(c))}</b><br><span class="small">${isDM(c)?"DM":esc(c.email)}</span></td><td>${esc(CATS[c.cat]?.label||c.cat||"")}</td><td>${esc(c.city||"")}</td><td><span class="pill p-${s}">${c.bounced?"Visszapattant":s==="fu"?fuStage(c)+". follow-up":STATUS[s]}</span></td><td>${huDate(act(c))}</td><td>${nx?(nx<=td?"Follow-up ma":"Follow-up "+huDate(nx)):"–"}</td></tr>`}).join("")||`<tr><td colspan="6" class="small">Még nem ment ki levél.</td></tr>`)+`</tbody>`;
+}
+document.addEventListener("click",e=>{
+  const cb=e.target.closest?.("[data-cal]");if(cb){calOff+=+cb.dataset.cal;renderOverview();return}
+  const r=e.target.closest?.("[data-find]");if(!r)return;const c=contacts.get(r.dataset.find);if(!c)return;
+  fGroup=isDM(c)?"dm":"email";fStatus="all";fCat="all";fCity="all";$("#q").value=c.email;openId=c.email;listLimit=LIST_STEP;$("#t-queue").click();renderAll()});
+let ovRT;addEventListener("resize",()=>{clearTimeout(ovRT);ovRT=setTimeout(()=>{try{renderOverview()}catch(e){}},150)});
+$("#gsearch").addEventListener("submit",e=>{e.preventDefault();$("#q").value=$("#gq").value.trim();fStatus="all";fCat="all";fCity="all";listLimit=LIST_STEP;$("#t-queue").click();renderAll()});
 
 renderTpl();renderSettings();renderAll();renderOrders();renderLedger();renderRates();renderCalc();renderPlan();renderTodos();renderGoals();
 (async()=>{
