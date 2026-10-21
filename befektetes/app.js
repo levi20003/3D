@@ -20,9 +20,10 @@ let apiKey = store.get('bf-key', '');
 const S = {
   tab: 'attekintes', cur: store.get('bf-cur2', 'USD'), theme: store.get('bf-theme', 'auto'),
   range: store.get('bf-range', 'all'), mode: store.get('bf-mode', 'idx'), bench: store.get('bf-bench', true),
-  hm: store.get('bf-hm', 'all'), bd: store.get('bf-bd', 'sector'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
+  hide: store.get('bf-hide', false), an: store.get('bf-an', 'trend'), hm: store.get('bf-hm', 'all'), bd: store.get('bf-bd', 'sector'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
 };
-try { const h = location.hash.slice(1); if (h) S.tab = h; } catch (e) {}
+const OLDTAB = { eredmenyek: 'eredmeny', sp500: 'sp', koltsegek: 'koltseg' };
+try { const h = location.hash.slice(1); if (OLDTAB[h]) { S.tab = 'elemzes'; S.an = OLDTAB[h]; } else if (h) S.tab = h; } catch (e) {}
 let M = null;
 
 /* ---------- utils ---------- */
@@ -31,7 +32,7 @@ const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).
 const nf = (n, d = 0) => (n || 0).toLocaleString('hu-HU', { minimumFractionDigits: d, maximumFractionDigits: d });
 const R = () => M ? M.R : 330;
 const K = () => S.cur === 'HUF' ? R() : 1;
-const money = (usd, o = {}) => { const s = o.sign && usd > 0.0049 ? '+' : usd < -0.0049 ? '−' : ''; return S.cur === 'HUF' ? s + nf(Math.abs(usd * R())) + ' Ft' : s + '$' + nf(Math.abs(usd), o.d ?? 2); };
+const money = (usd, o = {}) => { if (S.hide) return '••••'; const s = o.sign && usd > 0.0049 ? '+' : usd < -0.0049 ? '−' : ''; return S.cur === 'HUF' ? s + nf(Math.abs(usd * R())) + ' Ft' : s + '$' + nf(Math.abs(usd), o.d ?? 2); };
 const usd = (n, d = 2) => (n < 0 ? '−' : '') + '$' + nf(Math.abs(n), d);
 const pct = n => (n > 0.049 ? '+' : n < -0.049 ? '−' : '') + nf(Math.abs(n), 1) + '%';
 const cls = n => n > 0.0049 ? 'pos' : n < -0.0049 ? 'neg' : '';
@@ -46,7 +47,7 @@ const todayIso = () => { const t = new Date(); return t.getFullYear() + '-' + St
 // gyakori részvények neve, ha a kivonat már nem sorolja fel (lezárt pozíció)
 const NAMES_FALLBACK = { AAPL: 'Apple', MSFT: 'Microsoft', AMZN: 'Amazon', GOOGL: 'Alphabet', GOOG: 'Alphabet', META: 'Meta', NVDA: 'Nvidia', TSLA: 'Tesla', NFLX: 'Netflix', ADBE: 'Adobe', CRM: 'Salesforce', ORCL: 'Oracle', AMD: 'AMD', INTC: 'Intel', PYPL: 'PayPal', UBER: 'Uber', ABNB: 'Airbnb', SHOP: 'Shopify', NOW: 'ServiceNow', DUOL: 'Duolingo', PLTR: 'Palantir', SOFI: 'SoFi', COIN: 'Coinbase', HOOD: 'Robinhood', NKE: 'Nike', SBUX: 'Starbucks', KO: 'Coca-Cola', PEP: 'PepsiCo', MCD: "McDonald's", DIS: 'Disney', V: 'Visa', MA: 'Mastercard', JPM: 'JPMorgan', BAC: 'Bank of America', NVO: 'Novo Nordisk', LLY: 'Eli Lilly', PFE: 'Pfizer', JNJ: 'Johnson & Johnson', CAKE: 'Cheesecake Factory', HNST: 'Honest Company', KULR: 'KULR Technology', ES: 'Esso S.A.F.', SPY: 'S&P 500 (SPY)', VOO: 'Vanguard S&P 500', QQQ: 'Invesco QQQ' };
 let animNext = true;
-const moneyHTML = v => S.cur === 'HUF' ? `${(v < -0.0049 ? '−' : '') + nf(Math.abs(v * R()))}<span class="cur">Ft</span>` : `<span class="cur pre">$</span>${(v < -0.0049 ? '−' : '') + nf(Math.abs(v), 2)}`;
+const moneyHTML = v => S.hide ? '••••••' : S.cur === 'HUF' ? `${(v < -0.0049 ? '−' : '') + nf(Math.abs(v * R()))}<span class="cur">Ft</span>` : `<span class="cur pre">$</span>${(v < -0.0049 ? '−' : '') + nf(Math.abs(v), 2)}`;
 const nm = t => (M && M.names[t]) || NAMES_FALLBACK[t] || t;
 function toast(msg, ms = 3200) { const el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), ms); }
 const loaded = {};
@@ -196,11 +197,12 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
   let lo = Math.min(...all), hi = Math.max(...all);
   if (hi - lo < 1e-9) { hi += 1; lo -= 1; }
   const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
-  const TP = box.classList.contains('bleed') ? 16 : 0; // feliratok ne érjenek a képernyő széléhez
+  const TP = box.classList.contains('bleed') ? 16 : box.classList.contains('hc-chart') ? 20 : 0; // feliratok ne érjenek a képernyő széléhez
   const L = 0, T = 26, B = 26, w = W - L - 12, h = H - T - B;
   const X = i => L + (pts.length === 1 ? w : i / (pts.length - 1) * w), Y = v => T + (hi - v) / (hi - lo) * h;
   const resNow = idx ? ys[ys.length - 1] - ys[0] : (pts[pts.length - 1].value - pts[pts.length - 1].invested) - (a.value - a.invested);
-  const col = css(resNow >= -1e-9 ? '--gain' : '--loss'), muted = css('--muted'), bench = css('--bench'), surf = css('--bg'), line = css('--line');
+  const pal = opt.pal || {};
+  const col = resNow >= -1e-9 ? (pal.up || css('--gain')) : (pal.down || css('--loss')), muted = pal.muted || css('--muted'), bench = pal.bench || css('--bench'), surf = pal.surf || css('--bg'), line = pal.line || css('--line');
   const fam = getComputedStyle(document.body).fontFamily;
   const fmtY = v => opt.price ? usd(v) : idx ? pct(v) : money(v / K());
   const segs = vals => { const out = []; let cur = []; vals.forEach((v, i) => { if (v == null || !isFinite(v)) { if (cur.length) out.push(cur); cur = []; } else cur.push([X(i), Y(v)]); }); if (cur.length) out.push(cur); return out; };
@@ -260,7 +262,7 @@ function compact(v) { return S.cur === 'HUF' ? nf(v / 1000) + 'e' : '$' + nf(v);
 
 /* ---------- views ---------- */
 const V = {};
-const TABS = [['attekintes', 'Áttekintés', 'M3 13h4v8H3zM10 3h4v18h-4zM17 9h4v12h-4z'], ['portfolio', 'Portfólió', 'M3 3h8v10H3zM13 3h8v6h-8zM13 11h8v10h-8zM3 15h8v6H3z'], ['eredmenyek', 'Eredmények', 'M4 20V10M10 20V4M16 20v-7M22 20H2'], ['sp500', 'S&P 500', 'M3 17l6-6 4 4 8-8M15 7h6v6'], ['koltsegek', 'Költségek', 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'], ['naptar', 'Naptár', 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4'], ['naplo', 'Napló', 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01']];
+const TABS = [['attekintes', 'Kezdőlap', 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'], ['portfolio', 'Portfólió', 'M3 3h8v10H3zM13 3h8v6h-8zM13 11h8v10h-8zM3 15h8v6H3z'], ['elemzes', 'Elemzés', 'M4 20V10M10 20V4M16 20v-7M22 20H2'], ['naptar', 'Naptár', 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4'], ['naplo', 'Napló', 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01']];
 const hasHist = () => Object.keys(market.history || {}).length > 0;
 
 // mikor kezdődött a mostani tartási időszak (0-ról nyitott pozíció)
@@ -284,40 +286,77 @@ function spark(canvas, vals) {
   c.beginPath(); monoPath(c, P); c.strokeStyle = col; c.lineWidth = 1.6; c.stroke();
 }
 
+const ICO = {
+  eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  eyeOff: 'M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.9 8.3 2 12 2 12s3.5 7 10 7c1.7 0 3.2-.4 4.5-1.1',
+  add: 'M12 5v14M5 12h14', file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 12v6M9 15l3 3 3-3',
+  refresh: 'M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5',
+  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0', more: 'M5 12h.01M12 12h.01M19 12h.01',
+  swap: 'M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7', leaf: 'M11 20A7 7 0 0 1 4 13c0-5 5-9 16-10-1 11-5 16-9 17zM4 20c3-5 6-8 10-10',
+  chev: 'M9 18l6-6-6-6', wallet: 'M3 7a2 2 0 0 1 2-2h13v4M3 7v10a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14h.01', trend: 'M3 17l6-6 4 4 8-8M15 7h6v6', moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z'
+};
+const ic = (k, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICO[k]}"/></svg>`;
+const SHADES = () => [css('--c1'), css('--c2'), css('--c3'), css('--c4'), css('--c5'), css('--c6')];
+const shade = i => { const s = SHADES(); return s[Math.min(i, s.length - 1)]; };
+const greet = () => { const h = new Date().getHours(); return h < 5 ? 'Jó éjszakát' : h < 10 ? 'Jó reggelt' : h < 18 ? 'Szép napot' : 'Jó estét'; };
+const heroPal = () => ({ up: css('--hero-up'), down: css('--hero-down'), muted: css('--hero-muted'), line: css('--hero-line'), bench: css('--hero-bench'), surf: css('--hero'), text: css('--hero-muted') });
+function txIcon(r) {
+  if (r.type === 'DEP') return `<span class="lg lg-in">${ic('add')}</span>`;
+  if (r.type === 'FX') return `<span class="lg lg-fx">${ic('swap')}</span>`;
+  let h = 0; for (const c of r.tkr) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return `<span class="lg" style="--lg:${shade(Math.abs(h) % 4)}">${esc(r.tkr.slice(0, 4))}</span>`;
+}
+function txRow(r) {
+  const f = (v) => r.ccy === 'HUF' ? (S.hide ? '••••' : nf(v) + ' Ft') : r.ccy === 'EUR' ? (S.hide ? '••••' : nf(v, 2) + ' €') : (S.hide ? '••••' : usd(v));
+  const amt = r.type === 'D' || r.type === 'S' ? r.net : Math.abs(r.gross);
+  const neg = r.type === 'B' || r.type === 'WD' || (r.type === 'FX' && r.gross < 0);
+  const title = r.type === 'DEP' ? 'Befizetés' : r.type === 'FX' ? `Átváltás · ${r.ccy}` : nm(r.tkr);
+  const sub = r.type === 'B' ? 'Vétel' : r.type === 'S' ? 'Eladás' : r.type === 'D' ? 'Osztalék' : r.type === 'DEP' ? (r.label || '') : 'Devizaváltás';
+  return `<button class="txr" ${r.type === 'B' || r.type === 'S' || r.type === 'D' ? `data-t="${esc(r.tkr)}"` : ''}>${txIcon(r)}<span class="txm"><b>${esc(title)}</b><small>${esc(sub)}</small></span><span class="ta"><b class="num ${neg ? '' : 'pos'}">${neg ? '−' : '+'}${f(amt)}</b><small>${dShort(r.date)}</small></span></button>`;
+}
+
 V.attekintes = m => {
   const top = [...m.positions].sort((a, b) => b.pnl - a.pnl);
   const movers = top.length > 6 ? [...top.slice(0, 3), ...top.slice(-3).reverse()] : top;
-  const daily = m.positions.some(p => p.dayAbs != null);
+  const recent = [...m.tx].filter(r => r.type !== 'FX').reverse().slice(0, 5);
   return `
-  <section class="stock">
-    <div class="lbl-s" id="hl">Portfólió értéke</div>
-    <div class="big num" id="hv"></div>
-    <div class="chg num" id="hc"></div>
-    <div class="chart bleed"><canvas id="sc" role="img" aria-label="A portfólió értékének alakulása. Húzd végig az ujjad a részletekért."></canvas><div class="ftip" id="ftip" hidden></div></div>
-    <div class="ranges2" role="group" aria-label="Időszak">${RANGES.map(r => `<button data-r="${r[0]}" aria-pressed="${S.range === r[0]}">${r[1]}</button>`).join('')}</div>
-    <div class="opts">
-      <div class="seg" role="group" aria-label="Nézet"><button data-mo="idx" aria-pressed="${S.mode === 'idx'}">Árfolyam</button><button data-mo="val" aria-pressed="${S.mode === 'val'}">Érték</button></div>
-      <button class="chip" id="benchBtn" aria-pressed="${S.bench}"><i></i>S&P 500</button>
+  <section class="hero" id="hero">
+    <div class="hc-top"><span class="hc-lbl"><i class="hc-dot">${ic('wallet')}</i>Portfólió értéke</span>
+      <button class="hc-eye" id="eyeBtn" aria-label="${S.hide ? 'Összegek mutatása' : 'Összegek elrejtése'}">${ic(S.hide ? 'eyeOff' : 'eye')}</button></div>
+    <div class="hc-val num" id="hv"></div>
+    <div class="hc-chg num" id="hc"></div>
+    <div class="chart hc-chart"><canvas id="sc" role="img" aria-label="A portfólió értékének alakulása. Húzd végig az ujjad a részletekért."></canvas><div class="ftip" id="ftip" hidden></div></div>
+    <div class="ranges2 hc-ranges" role="group" aria-label="Időszak">${RANGES.map(r => `<button data-r="${r[0]}" aria-pressed="${S.range === r[0]}">${r[1]}</button>`).join('')}</div>
+    <div class="hc-opts">
+      <div class="hseg" role="group" aria-label="Nézet"><button data-mo="idx" aria-pressed="${S.mode === 'idx'}">Árfolyam</button><button data-mo="val" aria-pressed="${S.mode === 'val'}">Érték</button></div>
+      <button class="hchip" id="benchBtn" aria-pressed="${S.bench}"><i></i>S&P 500</button>
     </div>
-    <div class="keys">${S.mode === 'idx' ? '<span>A portfólió mint egy részvény: a befizetések nem mozdítják a vonalat.</span>' : '<span><i style="border-top-style:dashed;border-color:var(--muted)"></i>Befizetett összeg</span>'}${S.bench ? `<span><i style="border-color:var(--bench)"></i>${S.mode === 'idx' ? 'S&P 500 (SPY)' : 'Ha mindent S&P 500-ba tettél volna'}${!market.history.SPY ? ' · élő árfolyammal' : ''}</span>` : ''}</div>
   </section>
-  ${!apiKey ? `<div class="tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><p><b>Kapcsold be az élő árfolyamokat.</b> Most a kivonat árai és a vételi árak alapján rajzolok. Egy ingyenes Twelve Data kulccsal a grafikon napi záróárakból készül, és az app 15 percenként magától frissít. <a href="#" id="tipKey">Beállítás</a></p></div>` : ''}
+  <nav class="qa" aria-label="Gyorsműveletek">
+    <button id="qaImport"><span>${ic('file')}</span>Kivonat</button>
+    <button id="qaRefresh"><span>${ic('refresh')}</span>Frissítés</button>
+    <button id="qaAlert"><span>${ic('bell')}</span>Riasztás</button>
+    <button id="qaMore"><span>${ic('more', 3)}</span>Több</button>
+  </nav>
+  ${!apiKey ? `<button class="insight" id="tipKey"><span class="in-ic">${ic('trend')}</span><span><b>Kapcsold be az élő árfolyamokat</b><small>Ingyenes Twelve Data kulccsal napi árak, S&P összehasonlítás és riasztások.</small></span>${ic('chev')}</button>` : ''}
   <section class="fstats">
-    ${[[daily ? 'Ma' : 'Nyitott eredmény', daily ? m.dayChange : m.unreal, 1, daily ? 'M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z' : 'M3 17l6-6 4 4 8-8'],
-       ['Befizetve', m.dep, 0, 'M12 5v14M5 12h14'],
-       ['Osztalék', m.divNet, 1, 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
-       ['Díjak', -m.feeUsd, 1, 'M19 5L5 19M6.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM17.5 20a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z']]
-      .map(([l, v, sg, ic]) => `<div class="fcard"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${ic}"/></svg></span><div class="lbl-s">${l}</div><div class="v num ${sg ? cls(v) : ''}">${money(v, { sign: !!sg })}</div></div>`).join('')}
+    ${[[m.positions.some(p => p.dayAbs != null) ? 'Ma' : 'Nyitott eredmény', m.positions.some(p => p.dayAbs != null) ? m.dayChange : m.unreal, 1],
+       ['Befizetve', m.dep, 0], ['Osztalék', m.divNet, 1], ['Díjak', -m.feeUsd, 1]]
+      .map(([l, v, sg]) => `<div class="fcard"><div class="lbl-s">${l}</div><div class="v num ${sg ? cls(v) : ''}">${money(v, { sign: !!sg })}</div></div>`).join('')}
   </section>
   ${tbszCard()}
   <section>
     <div class="sec-h"><h2>Eszközeid</h2><span class="sub">${esc(rangeLabel(S.range))}</span></div>
     <div class="rail" id="rail">${[...m.positions].sort((a, b) => b.value - a.value).map(p => { const f = perf(p, rangeFrom(S.range)); return `<button class="acard" data-t="${p.tkr}"><div class="ah"><span class="tk">${p.tkr}</span><span class="ach num ${cls(f.pct)}">${pct(f.pct)}</span></div><div class="an">${esc(nm(p.tkr))}</div><canvas class="sp" data-sp="${p.tkr}"></canvas><div class="av num">${money(p.value)}</div><div class="s num ${cls(f.abs)}">${money(f.abs, { sign: true })}</div></button>`; }).join('')}</div>
   </section>
+  <section class="card">
+    <div class="card-h" style="margin-bottom:4px"><h2>Legutóbbi tranzakciók</h2><a href="#naplo" class="see" data-go="naplo">Összes ${ic('chev')}</a></div>
+    <div class="txl">${recent.map(txRow).join('')}</div>
+  </section>
   <section class="grid">
-    <div class="card"><div class="card-h"><div><h2>Honnan jön az eredmény?</h2><p class="sub">A befizetéstől a mai értékig (a tengely nem nulláról indul)</p></div></div><div class="cv"><canvas id="wf" role="img" aria-label="Eredmény bontása"></canvas></div></div>
+    <div class="card"><div class="card-h"><div><h2>Honnan jön az eredmény?</h2><p class="sub">A befizetéstől a mai értékig</p></div></div><div class="cv"><canvas id="wf" role="img" aria-label="Eredmény bontása"></canvas></div></div>
     <div class="card"><div class="card-h"><div><h2>Legnagyobb mozgások</h2><p class="sub">Nyitott pozíciók, a bekerüléshez képest</p></div></div>
-      <div class="list">${movers.map(p => `<button class="li" data-t="${p.tkr}"><span class="tk">${p.tkr}</span><span><div class="n">${esc(nm(p.tkr))}</div><div class="s num">${money(p.value)}${p.dayChg != null ? ` · ma ${pct(p.dayChg)}` : ''}</div></span><span class="r num ${cls(p.pnl)}">${money(p.pnl, { sign: true })}<div class="s ${cls(p.pnl)}">${pct(p.pct)}</div></span></button>`).join('')}</div></div>
+      <div class="txl">${movers.map(p => `<button class="txr" data-t="${p.tkr}">${txIcon({ tkr: p.tkr, type: 'B' })}<span class="txm"><b>${esc(nm(p.tkr))}</b><small class="num">${money(p.value)}${p.dayChg != null ? ` · ma ${pct(p.dayChg)}` : ''}</small></span><span class="ta"><b class="num ${cls(p.pnl)}">${money(p.pnl, { sign: true })}</b><small class="num ${cls(p.pnl)}">${pct(p.pct)}</small></span></button>`).join('')}</div></div>
   </section>`;
 };
 V.attekintes.after = m => {
@@ -325,9 +364,8 @@ V.attekintes.after = m => {
   const head = i => {
     const p = i == null ? z : pts[i];
     const res = (p.value - p.invested) - (a.value - a.invested), pc = (p.nav / a.nav - 1) * 100;
-    const rl = RANGES.find(r => r[0] === S.range);
     $('hv').innerHTML = moneyHTML(i == null ? m.value : p.value);
-    $('hc').innerHTML = `<span class="${cls(res)}">${arr(res)} ${money(res, { sign: true })} (${pct(pc)})</span><small>${i == null ? rangeLabel(S.range) : dShort(p.d)}</small>`;
+    $('hc').innerHTML = `<span class="hpill ${pc >= 0 ? 'up' : 'down'}">${arr(pc)} ${pct(pc)}</span><span class="hc-abs">${money(res, { sign: true })}</span><small>${i == null ? rangeLabel(S.range) : dShort(p.d)}</small>`;
   };
   const tip = $('ftip');
   const onScrub = (i, x, y, W) => {
@@ -339,7 +377,7 @@ V.attekintes.after = m => {
     tip.style.transform = `translate(${Math.max(8, left)}px, ${Math.max(0, Math.min(y - 40, tip.parentElement.clientHeight - tip.offsetHeight - 30))}px)`;
   };
   head(null);
-  stockChart($('sc'), pts, onScrub, { animate: animNext }); animNext = false;
+  stockChart($('sc'), pts, onScrub, { animate: animNext, pal: heroPal() }); animNext = false;
   const days = M.series.map(x => x.d);
   document.querySelectorAll('[data-sp]').forEach(c => { const t = c.dataset.sp, from = rangeFrom(S.range), hs = holdStart(t); const st = !from || (hs && hs > from) ? hs : from; const ds = days.filter(d => d >= st); spark(c, ds.map(d => M.priceAt(t, d))); });
   const tc = $('tbszCard'); if (tc) { tc.onclick = openTbsz; tc.onkeydown = e => { if (e.key === 'Enter') openTbsz(); }; }
@@ -347,19 +385,102 @@ V.attekintes.after = m => {
   document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.range = b.dataset.r; store.set('bf-range', S.range); animNext = true; render(true); });
   document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); animNext = true; render(true); });
   $('benchBtn').onclick = () => { S.bench = !S.bench; store.set('bf-bench', S.bench); render(true); };
-  const tk = $('tipKey'); if (tk) tk.onclick = e => { e.preventDefault(); openSettings(); };
-  // vízesés
-  const steps = [];
-  steps.push(['Befizetve', m.dep, 1]);
-  steps.push(['Realizált', m.realized], ['Nem realizált', m.unreal], ['Osztalék', m.divNet], ['Egyéb', m.other], ['Mai érték', m.value, 1]);
+  $('eyeBtn').onclick = () => { S.hide = !S.hide; store.set('bf-hide', S.hide); render(true); };
+  $('qaImport').onclick = () => $('fileIn').click(); $('qaRefresh').onclick = () => refresh({}); $('qaAlert').onclick = openAlerts; $('qaMore').onclick = openActions;
+  const tk = $('tipKey'); if (tk) tk.onclick = openSettings;
+  bindGo();
+  const steps = [['Befizetve', m.dep, 1], ['Realizált', m.realized], ['Nem realizált', m.unreal], ['Osztalék', m.divNet], ['Egyéb', m.other], ['Mai érték', m.value, 1]];
   let run = 0; const data = steps.map(([l, v, b]) => { if (b) { run = v; return [0, v * K()]; } const s = run; run += v; return [s * K(), run * K()]; });
   const vals = data.flat().filter(v => v > 0); const lo = Math.min(...vals), hi = Math.max(...vals);
-  const SH = { 'Befizetve': 'Befiz.', 'Árfolyamhatás': 'Árf.', 'Realizált': 'Real.', 'Nem realizált': 'Nyitott', 'Osztalék': 'Oszt.', 'Egyéb': 'Egyéb', 'Mai érték': 'Ma' };
-  chart('wf', { type: 'bar', data: { labels: steps.map(s => innerWidth < 600 ? SH[s[0]] : s[0]), datasets: [{ data, backgroundColor: steps.map(([l, v, b]) => b ? css('--accent') : v >= 0 ? css('--gain') : css('--loss')), borderRadius: 4, borderSkipped: false, barPercentage: .7 }] },
-    options: { scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: false, font: { size: 10.5 } } }, y: { min: lo * 0.97, max: hi * 1.01, grid: grid(), border: { display: false }, ticks: axisMoney() } },
+  const SH = { 'Befizetve': 'Befiz.', 'Realizált': 'Real.', 'Nem realizált': 'Nyitott', 'Osztalék': 'Oszt.', 'Egyéb': 'Egyéb', 'Mai érték': 'Ma' };
+  chart('wf', { type: 'bar', data: { labels: steps.map(s => innerWidth < 600 ? SH[s[0]] : s[0]), datasets: [{ data, backgroundColor: steps.map(([l, v, b]) => b ? css('--accent') : v >= 0 ? css('--gain') : css('--loss')), borderRadius: 8, borderSkipped: false, barPercentage: .7 }] },
+    options: { scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: false, font: { size: 10.5 } } }, y: { min: lo * 0.97, max: hi * 1.01, grid: grid(), border: { display: false }, ticks: S.hide ? { display: false } : axisMoney() } },
       plugins: { tooltip: { callbacks: { title: i => steps[i[0].dataIndex][0], label: c => { const s = steps[c.dataIndex]; return s[2] ? money(s[1]) : money(s[1], { sign: true }); } } } } } });
   bindTickers();
 };
+function bindGo(scope) { (scope || document).querySelectorAll('[data-go]').forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.go, a.dataset.sub); }); }
+function go(tab, sub) { if (sub) S.an = sub; S.tab = tab; try { history.replaceState(null, '', '#' + tab); } catch (_) {} drawNav(); render(); window.scrollTo({ top: 0 }); }
+
+/* ---------- Elemzés ---------- */
+const AN = [['trend', 'Áttekintés'], ['eredmeny', 'Eredmény'], ['sp', 'S&P 500'], ['koltseg', 'Költségek']];
+function monthly(m) {
+  const by = {}; m.series.forEach(p => { by[p.d.slice(0, 7)] = p; });
+  return Object.entries(by).map(([k, p]) => ({ k, p })).slice(-8);
+}
+function insights(m) {
+  const out = []; const last = m.series[m.series.length - 1];
+  if (last.spyIdx) { const d = last.nav - last.spyIdx; out.push({ ic: 'leaf', t: d >= 0 ? `${nf(Math.abs(d), 1)} százalékponttal az S&P 500 felett vagy` : `${nf(Math.abs(d), 1)} százalékponttal az S&P 500 alatt vagy`, s: 'A portfólió árfolyamhozama a kezdés óta, befizetések nélkül.', go: ['elemzes', 'sp'] }); }
+  const best = [...m.T].sort((a, b) => b.total - a.total)[0]; if (best) out.push({ ic: 'trend', t: `${best.tkr} hozta a legtöbbet`, s: `${nm(best.tkr)}: összesen ${money(best.total, { sign: true })}.`, t2: best.tkr });
+  const fp = m.feeUsd / m.dep * 100; out.push({ ic: 'wallet', t: `A díjak a befizetés ${nf(fp, 2)}%-át vitték el`, s: fp < 1 ? 'Ez alacsony. A legnagyobb tétel a befizetési díj.' : 'Kevesebb, nagyobb befizetéssel csökkenthető.', go: ['elemzes', 'koltseg'] });
+  return out;
+}
+function ring(canvasId, centerId, items, onPick, center) {
+  const cv = $(canvasId); if (!cv) return; const tot = sum(items, i => i.v);
+  const dpr = devicePixelRatio || 1, S0 = cv.clientWidth; cv.width = cv.height = S0 * dpr; const c = cv.getContext('2d'); c.scale(dpr, dpr);
+  const cx = S0 / 2, R1 = S0 / 2 - 8, R0 = R1 * 0.72; const segs = []; let a0 = -Math.PI / 2;
+  items.forEach((it, i) => { const a1 = a0 + it.v / tot * Math.PI * 2; segs.push({ it, i, a0, a1 }); a0 = a1; });
+  const draw = hl => { c.clearRect(0, 0, S0, S0); segs.forEach(s => { const on = hl === s.i, r1 = on ? R1 + 5 : R1;
+      c.beginPath(); c.arc(cx, cx, r1, s.a0 + 0.02, s.a1 - 0.02); c.arc(cx, cx, R0, s.a1 - 0.02, s.a0 + 0.02, true); c.closePath(); c.lineJoin = 'round'; c.lineWidth = 3; c.strokeStyle = css('--surface');
+      c.fillStyle = shade(s.i); c.globalAlpha = hl == null || on ? 1 : 0.45; c.fill(); c.stroke(); c.globalAlpha = 1; });
+    $(centerId).innerHTML = center(hl == null ? null : items[hl]); onPick && onPick(hl); };
+  const hit = e => { const r = cv.getBoundingClientRect(); const x = e.clientX - r.left - cx, y = e.clientY - r.top - cx; const d = Math.hypot(x, y); if (d < R0 - 6 || d > R1 + 10) return null; let a = Math.atan2(y, x); if (a < -Math.PI / 2) a += Math.PI * 2; const s = segs.find(s => a >= s.a0 && a < s.a1); return s ? s.i : null; };
+  draw(null); cv.onpointermove = e => draw(hit(e)); cv.onpointerdown = e => draw(hit(e)); cv.onpointerleave = () => draw(null);
+  return draw;
+}
+V.elemzes = m => {
+  const sub = AN.some(a => a[0] === S.an) ? S.an : 'trend';
+  const tabs = `<div class="ptabs" role="tablist">${AN.map(([k, l]) => `<button role="tab" data-an="${k}" aria-selected="${sub === k}">${l}</button>`).join('')}</div>`;
+  if (sub === 'eredmeny') return tabs + V.eredmenyek(m);
+  if (sub === 'sp') return tabs + V.sp500(m);
+  if (sub === 'koltseg') return tabs + V.koltsegek(m);
+  const g = {}; m.positions.forEach(p => { const k = SECTOR[p.tkr] || 'Egyéb'; g[k] = (g[k] || 0) + p.value; });
+  const items = Object.entries(g).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v); const tot = sum(items, i => i.v);
+  const mo = monthly(m); const ins = insights(m);
+  return tabs + `
+  <section class="card">
+    <div class="card-h"><h2>Hová fektetsz?</h2><span class="sub">ágazatonként</span></div>
+    <div class="ring-wrap"><div class="ring"><canvas id="rg"></canvas><div class="rc" id="rc"></div></div>
+      <div class="rl">${items.map((it, i) => `<button class="rli" data-ri="${i}"><i style="background:${shade(i)}"></i><span>${esc(it.k)}</span><b class="num">${nf(it.v / tot * 100, 0)}%</b></button>`).join('')}</div></div>
+  </section>
+  ${ins.map((x, i) => `<button class="insight" data-ins="${i}"><span class="in-ic">${ic(x.ic)}</span><span><b>${esc(x.t)}</b><small>${esc(x.s)}</small></span>${ic('chev')}</button>`).join('')}
+  <section class="card">
+    <div class="card-h"><div><h2>Értéktrend</h2><p class="sub">A portfólió értéke hónap végén</p></div></div>
+    <div class="bars" id="bars">${(() => { const mx = Math.max(...mo.map(x => x.p.value)), mn = Math.min(...mo.map(x => x.p.value)) * 0.85;
+      return mo.map((x, i) => `<button class="bar${i === mo.length - 1 ? ' on' : ''}" data-bi="${i}" style="--h:${((x.p.value - mn) / (mx - mn || 1) * 78 + 22).toFixed(1)}%"><em class="num">${money(x.p.value, { d: 0 })}</em><i></i><span>${['jan', 'febr', 'márc', 'ápr', 'máj', 'jún', 'júl', 'aug', 'szept', 'okt', 'nov', 'dec'][+x.k.slice(5) - 1]}</span></button>`).join(''); })()}</div>
+  </section>`;
+};
+V.elemzes.after = m => {
+  document.querySelectorAll('[data-an]').forEach(b => b.onclick = () => { S.an = b.dataset.an; store.set('bf-an', S.an); render(true); });
+  const sub = AN.some(a => a[0] === S.an) ? S.an : 'trend';
+  if (sub === 'eredmeny') return V.eredmenyek.after(m);
+  if (sub === 'sp') return V.sp500.after(m);
+  if (sub === 'koltseg') return V.koltsegek.after(m);
+  const g = {}; m.positions.forEach(p => { const k = SECTOR[p.tkr] || 'Egyéb'; g[k] = (g[k] || 0) + p.value; });
+  const items = Object.entries(g).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v); const tot = sum(items, i => i.v);
+  const draw = ring('rg', 'rc', items, hl => document.querySelectorAll('.rli').forEach(b => b.classList.toggle('on', +b.dataset.ri === hl)),
+    it => it ? `<small>${esc(it.k)}</small><b class="num">${money(it.v)}</b><span class="num">${nf(it.v / tot * 100, 1)}%</span>` : `<small>Összesen</small><b class="num">${money(tot)}</b><span>${items.length} ágazat</span>`);
+  document.querySelectorAll('.rli').forEach(b => { b.onmouseenter = b.onfocus = () => draw(+b.dataset.ri); b.onmouseleave = () => draw(null); b.onclick = () => draw(+b.dataset.ri); });
+  const ins = insights(m);
+  document.querySelectorAll('[data-ins]').forEach(b => b.onclick = () => { const x = ins[+b.dataset.ins]; if (x.t2) openTicker(x.t2); else if (x.go) go(...x.go); });
+  document.querySelectorAll('.bar').forEach(b => b.onclick = () => { document.querySelectorAll('.bar').forEach(x => x.classList.toggle('on', x === b)); });
+};
+
+/* ---------- gyorsműveletek (középső gomb) ---------- */
+function openActions() {
+  const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Gyorsműveletek</div><h2 style="font-size:1.3rem">Mit szeretnél?</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+    <div class="acts">
+      <button data-act="import"><span>${ic('file')}</span><b>Kivonat betöltése</b><small>Új Lightyear PDF</small></button>
+      <button data-act="refresh"><span>${ic('refresh')}</span><b>Frissítés</b><small>Árak, naptár, hírek</small></button>
+      <button data-act="alert"><span>${ic('bell')}</span><b>Riasztás</b><small>Árszint, napi mozgás</small></button>
+      <button data-act="cur"><span>${ic('swap')}</span><b>Pénznem: ${S.cur === 'USD' ? 'Ft-ra' : '$-ra'}</b><small>Most: ${S.cur === 'USD' ? 'dollár' : 'forint'}</small></button>
+      <button data-act="theme"><span>${ic('moon')}</span><b>Téma</b><small>${{ auto: 'Rendszer', light: 'Világos', dark: 'Sötét' }[S.theme]}</small></button>
+      <button data-act="settings"><span>${ic('more', 3)}</span><b>Beállítások</b><small>Kulcsok, adatok</small></button>
+    </div>`);
+  s.root.querySelectorAll('[data-act]').forEach(b => b.onclick = () => { const a = b.dataset.act; s.close();
+    if (a === 'import') $('fileIn').click(); if (a === 'refresh') refresh({}); if (a === 'alert') openAlerts(); if (a === 'settings') openSettings();
+    if (a === 'cur') { S.cur = S.cur === 'USD' ? 'HUF' : 'USD'; store.set('bf-cur2', S.cur); drawCur(); render(true); }
+    if (a === 'theme') { S.theme = { auto: 'light', light: 'dark', dark: 'auto' }[S.theme]; store.set('bf-theme', S.theme); applyTheme(); } });
+}
 
 V.portfolio = m => {
   if (S.hm === 'day' && !m.positions.some(p => p.dayChg != null)) S.hm = 'all';
@@ -524,21 +645,29 @@ V.naplo.after = m => {
 };
 
 /* ---------- onboarding ---------- */
-function onboarding() {
+function onboarding(step = 0) {
   $('bar').hidden = true; $('bnav').hidden = true;
+  const slides = [
+    ['A befektetéseid,', 'egy helyen.', 'Lightyear számláid összesítve, élő árfolyamokkal és az S&P 500-hoz mérve.'],
+    ['Lásd, mi hozza', 'a hozamot.', 'Nyertesek, vesztesek, díjak, osztalékok és TBSZ-határidők egy pillantással.'],
+    ['Kezdjük', 'a kivonattal.', 'Töltsd be a PDF-kivonataidat. A telefonodon maradnak, semmit nem küldünk el sehova.']];
+  const [a, b, c] = slides[step];
   $('main').innerHTML = `
-  <section class="onb">
-    <div class="brand" style="font-size:1.3rem"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--ink)"/><path d="M8 21l5-6 4 3 7-8" stroke="var(--bg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Befektetés</div>
-    <h1>Lásd egyben az összes befektetésedet.</h1>
-    <p class="sub" style="font-size:1rem">Töltsd be a Lightyear számlakivonataidat (PDF). Az app a telefonodon dolgozza fel őket, semmit nem küld el sehova.</p>
-    <div class="drop" id="drop" role="button" tabindex="0"><b>Kivonatok kiválasztása</b><div class="sub">Akár több PDF egyszerre, például TBSZ 2025 és TBSZ 2026</div></div>
-    <ol class="steps">
-      <li><b>1</b><span>A Lightyear appban kérd le a számlakivonatot (PDF) minden számládra, a nyitástól máig.</span></li>
-      <li><b>2</b><span>Töltsd be ide a PDF-et. Új kivonattal bármikor frissítheted a tranzakciókat.</span></li>
-      <li><b>3</b><span>Élő árfolyamokhoz add meg az ingyenes Twelve Data kulcsot a beállításokban.</span></li>
-    </ol>
+  <section class="onb2">
+    <div class="ob-top"><span class="num">0${step + 1} / 03</span><span class="ob-prog">${slides.map((_, i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</span>${step < 2 ? '<button class="ob-skip" id="obSkip">Kihagyás</button>' : '<span></span>'}</div>
+    <h1>${a}<br><em>${b}</em></h1>
+    <p>${c}</p>
+    <div class="ob-art" aria-hidden="true">
+      <div class="oa-card oa-back"></div>
+      <div class="oa-card oa-front"><span>Portfólió</span><b class="num">$12 480,50</b><svg viewBox="0 0 200 60" preserveAspectRatio="none"><path d="M0 48 C20 44 30 30 50 34 S80 50 100 36 S140 12 160 20 S190 8 200 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><small>▲ 3,2% · S&P 500 +2,1%</small></div>
+      <div class="oa-pod"></div>
+    </div>
+    ${step < 2 ? `<button class="ob-btn" id="obNext">Tovább →</button>` : `<div class="drop" id="drop" role="button" tabindex="0"><b>Kivonatok kiválasztása</b><div class="sub">PDF, akár több egyszerre (pl. TBSZ 2025 és TBSZ 2026)</div></div>`}
   </section>`;
-  const d = $('drop'); d.onclick = () => $('fileIn').click(); d.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('fileIn').click(); } };
+  const n = $('obNext'); if (n) n.onclick = () => onboarding(step + 1);
+  const sk = $('obSkip'); if (sk) sk.onclick = () => onboarding(2);
+  const d = $('drop'); if (!d) return;
+  d.onclick = () => $('fileIn').click(); d.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('fileIn').click(); } };
   d.ondragover = e => { e.preventDefault(); d.classList.add('over'); }; d.ondragleave = () => d.classList.remove('over');
   d.ondrop = e => { e.preventDefault(); d.classList.remove('over'); importFiles([...e.dataTransfer.files]); };
 }
@@ -842,9 +971,12 @@ function applyTheme() {
 }
 function drawCur() { $('cHUF').setAttribute('aria-pressed', S.cur === 'HUF'); $('cUSD').setAttribute('aria-pressed', S.cur === 'USD'); }
 function drawNav() {
-  const a = (k, l, i, mob) => `<a href="#${k}" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ''}>${mob ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${i}"/></svg>${l.split(' ')[0]}` : l}</a>`;
+  const cur = OLDTAB[S.tab] ? 'elemzes' : S.tab;
+  const a = (k, l, i, mob) => `<a href="#${k}" data-tab="${k}" ${cur === k ? 'aria-current="page"' : ''}>${mob ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${i}"/></svg>${l}` : l}</a>`;
   $('tabs').innerHTML = TABS.map(t => a(...t, false)).join('');
-  $('bnav').innerHTML = TABS.map(t => a(...t, true)).join('');
+  const T = Object.fromEntries(TABS.map(t => [t[0], t]));
+  $('bnav').innerHTML = a(...T.attekintes, true) + a(...T.portfolio, true) + `<button class="fab" id="fab" aria-label="Gyorsműveletek"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></button>` + a(...T.elemzes, true) + a(...T.naptar, true);
+  $('fab').onclick = openActions;
   document.querySelectorAll('[data-tab]').forEach(x => x.onclick = e => { e.preventDefault(); S.tab = x.dataset.tab; try { history.replaceState(null, '', '#' + S.tab); } catch (_) {} drawNav(); render(); window.scrollTo({ top: 0 }); });
 }
 function render(keep) {
@@ -858,7 +990,7 @@ function render(keep) {
 }
 function boot() {
   if (!statements.length) { onboarding(); return; }
-  drawBell();
+  drawBell(); $('greet').textContent = greet();
   $('bar').hidden = false; $('bnav').hidden = false;
   drawNav(); drawCur(); drawStatus(); render();
 }
@@ -871,7 +1003,7 @@ $('setBtn').onclick = openSettings;
 $('bellBtn').onclick = () => M && openAlerts();
 $('fileIn').onchange = e => { importFiles([...e.target.files]); e.target.value = ''; };
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => render(true), 150); });
-window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (V[h] && h !== S.tab) { S.tab = h; drawNav(); render(); } });
+window.addEventListener('hashchange', () => { let h = location.hash.slice(1); if (OLDTAB[h]) { S.an = OLDTAB[h]; h = 'elemzes'; } if (V[h] && h !== S.tab) { S.tab = h; drawNav(); render(); } });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { applyTheme(); render(true); });
 new MutationObserver(() => render(true)).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 window.addEventListener('online', () => refresh());
