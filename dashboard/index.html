@@ -239,6 +239,11 @@ main.wrap .card{border-radius:16px;box-shadow:var(--shadow)}
 .ovh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .ovh h3{margin:0;font-size:15.5px}
 .ovk{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline}
+.fin{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.fin>div{background:var(--bg);border-radius:12px;padding:12px 14px;display:grid;gap:3px;min-width:0;align-content:start}
+.fin .big{font-family:var(--f-display);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.fin .lab{font-size:12.5px;color:var(--muted)}
+@media (max-width:560px){.fin{grid-template-columns:repeat(2,minmax(0,1fr))}.fin .big{font-size:20px}}
 .ovk .big{font-family:var(--f-display);font-size:30px}
 .ovk .lab{font-size:12px;color:var(--muted)}
 .chart{width:100%;height:auto;display:block}
@@ -2434,21 +2439,16 @@ function renderOverview(){
   for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"))}
   const inc={},exp={};let tI=0,tE=0;
   for(const x of ledger.values()){const k=(x.date||"").slice(0,7),a=+x.amount||0;if(x.type==="bevetel"){tI+=a;inc[k]=(inc[k]||0)+a}else if(x.type==="kiadas"){tE+=a;exp[k]=(exp[k]||0)+a}}
-  const cw=$("#ov-rev").clientWidth,W=cw>200?Math.round(cw-28):600,H=W<480?190:210,L=62,R=16,T=14,B=26,iw=W-L-R,ih=H-T-B;
-  const mx=niceMax(Math.max(1,...months.map(m=>Math.max(inc[m]||0,exp[m]||0))));
-  const X=i=>L+iw*i/(months.length-1),Y=v=>T+ih*(1-v/mx);
-  const pts=o=>months.map((m,i)=>[X(i),Y(o[m]||0)]),line=p=>p.map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1)).join(" ");
-  const pi=pts(inc),pe=pts(exp),lp=pi[pi.length-1],curI=inc[months[5]]||0,prevI=inc[months[4]]||0,res=tI-tE;
+  const curI=inc[months[5]]||0,prevI=inc[months[4]]||0,curE=exp[months[5]]||0,res=tI-tE,dl=curI-prevI;
   $("#ov-rev").innerHTML=`<div class="ovh"><h3>Bevétel és kiadás</h3><button class="btn ghost" type="button" data-tab="orders">Pénzügy</button></div>
-    <div class="ovk"><div><div class="big">${ft(tI)}</div><div class="lab">összes bevétel</div></div><div><div class="big" style="font-size:20px">${ft(tE)}</div><div class="lab">összes kiadás</div></div><div><div class="big" style="font-size:20px;color:${res>=0?"var(--ok)":"var(--warn)"}">${res>=0?"+":""}${ft(res)}</div><div class="lab">eredmény</div></div></div>
-    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Havi bevétel és kiadás az elmúlt hat hónapban">
-    ${[0,.5,1].map(f=>`<line class="grid" x1="${L}" x2="${W-R}" y1="${Y(mx*f).toFixed(1)}" y2="${Y(mx*f).toFixed(1)}"/><text x="${L-8}" y="${(Y(mx*f)+4).toFixed(1)}" text-anchor="end">${ftk(mx*f)} Ft</text>`).join("")}
-    <path d="${line(pi)} L${X(5)} ${Y(0)} L${X(0)} ${Y(0)} Z" fill="var(--accent)" fill-opacity=".14"/>
-    <path d="${line(pi)}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="${line(pe)}" fill="none" stroke="var(--rev2)" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round"/>
-    <circle cx="${lp[0]}" cy="${lp[1]}" r="5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/>
-    ${months.map((m,i)=>`<text x="${X(i)}" y="${H-7}" text-anchor="${i===0?"start":i===5?"end":"middle"}">${HU_MON[+m.slice(5)-1]}</text>`).join("")}</svg>
-    <div class="legend"><span><i style="background:var(--accent)"></i>Bevétel</span><span><i style="background:var(--rev2)"></i>Kiadás</span><span>Ebben a hónapban ${ft(curI)} bevétel, előző hónapban ${ft(prevI)}</span></div>`;
+    <div class="fin">
+      <div><div class="lab">Összes bevétel</div><div class="big">${ft(tI)}</div></div>
+      <div><div class="lab">Összes kiadás</div><div class="big">${ft(tE)}</div></div>
+      <div><div class="lab">Eredmény</div><div class="big" style="color:${res>=0?"var(--ok)":"var(--warn)"}">${res>0?"+":""}${ft(res)}</div></div>
+      <div><div class="lab">Bevétel ebben a hónapban</div><div class="big">${ft(curI)}</div><div class="lab">${prevI||curI?`<span style="color:${dl>=0?"var(--ok)":"var(--warn)"};font-weight:600">${dl>=0?"+":""}${ft(dl)}</span> az előző hónaphoz képest`:"az előző hónapban sem volt"}</div></div>
+      <div><div class="lab">Kiadás ebben a hónapban</div><div class="big">${ft(curE)}</div></div>
+      <div><div class="lab">Fizetett rendelések</div><div class="big">${[...orders.values()].filter(o=>o.status==="fizetve").length}</div></div>
+    </div>`;
   const S=goalStats(),rate=S.sent?S.rep/S.sent:0,scale=rate>.5?1:rate>.25?.5:.25,N=22,cx=110,cy=106,r1=64,r2=88,on=Math.round(Math.min(1,rate/scale)*N);
   let seg="";for(let i=0;i<N;i++){const a=Math.PI*(1-(i+.5)/N);seg+=`<line x1="${(cx+r1*Math.cos(a)).toFixed(1)}" y1="${(cy-r1*Math.sin(a)).toFixed(1)}" x2="${(cx+r2*Math.cos(a)).toFixed(1)}" y2="${(cy-r2*Math.sin(a)).toFixed(1)}" stroke="${i<on?"var(--accent)":"var(--line)"}" stroke-width="7" stroke-linecap="round"/>`}
   const tk=[0,.5,1].map(f=>{const a=Math.PI*(1-f);return `<text x="${(cx+(r2+13)*Math.cos(a)).toFixed(1)}" y="${(cy-(r2+13)*Math.sin(a)+4).toFixed(1)}" text-anchor="middle">${(scale*f*100).toLocaleString("hu-HU",{maximumFractionDigits:1})}%</text>`}).join("");
@@ -2486,7 +2486,6 @@ document.addEventListener("click",e=>{
   const cb=e.target.closest?.("[data-cal]");if(cb){calOff+=+cb.dataset.cal;renderOverview();return}
   const r=e.target.closest?.("[data-find]");if(!r)return;const c=contacts.get(r.dataset.find);if(!c)return;
   fGroup=isDM(c)?"dm":"email";fStatus="all";fCat="all";fCity="all";$("#q").value=c.email;openId=c.email;listLimit=LIST_STEP;$("#t-queue").click();renderAll()});
-let ovRT;addEventListener("resize",()=>{clearTimeout(ovRT);ovRT=setTimeout(()=>{try{renderOverview()}catch(e){}},150)});
 $("#gsearch").addEventListener("submit",e=>{e.preventDefault();$("#q").value=$("#gq").value.trim();fStatus="all";fCat="all";fCity="all";listLimit=LIST_STEP;$("#t-queue").click();renderAll()});
 
 renderTpl();renderSettings();renderAll();renderOrders();renderLedger();renderRates();renderCalc();renderPlan();renderTodos();renderGoals();
