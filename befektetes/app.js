@@ -20,7 +20,7 @@ let apiKey = store.get('bf-key', '');
 const S = {
   tab: 'attekintes', cur: store.get('bf-cur2', 'USD'), theme: store.get('bf-theme', 'auto'),
   range: store.get('bf-range', 'all'), mode: store.get('bf-mode', 'idx'), bench: store.get('bf-bench', true),
-  hm: store.get('bf-hm', 'all'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
+  hm: store.get('bf-hm', 'all'), bd: store.get('bf-bd', 'sector'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
 };
 try { const h = location.hash.slice(1); if (h) S.tab = h; } catch (e) {}
 let M = null;
@@ -125,8 +125,9 @@ async function refresh(opts = {}) {
   try {
     compute(); await fetchFx(); compute();
     await fetchPrices(opts.force);
+    compute(); await fetchCalendar(opts.force);
     market.updatedAt = Date.now(); store.set('bf-mkt', market);
-    compute(); render(true);
+    compute(); render(true); checkAlerts();
     if (market.errors && market.errors.length) toast('Néhány árfolyam nem jött le: ' + market.errors.slice(0, 3).join('; '), 5000);
   } catch (e) { toast(e.message || 'A frissítés nem sikerült.'); }
   S.busy = false; drawStatus();
@@ -191,7 +192,7 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
   const b = p => !opt.price && S.bench ? (idx ? (p.spyIdx && a.spyIdx ? (p.spyIdx / a.spyIdx - 1) * 100 : null) : (p.spyVal != null ? p.spyVal * K() : null)) : null;
   const inv = p => idx ? null : p.invested * K();
   const ys = pts.map(y), bs = pts.map(b), is = pts.map(inv);
-  const all = [...ys, ...bs, ...is].filter(v => v != null && isFinite(v));
+  const all = [...ys, ...bs, ...is, ...(opt.markers || []).map(k => k.price), ...(opt.ref ? [opt.ref] : [])].filter(v => v != null && isFinite(v));
   let lo = Math.min(...all), hi = Math.max(...all);
   if (hi - lo < 1e-9) { hi += 1; lo -= 1; }
   const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
@@ -221,6 +222,11 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
     }
     ctx.restore();
     if (prog < 1) return;
+    if (opt.ref) { const yy = Y(opt.ref); ctx.setLineDash([4, 4]); ctx.strokeStyle = muted; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L, yy); ctx.lineTo(L + w, yy); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = `500 10.5px ${fam}`; ctx.fillStyle = muted; ctx.textAlign = 'right'; ctx.fillText('átlagár ' + usd(opt.ref), L + w - 2, yy - 5); }
+    (opt.markers || []).forEach(k => { const x = X(k.i), yy = Y(k.price), up = k.type === 'B', c2 = css(up ? '--gain' : '--loss');
+      ctx.beginPath(); ctx.arc(x, yy, 3, 0, 7); ctx.fillStyle = c2; ctx.fill();
+      const tip = up ? yy + 6 : yy - 6, base = up ? yy + 16 : yy - 16; ctx.beginPath(); ctx.moveTo(x, tip); ctx.lineTo(x - 6, base); ctx.lineTo(x + 6, base); ctx.closePath(); ctx.fillStyle = c2; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = surf; ctx.stroke(); });
     // csúcs és mélypont
     ctx.font = `500 11px ${fam}`; ctx.fillStyle = muted; ctx.textBaseline = 'alphabetic';
     const tag = (i, above) => { const x = X(i), yy = Y(ys[i]) + (above ? -9 : 17); ctx.textAlign = x < 56 ? 'left' : x > W - 56 ? 'right' : 'center'; ctx.fillText(fmtY(ys[i]), Math.max(TP, Math.min(W - TP, x)), Math.max(12, Math.min(H - B + 2, yy))); };
@@ -254,7 +260,7 @@ function compact(v) { return S.cur === 'HUF' ? nf(v / 1000) + 'e' : '$' + nf(v);
 
 /* ---------- views ---------- */
 const V = {};
-const TABS = [['attekintes', 'Áttekintés', 'M3 13h4v8H3zM10 3h4v18h-4zM17 9h4v12h-4z'], ['portfolio', 'Portfólió', 'M3 3h8v10H3zM13 3h8v6h-8zM13 11h8v10h-8zM3 15h8v6H3z'], ['eredmenyek', 'Eredmények', 'M4 20V10M10 20V4M16 20v-7M22 20H2'], ['sp500', 'S&P 500', 'M3 17l6-6 4 4 8-8M15 7h6v6'], ['koltsegek', 'Költségek', 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'], ['naplo', 'Napló', 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01']];
+const TABS = [['attekintes', 'Áttekintés', 'M3 13h4v8H3zM10 3h4v18h-4zM17 9h4v12h-4z'], ['portfolio', 'Portfólió', 'M3 3h8v10H3zM13 3h8v6h-8zM13 11h8v10h-8zM3 15h8v6H3z'], ['eredmenyek', 'Eredmények', 'M4 20V10M10 20V4M16 20v-7M22 20H2'], ['sp500', 'S&P 500', 'M3 17l6-6 4 4 8-8M15 7h6v6'], ['koltsegek', 'Költségek', 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'], ['naptar', 'Naptár', 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4'], ['naplo', 'Napló', 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01']];
 const hasHist = () => Object.keys(market.history || {}).length > 0;
 
 // mikor kezdődött a mostani tartási időszak (0-ról nyitott pozíció)
@@ -303,6 +309,7 @@ V.attekintes = m => {
        ['Díjak', -m.feeUsd, 1, 'M19 5L5 19M6.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM17.5 20a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z']]
       .map(([l, v, sg, ic]) => `<div class="fcard"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${ic}"/></svg></span><div class="lbl-s">${l}</div><div class="v num ${sg ? cls(v) : ''}">${money(v, { sign: !!sg })}</div></div>`).join('')}
   </section>
+  ${tbszCard()}
   <section>
     <div class="sec-h"><h2>Eszközeid</h2><span class="sub">${esc(rangeLabel(S.range))}</span></div>
     <div class="rail" id="rail">${[...m.positions].sort((a, b) => b.value - a.value).map(p => { const f = perf(p, rangeFrom(S.range)); return `<button class="acard" data-t="${p.tkr}"><div class="ah"><span class="tk">${p.tkr}</span><span class="ach num ${cls(f.pct)}">${pct(f.pct)}</span></div><div class="an">${esc(nm(p.tkr))}</div><canvas class="sp" data-sp="${p.tkr}"></canvas><div class="av num">${money(p.value)}</div><div class="s num ${cls(f.abs)}">${money(f.abs, { sign: true })}</div></button>`; }).join('')}</div>
@@ -335,6 +342,7 @@ V.attekintes.after = m => {
   stockChart($('sc'), pts, onScrub, { animate: animNext }); animNext = false;
   const days = M.series.map(x => x.d);
   document.querySelectorAll('[data-sp]').forEach(c => { const t = c.dataset.sp, from = rangeFrom(S.range), hs = holdStart(t); const st = !from || (hs && hs > from) ? hs : from; const ds = days.filter(d => d >= st); spark(c, ds.map(d => M.priceAt(t, d))); });
+  const tc = $('tbszCard'); if (tc) { tc.onclick = openTbsz; tc.onkeydown = e => { if (e.key === 'Enter') openTbsz(); }; }
   const rail = $('rail'); if (rail) { rail.onwheel = e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { rail.scrollLeft += e.deltaY; e.preventDefault(); } }; }
   document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.range = b.dataset.r; store.set('bf-range', S.range); animNext = true; render(true); });
   document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); animNext = true; render(true); });
@@ -360,6 +368,7 @@ V.portfolio = m => {
   <section class="card lift"><div class="card-h"><div><h2>Allokáció</h2><p class="sub">Húzd az ujjad a körön, vagy koppints egy sorra</p></div></div>
     <div class="donut-wrap"><div class="donut"><canvas id="dn" aria-label="Allokáció"></canvas><div class="dc" id="dc"></div></div>
     <div class="dl" id="dl">${P.map((p, i) => `<button class="dli" data-i="${i}" data-t="${p.tkr}"><i style="opacity:${(1 - i / (P.length + 2)).toFixed(2)}"></i><b>${p.tkr}</b><span class="num">${nf(p.value / tot * 100, 1)}%</span></button>`).join('')}</div></div></section>
+  ${breakdownCard(m)}
   <section class="card"><div class="card-h"><div><h2>Hőtérkép</h2><p class="sub">Méret = érték, szín = változás a választott időszakban</p></div>
     <div class="seg" role="group" aria-label="Időszak">${[['all', 'Mind'], ['ytd', 'YTD'], ['day', 'Mai']].map(([k, l]) => `<button data-hm="${k}" aria-pressed="${S.hm === k}" ${k === 'day' && !m.positions.some(p => p.dayChg != null) ? 'disabled title="Ehhez élő árfolyam kell"' : ''}>${l}</button>`).join('')}</div></div>
     <div class="tm" id="tm"></div><div class="legend"><span>${S.hm === 'day' ? '−4%' : '−40%'}</span><i></i><span>${S.hm === 'day' ? '+4%' : '+40%'}</span></div>${S.hm === 'day' && !m.positions.some(p => p.dayChg != null) ? '' : ''}</section>
@@ -378,6 +387,7 @@ V.portfolio.after = m => {
   bindTickers();
   document.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => { S.hm = b.dataset.hm; store.set('bf-hm', S.hm); render(true); });
   donut(m);
+  document.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => { S.bd = b.dataset.bd; store.set('bf-bd', S.bd); render(true); });
 };
 function donut(m) {
   const cv = $('dn'); if (!cv) return; const P = [...m.positions].sort((a, b) => b.value - a.value); const tot = sum(P, p => p.value);
@@ -583,15 +593,12 @@ function openTicker(t) {
     ${p ? `<div><div class="big num" style="font-size:2rem">${money(p.value)}</div><div class="pill ${cls(p.pnl)}">${arr(p.pnl)} ${money(p.pnl, { sign: true })} · ${pct(p.pct)}</div></div>
     <dl class="kv"><dt>Mennyiség</dt><dd class="num">${nf(p.qty, 4)} db</dd><dt>Átlagos bekerülés</dt><dd class="num">${usd(p.cost / p.qty)}</dd><dt>Mai ár</dt><dd class="num">${usd(p.price)}${p.dayChg != null ? ` <span class="${cls(p.dayChg)}">${pct(p.dayChg)}</span>` : ''}</dd><dt>Bekerülési érték</dt><dd class="num">${money(p.cost)}</dd></dl>`
     : `<div class="pill ${cls(tk.total)}" style="align-self:flex-start">Lezárt pozíció · ${money(tk.total, { sign: true })}</div>`}
-    ${hd.length > 5 ? `<div class="chart" style="height:160px;margin:0"><canvas id="tkc" aria-label="${esc(t)} árfolyam"></canvas></div>` : ''}
+    <div class="chart" style="height:220px;margin:0"><canvas id="tkc" aria-label="${esc(t)} árfolyam vételi és eladási pontokkal"></canvas><div class="ftip" id="tkTip" hidden></div></div>
+    <div class="keys" style="margin-top:-4px"><span><b class="pos">▲</b> vétel</span><span><b class="neg">▼</b> eladás</span>${p ? '<span><i style="border-top-style:dashed;border-color:var(--muted)"></i>átlagos bekerülési ár</span>' : ''}</div>
     <dl class="kv"><dt>Realizált</dt><dd class="num ${cls(tk.real)}">${money(tk.real, { sign: true })}</dd><dt>Nem realizált</dt><dd class="num ${cls(tk.unreal)}">${money(tk.unreal, { sign: true })}</dd><dt>Osztalék (nettó)</dt><dd class="num pos">${money(tk.div, { sign: true })}</dd><dt><b>Összesen</b></dt><dd class="num ${cls(tk.total)}"><b>${money(tk.total, { sign: true })}</b></dd></dl>
-    <div><h2 style="font-size:.95rem;margin-bottom:6px">Tranzakciók</h2><div class="list">${tx.map(r => `<div class="li" style="cursor:default"><span class="tag">${TY[r.type]}</span><span class="s">${dhu(r.date)}${r.qty ? ' · ' + nf(r.qty, 4) + ' db @ ' + (r.ccy === 'EUR' ? nf(r.price, 2) + ' €' : usd(r.price)) : ''}</span><span class="r num">${r.ccy === 'EUR' ? nf(r.type === 'D' ? r.net : r.gross, 2) + ' €' : usd(r.type === 'D' ? r.net : r.gross)}</span></div>`).join('')}</div></div>`);
-  const c = $('tkc');
-  if (c) { // mini árfolyamgrafikon a vételi/eladási pontokkal
-    const first = tx.length ? tx[tx.length - 1].date : hd[0]; const ds = hd.filter(d => d >= Engine.addDays(first, -7));
-    const pts = ds.map(d => ({ d, value: h[d], invested: 0, nav: h[d] }));
-    stockChart(c, pts, () => {}, { price: true, animate: true });
-  }
+    <div><h2 style="font-size:.95rem;margin-bottom:6px">Vételek és eladások időzítése</h2><div class="list" id="timing"></div></div>
+    <div><h2 style="font-size:.95rem;margin-bottom:6px">Összes tranzakció</h2><div class="list">${tx.map(r => `<div class="li" style="cursor:default"><span class="tag">${TY[r.type]}</span><span class="s">${dhu(r.date)}${r.qty ? ' · ' + nf(r.qty, 4) + ' db @ ' + (r.ccy === 'EUR' ? nf(r.price, 2) + ' €' : usd(r.price)) : ''}</span><span class="r num">${r.ccy === 'EUR' ? nf(r.type === 'D' ? r.net : r.gross, 2) + ' €' : usd(r.type === 'D' ? r.net : r.gross)}</span></div>`).join('')}</div></div>`);
+  tickerChart(t, p);
 }
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
@@ -605,16 +612,224 @@ function openSettings() {
       <input type="password" id="key" value="${esc(apiKey)}" placeholder="pl. 1a2b3c…" autocomplete="off" spellcheck="false">
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="saveKey">Mentés és frissítés</button><button class="btn ghost" id="reload">Előzmények újratöltése</button></div>
       <p class="sub">Ingyenes kulcs: <a href="https://twelvedata.com/register" target="_blank" rel="noopener">twelvedata.com/register</a>, utána a Dashboard → API Keys oldalon. Az ingyenes keret percenként 8, naponta 800 lekérést enged; az első letöltés ezért kb. 2–3 percig tart. Az USD/HUF árfolyam az Európai Központi Bank adataiból jön, kulcs nélkül.</p></div>
+    <div class="field"><label for="fkey">Finnhub API-kulcs (naptár és hírek)</label>
+      <input type="password" id="fkey" value="${esc(fhKey)}" placeholder="pl. c1a2b3…" autocomplete="off" spellcheck="false">
+      <div><button class="btn" id="saveF">Mentés és frissítés</button></div>
+      <p class="sub">Ingyenes kulcs: <a href="https://finnhub.io/register" target="_blank" rel="noopener">finnhub.io/register</a>, belépés után a Dashboard főoldalán látod. Ebből jönnek a gyorsjelentések időpontjai és a cégek hírei.</p></div>
     <div class="field"><label>Megjelenés</label><div class="seg" role="group" aria-label="Téma">${[['auto', 'Rendszer'], ['light', 'Világos'], ['dark', 'Sötét']].map(([k, l]) => `<button data-th="${k}" aria-pressed="${S.theme === k}">${l}</button>`).join('')}</div></div>
     <div class="field"><label>Telepítés</label>${installEvt ? '<button class="btn ghost" id="install">App telepítése a kezdőképernyőre</button>' : ''}<p class="sub">Androidon a Chrome menüjében (⋮) válaszd a „Hozzáadás a kezdőképernyőhöz” vagy „App telepítése” lehetőséget. iPhone-on a Safari Megosztás gombja → „Főképernyőhöz adás”.</p></div>
     <div class="field"><label>Adatok törlése</label><button class="btn danger" id="wipe">Minden adat törlése erről a készülékről</button></div>`);
   $('addSt').onclick = () => { s.close(); $('fileIn').click(); };
+  $('saveF').onclick = () => { fhKey = $('fkey').value.trim(); store.set('bf-fhkey', fhKey); if (market.cal) market.cal.at = 0; s.close(); refresh(); };
   s.root.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const i = +b.dataset.del; if (b.dataset.sure) { statements.splice(i, 1); store.set('bf-st', statements); s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztos?'; } });
   $('saveKey').onclick = () => { apiKey = $('key').value.trim(); store.set('bf-key', apiKey); s.close(); drawStatus(); refresh(); };
   $('reload').onclick = () => { market.history = {}; store.set('bf-mkt', market); s.close(); refresh({ force: true }); };
   s.root.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { S.theme = b.dataset.th; store.set('bf-theme', S.theme); applyTheme(); s.root.querySelectorAll('[data-th]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
   const ib = $('install'); if (ib) ib.onclick = async () => { installEvt.prompt(); installEvt = null; s.close(); };
-  $('wipe').onclick = e => { const b = e.currentTarget; if (b.dataset.sure) { ['bf-st', 'bf-mkt', 'bf-key'].forEach(store.del); statements = []; market = { history: {}, fx: {}, usdhuf: null, updatedAt: 0 }; apiKey = ''; s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztosan törlöd? Koppints újra.'; } };
+  $('wipe').onclick = e => { const b = e.currentTarget; if (b.dataset.sure) { ['bf-st', 'bf-mkt', 'bf-key', 'bf-fhkey', 'bf-alertlog', 'bf-alerted', 'bf-alertcfg'].forEach(store.del); fhKey = ''; alertLog = []; statements = []; market = { history: {}, fx: {}, usdhuf: null, updatedAt: 0 }; apiKey = ''; s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztosan törlöd? Koppints újra.'; } };
+}
+
+/* ---------- TBSZ ---------- */
+// TBSZ: gyűjtőév = a nyitás éve; utána 3 év lekötés (kivét 10% adóval), 5 év után adómentes. Normál számla: 15% SZJA + 13% szocho.
+function tbszAccounts() {
+  if (!M) return [];
+  return statements.map(st => {
+    const y = +(((st.label || '').match(/TBSZ\s*(\d{4})/i) || [])[1]); if (!y) return null;
+    const posVal = sum(st.positions, p => p.qty * (M.priceAt(p.tkr, M.today) || 0));
+    const cash = sum(Object.entries(st.cash || {}), ([c, v]) => c === 'USD' ? v : c === 'HUF' ? v / R() : c === 'EUR' ? v * 1.16 : v);
+    const dep = sum(M.flows.filter(f => f.acct === st.acct), f => f.usd);
+    const value = posVal + cash, gain = value - dep;
+    const start = `${y}-01-01`, gy = `${y}-12-31`, t3 = `${y + 3}-12-31`, t5 = `${y + 5}-12-31`;
+    const days = d => Math.ceil((Date.parse(d + 'T23:59:59') - Date.parse(M.today + 'T12:00:00')) / 864e5);
+    let phase, next, nextLbl, rate;
+    if (M.today <= gy) { phase = 'Gyűjtőév'; next = gy; nextLbl = 'még befizethetsz'; rate = 28; }
+    else if (M.today <= t3) { phase = 'Lekötés'; next = t3; nextLbl = 'a 3 éves határig'; rate = 28; }
+    else if (M.today <= t5) { phase = 'Kedvezményes'; next = t5; nextLbl = 'az adómentességig'; rate = 10; }
+    else { phase = 'Adómentes'; next = null; rate = 0; }
+    const span = Date.parse(t5) - Date.parse(start); const prog = Math.max(0, Math.min(1, (Date.parse(M.today) - Date.parse(start)) / span));
+    const mark = d => (Date.parse(d) - Date.parse(start)) / span;
+    return { st, y, value, dep, gain, gy, t3, t5, phase, next, nextLbl, daysLeft: next ? days(next) : 0, rate, prog, m1: mark(gy), m3: mark(t3) };
+  }).filter(Boolean).sort((a, b) => a.y - b.y);
+}
+function tbszCard() {
+  const A = tbszAccounts(); if (!A.length) return '';
+  return `<section class="card lift tbsz" id="tbszCard" role="button" tabindex="0"><div class="card-h"><div><h2>TBSZ</h2><p class="sub">Lekötés és adó · koppints a részletekért</p></div></div>
+    ${A.map(a => `<div class="tb-row"><div class="tb-top"><b>${esc(a.st.label)}</b><span class="tag">${a.phase}</span><span class="sub num" style="margin-left:auto">${a.next ? `${nf(a.daysLeft)} nap ${a.nextLbl}` : 'adómentesen kivehető'}</span></div>
+      <div class="tb-bar"><i style="width:${a.prog * 100}%"></i><u style="left:${a.m1 * 100}%"></u><u style="left:${a.m3 * 100}%"></u></div>
+      <div class="tb-lbl sub"><span>${a.y}</span><span style="left:${a.m1 * 100}%">gyűjtőév vége</span><span style="left:${a.m3 * 100}%">10%</span><span style="right:0">0% · ${a.y + 5}</span></div></div>`).join('')}</section>`;
+}
+function openTbsz() {
+  const A = tbszAccounts();
+  const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">TBSZ</div><h2 style="font-size:1.3rem">Lekötés és adóelőny</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+    ${A.map(a => { const gH = a.gain * R(); const normal = Math.max(0, gH) * 0.28;
+      return `<div class="card" style="box-shadow:none"><div class="card-h"><div><h2>${esc(a.st.label)}</h2><p class="sub">${esc(a.st.acct)}</p></div><span class="tag">${a.phase}</span></div>
+      <dl class="kv"><dt>Mostani érték</dt><dd class="num">${money(a.value)}</dd><dt>Befizetve</dt><dd class="num">${money(a.dep)}</dd><dt>Eredmény</dt><dd class="num ${cls(a.gain)}">${money(a.gain, { sign: true })}</dd>
+      <dt>Gyűjtőév vége</dt><dd class="num">${dhu(a.gy)}</dd><dt>10%-os kivét ettől</dt><dd class="num">${dhu(Engine.addDays(a.t3, 1))}</dd><dt>Adómentes ettől</dt><dd class="num">${dhu(Engine.addDays(a.t5, 1))}</dd>
+      <dt>Ha most kivennéd</dt><dd class="num">${a.rate}% adó</dd></dl>
+      <p class="sub" style="margin-top:10px">${gH > 0 ? `Normál számlán a mostani nyereség után kb. <b class="num">${nf(normal)} Ft</b> adó lenne (15% SZJA + 13% szocho). A lekötés végén ez <b>0 Ft</b>.` : 'Most nincs nyereség, így adó sem lenne. Minden 100 000 Ft nyereségen a lekötés végéig kitartva kb. 28 000 Ft adót spórolsz.'}${a.phase === 'Gyűjtőév' ? ` A gyűjtőévben még <b>${nf(a.daysLeft)} napig</b> fizethetsz be erre a számlára.` : ''}</p></div>`; }).join('')}
+    <p class="sub">Tájékoztató számítás: a szocho éves felső határát és a korábbi évek veszteségét nem veszi figyelembe. Ha a lekötés alatt pénzt veszel ki, a számla megszakad.</p>`);
+  return s;
+}
+
+/* ---------- ágazat és ország ---------- */
+const SECTOR = { AAPL: 'Technológia', MSFT: 'Technológia', NVDA: 'Technológia', AMD: 'Technológia', INTC: 'Technológia', ORCL: 'Technológia', CRM: 'Technológia', ADBE: 'Technológia', NOW: 'Technológia', SHOP: 'Technológia', PLTR: 'Technológia', APP: 'Technológia', SOUN: 'Technológia', DUOL: 'Technológia', KULR: 'Technológia',
+  GOOGL: 'Kommunikáció', GOOG: 'Kommunikáció', META: 'Kommunikáció', NFLX: 'Kommunikáció', DIS: 'Kommunikáció',
+  AMZN: 'Ciklikus fogyasztás', TSLA: 'Ciklikus fogyasztás', NKE: 'Ciklikus fogyasztás', SBUX: 'Ciklikus fogyasztás', MCD: 'Ciklikus fogyasztás', ABNB: 'Ciklikus fogyasztás', CAKE: 'Ciklikus fogyasztás',
+  EL: 'Alapvető fogyasztás', ELF: 'Alapvető fogyasztás', CELH: 'Alapvető fogyasztás', HNST: 'Alapvető fogyasztás', KO: 'Alapvető fogyasztás', PEP: 'Alapvető fogyasztás',
+  SOFI: 'Pénzügy', PYPL: 'Pénzügy', V: 'Pénzügy', MA: 'Pénzügy', JPM: 'Pénzügy', BAC: 'Pénzügy', COIN: 'Pénzügy', HOOD: 'Pénzügy',
+  NVO: 'Egészségügy', LLY: 'Egészségügy', PFE: 'Egészségügy', JNJ: 'Egészségügy', UBER: 'Ipar', Z: 'Ingatlan', ES: 'Energia', SPY: 'Index', VOO: 'Index', QQQ: 'Index' };
+const COUNTRY_OVR = { NVO: 'Dánia' };
+const CC = { US: 'USA', FR: 'Franciaország', DE: 'Németország', GB: 'Egyesült Királyság', NL: 'Hollandia', IE: 'Írország', DK: 'Dánia', CH: 'Svájc', CA: 'Kanada', JP: 'Japán', HU: 'Magyarország', EE: 'Észtország' };
+function countryOf(t) { if (COUNTRY_OVR[t]) return COUNTRY_OVR[t]; const r = M.tx.find(x => x.tkr === t && x.isin); const c = r ? r.isin.slice(0, 2) : ''; return CC[c] || c || 'Ismeretlen'; }
+function breakdownCard(m) {
+  const by = S.bd === 'country' ? countryOf : t => SECTOR[t] || 'Egyéb';
+  const g = {}; m.positions.forEach(p => { const k = by(p.tkr); (g[k] = g[k] || { k, v: 0, items: [] }).v += p.value; g[k].items.push(p); });
+  const tot = sum(m.positions, p => p.value); const rows = Object.values(g).sort((a, b) => b.v - a.v);
+  return `<section class="card lift"><div class="card-h"><div><h2>Megoszlás</h2><p class="sub">Koppints egy sorra a részvényekért</p></div>
+    <div class="seg" role="group" aria-label="Megoszlás"><button data-bd="sector" aria-pressed="${S.bd !== 'country'}">Ágazat</button><button data-bd="country" aria-pressed="${S.bd === 'country'}">Ország</button></div></div>
+    <div class="bd">${rows.map((r, i) => `<details class="bdr"><summary><span class="bdn">${esc(r.k)}</span><span class="num bdp">${nf(r.v / tot * 100, 1)}%</span><span class="bdb"><i style="width:${r.v / rows[0].v * 100}%;opacity:${(1 - i / (rows.length + 1)).toFixed(2)}"></i></span></summary>
+      <div class="bdi">${r.items.sort((a, b) => b.value - a.value).map(p => `<button class="li" data-t="${p.tkr}"><span class="tk">${p.tkr}</span><span><div class="n">${esc(nm(p.tkr))}</div><div class="s num">${nf(p.value / tot * 100, 1)}% a portfólióból</div></span><span class="r num">${money(p.value)}<div class="s ${cls(p.pnl)}">${pct(p.pct)}</div></span></button>`).join('')}</div></details>`).join('')}</div></section>`;
+}
+
+/* ---------- riasztások ---------- */
+let alertCfg = store.get('bf-alertcfg', { day: 5, port: 3, ath: true, notify: false, price: {} });
+let alertLog = store.get('bf-alertlog', []);
+function pushAlert(key, title, body, tkr) {
+  const seen = store.get('bf-alerted', []); if (seen.includes(key)) return; seen.push(key); store.set('bf-alerted', seen.slice(-300));
+  alertLog.unshift({ ts: Date.now(), title, body, tkr, read: false }); alertLog = alertLog.slice(0, 60); store.set('bf-alertlog', alertLog);
+  if (alertCfg.notify && 'Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker) {
+    navigator.serviceWorker.ready.then(r => r.showNotification(title, { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: key })).catch(() => {});
+  }
+}
+function checkAlerts() {
+  if (!M) return; const d = M.today; const c = alertCfg;
+  for (const p of M.positions) {
+    if (p.dayChg != null && Math.abs(p.dayChg) >= c.day) pushAlert(`${d}|day|${p.tkr}`, `${p.tkr} ${pct(p.dayChg)} ma`, `${nm(p.tkr)}: ${usd(p.price)}, a pozíciód ${money(p.dayAbs, { sign: true })}.`, p.tkr);
+    const pa = c.price[p.tkr];
+    if (pa && pa.above && p.price >= pa.above) pushAlert(`${d}|above|${p.tkr}|${pa.above}`, `${p.tkr} ${usd(pa.above)} fölött`, `Mostani ár: ${usd(p.price)}.`, p.tkr);
+    if (pa && pa.below && p.price <= pa.below) pushAlert(`${d}|below|${p.tkr}|${pa.below}`, `${p.tkr} ${usd(pa.below)} alatt`, `Mostani ár: ${usd(p.price)}.`, p.tkr);
+  }
+  const base = M.value - M.dayChange; const pp = base > 0 ? M.dayChange / base * 100 : 0;
+  if (M.positions.some(p => p.dayChg != null) && Math.abs(pp) >= c.port) pushAlert(`${d}|port`, `A portfólió ${pct(pp)} ma`, `Mai változás: ${money(M.dayChange, { sign: true })}.`);
+  if (c.ath && M.series.length > 20) { const s = M.series; const last = s[s.length - 1].nav; const prevMax = Math.max(...s.slice(0, -1).map(x => x.nav)); if (last > prevMax) pushAlert(`${d}|ath`, 'Új csúcs', `A portfóliód árfolyama még sosem volt ilyen magasan (${pct(last - 100)} a kezdés óta).`); }
+  drawBell();
+}
+function drawBell() { const b = $('bellBtn'); if (!b) return; const n = alertLog.filter(a => !a.read).length; b.querySelector('em').textContent = n || ''; b.querySelector('em').hidden = !n; }
+function openAlerts() {
+  alertLog.forEach(a => a.read = true); store.set('bf-alertlog', alertLog); drawBell();
+  const ts = M ? M.positions.map(p => p.tkr).sort() : [];
+  const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Riasztások</div><h2 style="font-size:1.3rem">Értesítések</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+    <div class="list">${alertLog.length ? alertLog.slice(0, 30).map(a => `<button class="li" ${a.tkr ? `data-t="${esc(a.tkr)}"` : ''}><span class="tk">${esc(a.tkr || '★')}</span><span><div class="n">${esc(a.title)}</div><div class="s">${esc(a.body)}</div></span><span class="r s">${new Date(a.ts).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}</span></button>`).join('') : '<div class="empty">Még nincs riasztás. Ha egy szabály teljesül, itt jelenik meg, és értesítést is kapsz, ha engedélyezed.</div>'}</div>
+    <div class="field"><label>Szabályok</label>
+      <dl class="kv" style="align-items:center"><dt><label for="aDay">Részvény napi mozgása legalább (%)</label></dt><dd><input type="number" id="aDay" min="1" step="0.5" value="${alertCfg.day}" style="width:90px"></dd>
+      <dt><label for="aPort">Portfólió napi mozgása legalább (%)</label></dt><dd><input type="number" id="aPort" min="0.5" step="0.5" value="${alertCfg.port}" style="width:90px"></dd>
+      <dt><label for="aAth">Új csúcs a portfólióban</label></dt><dd><input type="checkbox" id="aAth" ${alertCfg.ath ? 'checked' : ''}></dd></dl></div>
+    <div class="field"><label>Árszint-riasztás</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="aT">${ts.map(t => `<option>${t}</option>`).join('')}</select>
+      <input type="number" id="aAbove" placeholder="fölött $" step="0.01" style="width:100px"><input type="number" id="aBelow" placeholder="alatt $" step="0.01" style="width:100px"><button class="btn ghost" id="aAdd">Hozzáadás</button></div>
+      <div class="list" id="aList">${Object.entries(alertCfg.price).map(([t, v]) => `<div class="li" style="cursor:default"><span class="tk">${t}</span><span class="s">${v.above ? `${usd(v.above)} fölött ` : ''}${v.below ? `${usd(v.below)} alatt` : ''}</span><button class="ibtn" data-rm="${t}" aria-label="Törlés">✕</button></div>`).join('')}</div></div>
+    <div class="field"><label>Telefonos értesítés</label>
+      ${perm === 'unsupported' ? '<p class="sub">Ez a böngésző nem támogatja az értesítéseket.</p>' : perm === 'granted' ? `<label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" id="aNotify" ${alertCfg.notify ? 'checked' : ''}> Értesítés küldése</label>` : `<button class="btn" id="aPerm">Értesítések engedélyezése</button>`}
+      <p class="sub">A riasztásokat az app minden frissítéskor ellenőrzi (megnyitáskor és 15 percenként, amíg fut). Bezárt appnál nem fut, ehhez szerver kellene.</p></div>
+    <button class="btn" id="aSave">Mentés</button>`);
+  bindTickers(s.root);
+  const save = () => { alertCfg.day = +$('aDay').value || 5; alertCfg.port = +$('aPort').value || 3; alertCfg.ath = $('aAth').checked; const n = $('aNotify'); if (n) alertCfg.notify = n.checked; store.set('bf-alertcfg', alertCfg); };
+  $('aSave').onclick = () => { save(); s.close(); toast('Riasztások elmentve.'); checkAlerts(); };
+  $('aAdd').onclick = () => { const t = $('aT').value, a = +$('aAbove').value || null, b = +$('aBelow').value || null; if (!t || (!a && !b)) return; alertCfg.price[t] = { above: a, below: b }; save(); s.close(); openAlerts(); };
+  s.root.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { delete alertCfg.price[b.dataset.rm]; save(); s.close(); openAlerts(); });
+  const pb = $('aPerm'); if (pb) pb.onclick = async () => { const r = await Notification.requestPermission(); if (r === 'granted') { alertCfg.notify = true; save(); toast('Értesítések bekapcsolva.'); } s.close(); openAlerts(); };
+}
+
+/* ---------- naptár és hírek (Finnhub) ---------- */
+let fhKey = store.get('bf-fhkey', '');
+async function fetchCalendar(force) {
+  if (!fhKey || !M) return; const cal = market.cal || {};
+  if (!force && cal.at && Date.now() - cal.at < 6 * 3600e3) return;
+  const syms = M.positions.map(p => p.tkr).filter(t => M.usTickers.includes(t));
+  const from = Engine.addDays(M.today, -10), to = Engine.addDays(M.today, 120), nf7 = Engine.addDays(M.today, -7);
+  const earnings = [], news = [];
+  for (const t of syms) {
+    setStatus(`Naptár és hírek: ${t}…`, 'busy');
+    try { const j = await getJson(`https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&symbol=${encodeURIComponent(t)}&token=${encodeURIComponent(fhKey)}`); (j.earningsCalendar || []).forEach(e => earnings.push({ ...e, symbol: e.symbol || t })); } catch (e) {}
+    try { const j = await getJson(`https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(t)}&from=${nf7}&to=${M.today}&token=${encodeURIComponent(fhKey)}`); if (Array.isArray(j)) j.slice(0, 4).forEach(n => news.push({ t, at: n.datetime * 1000, h: n.headline, src: n.source, url: n.url })); } catch (e) {}
+  }
+  market.cal = { at: Date.now(), earnings, news };
+}
+function estDividends() {
+  const out = []; const by = {};
+  M.divs.forEach(d => (by[d.tkr] = by[d.tkr] || []).push(d));
+  for (const [t, ds] of Object.entries(by)) {
+    if (!M.positions.find(p => p.tkr === t) || ds.length < 2) continue;
+    const dates = ds.map(d => d.date).sort(); const gaps = dates.slice(1).map((d, i) => (Date.parse(d) - Date.parse(dates[i])) / 864e5).sort((a, b) => a - b);
+    const gap = Math.round(gaps[Math.floor(gaps.length / 2)]); if (gap < 20) continue;
+    let next = Engine.addDays(dates[dates.length - 1], gap); while (next < M.today) next = Engine.addDays(next, gap);
+    const last = ds[ds.length - 1]; const p = M.positions.find(x => x.tkr === t);
+    out.push({ date: next, kind: 'div', t, title: `${t} osztalék (becslés)`, sub: `kb. ${usd(last.netUsd)} nettó · ${Math.round(gap)} naponta fizet`, est: true });
+  }
+  return out;
+}
+function calendarEvents() {
+  const ev = [];
+  (market.cal && market.cal.earnings || []).forEach(e => ev.push({ date: e.date, kind: 'earn', t: e.symbol, title: `${e.symbol} gyorsjelentés`, sub: `${e.year ? `${e.year} Q${e.quarter} · ` : ''}${e.hour === 'bmo' ? 'nyitás előtt' : e.hour === 'amc' ? 'zárás után' : 'időpont nyitott'}${e.epsEstimate != null ? ` · EPS várakozás ${usd(e.epsEstimate)}` : ''}${e.epsActual != null ? ` · tény ${usd(e.epsActual)}` : ''}` }));
+  estDividends().forEach(e => ev.push(e));
+  tbszAccounts().forEach(a => {
+    if (a.phase === 'Gyűjtőév') ev.push({ date: a.gy, kind: 'tbsz', title: `${a.st.label}: utolsó befizetési nap`, sub: 'A gyűjtőév vége, utána nem fizethetsz be erre a számlára' });
+    ev.push({ date: Engine.addDays(a.t3, 1), kind: 'tbsz', title: `${a.st.label}: 10%-os kivét lehetséges`, sub: 'Lejár a 3 éves lekötés' });
+    ev.push({ date: Engine.addDays(a.t5, 1), kind: 'tbsz', title: `${a.st.label}: adómentes`, sub: 'Lejár az 5 éves lekötés' });
+  });
+  const y = +M.today.slice(0, 4); [y, y + 1].forEach(yy => { const d = `${yy}-12-31`; if (d >= M.today && !tbszAccounts().some(a => a.y === yy)) ev.push({ date: `${yy}-01-01`, kind: 'tbsz', title: `TBSZ ${yy} nyitható`, sub: 'Új gyűjtőév kezdődik' }); });
+  return ev.filter(e => e.date >= Engine.addDays(M.today, -10)).sort((a, b) => a.date < b.date ? -1 : 1);
+}
+const KIND = { earn: ['Jelentés', 'M4 4h16v16H4zM8 9h8M8 13h8M8 17h5'], div: ['Osztalék', 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'], tbsz: ['TBSZ', 'M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z'] };
+V.naptar = m => {
+  const ev = calendarEvents(); const news = (market.cal && market.cal.news || []).sort((a, b) => b.at - a.at).slice(0, 20);
+  let last = ''; const MON = ['január', 'február', 'március', 'április', 'május', 'június', 'július', 'augusztus', 'szeptember', 'október', 'november', 'december'];
+  return `
+  ${!fhKey ? `<div class="tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><p><b>Gyorsjelentések és hírek.</b> Ehhez egy ingyenes Finnhub kulcs kell (<a href="https://finnhub.io/register" target="_blank" rel="noopener">finnhub.io/register</a>). <a href="#" id="fhSet">Kulcs megadása</a>. Az osztalék-becslés és a TBSZ-határidők kulcs nélkül is látszanak.</p></div>` : ''}
+  <section class="card"><div class="card-h"><div><h2>Közelgő események</h2><p class="sub">Gyorsjelentések, várható osztalékok, TBSZ-határidők</p></div></div>
+    <div class="cal">${ev.length ? ev.map(e => { const mo = e.date.slice(0, 7); let h = ''; if (mo !== last) { last = mo; h = `<div class="month">${MON[+mo.slice(5) - 1]} ${mo.slice(0, 4)}</div>`; }
+      const past = e.date < m.today; const dd = Math.ceil((Date.parse(e.date) - Date.parse(m.today)) / 864e5);
+      return h + `<button class="cev${past ? ' past' : ''}" ${e.t ? `data-t="${esc(e.t)}"` : 'data-tbsz="1"'}><span class="cd"><b class="num">${+e.date.slice(8)}</b><small>${['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo'][new Date(e.date + 'T12:00:00').getDay()]}</small></span>
+        <span><div class="n">${esc(e.title)}</div><div class="s">${esc(e.sub)}</div></span><span class="r"><span class="ktag k-${e.kind}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${KIND[e.kind][1]}"/></svg>${KIND[e.kind][0]}</span><div class="s num">${dd === 0 ? 'ma' : dd > 0 ? `${dd} nap múlva` : `${-dd} napja`}</div></span></button>`; }).join('') : '<div class="empty">Nincs közelgő esemény.</div>'}</div></section>
+  ${fhKey ? `<section class="card"><div class="card-h"><div><h2>Hírek a cégeidről</h2><p class="sub">Az elmúlt 7 nap · forrás: Finnhub</p></div></div>
+    <div class="list">${news.length ? news.map(n => `<a class="li news" href="${esc(n.url)}" target="_blank" rel="noopener"><span class="tk">${esc(n.t)}</span><span><div class="n" style="white-space:normal">${esc(n.h)}</div><div class="s">${esc(n.src)} · ${new Date(n.at).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div></span><span></span></a>`).join('') : '<div class="empty">Még nincs hír. Nyomd meg a frissítés gombot.</div>'}</div></section>` : ''}`;
+};
+V.naptar.after = () => {
+  bindTickers(); document.querySelectorAll('[data-tbsz]').forEach(b => b.onclick = openTbsz);
+  const f = $('fhSet'); if (f) f.onclick = e => { e.preventDefault(); openSettings(); };
+};
+
+/* ---------- részletes részvénygrafikon ---------- */
+function tickerChart(t, p) {
+  const c = $('tkc'); if (!c) return;
+  const tx = M.tx.filter(r => r.tkr === t && (r.type === 'B' || r.type === 'S'));
+  const h = market.history[t]; const hasH = h && Object.keys(h).length > 5;
+  const first = tx.length ? tx[0].date : M.today; const lastTx = tx.length ? tx[tx.length - 1].date : M.today;
+  const end = p ? M.today : (Engine.addDays(lastTx, 45) < M.today ? Engine.addDays(lastTx, 45) : M.today);
+  const ds = hasH ? Object.keys(h).sort().filter(d => d >= Engine.addDays(first, -30) && d <= end) : M.series.map(x => x.d).filter(d => d >= Engine.addDays(first, -30) && d <= end);
+  if (ds.length < 3) { c.parentElement.hidden = true; return; }
+  const pts = ds.map(d => { const v = hasH ? h[d] : M.priceAt(t, d); return { d, value: v, invested: 0, nav: v }; });
+  const idxOf = d => { const i = ds.findIndex(x => x >= d); return i < 0 ? ds.length - 1 : i; };
+  const markers = tx.map(r => ({ i: idxOf(r.date), type: r.type, price: r.ccy === 'EUR' ? r.price * 1.16 : r.price, r }));
+  const tip = $('tkTip');
+  stockChart(c, pts, (i, x, y, W) => {
+    if (i == null) { tip.hidden = true; return; }
+    const mk = markers.filter(k => k.i === i);
+    tip.innerHTML = `<div class="td">${dShort(pts[i].d)}</div><div class="tv num">${usd(pts[i].nav)}</div>${mk.map(k => `<div class="num ${k.type === 'B' ? 'pos' : 'neg'}">${k.type === 'B' ? 'Vétel' : 'Eladás'} ${nf(k.r.qty, 3)} db @ ${usd(k.price)}</div>`).join('')}`;
+    tip.hidden = false; const tw = tip.offsetWidth; const left = x + 12 + tw > W - 4 ? x - 12 - tw : x + 12; tip.style.transform = `translate(${Math.max(4, left)}px, 4px)`;
+  }, { price: true, animate: true, markers, ref: p ? p.cost / p.qty : null });
+  // időzítés: a vételi ár hol áll a környező ±30 nap záróárai között
+  const tl = $('timing'); if (!tl) return;
+  tl.innerHTML = tx.map(r => {
+    const price = r.ccy === 'EUR' ? r.price * 1.16 : r.price; const now = p ? p.price : null;
+    let badge = '';
+    if (hasH) { const win = Object.keys(h).filter(d => d >= Engine.addDays(r.date, -30) && d <= Engine.addDays(r.date, 30)).map(d => h[d]);
+      if (win.length > 10) { const below = win.filter(v => v < price).length / win.length; const good = r.type === 'B' ? below <= 0.33 : below >= 0.67, bad = r.type === 'B' ? below >= 0.67 : below <= 0.33;
+        badge = `<span class="ktag ${good ? 'k-good' : bad ? 'k-bad' : ''}">${good ? 'jó időzítés' : bad ? (r.type === 'B' ? 'drágán vett' : 'olcsón adta el') : 'átlagos'}</span>`; } }
+    const since = r.type === 'B' && now ? (now / price - 1) * 100 : null;
+    return `<div class="li" style="cursor:default"><span class="tag ${r.type === 'B' ? 'tb-b' : 'tb-s'}">${r.type === 'B' ? 'Vétel' : 'Eladás'}</span><span><div class="n num">${dhu(r.date)} · ${usd(price)}</div><div class="s num">${nf(r.qty, 4)} db · ${usd(r.gross * (r.ccy === 'EUR' ? 1.16 : 1))}${since != null ? ` · azóta <span class="${cls(since)}">${pct(since)}</span>` : ''}</div></span><span class="r">${badge}</span></div>`;
+  }).join('') + (hasH ? '' : '<p class="sub">Az időzítés értékeléséhez élő árfolyam (Twelve Data) kell.</p>');
 }
 
 /* ---------- chrome ---------- */
@@ -643,6 +858,7 @@ function render(keep) {
 }
 function boot() {
   if (!statements.length) { onboarding(); return; }
+  drawBell();
   $('bar').hidden = false; $('bnav').hidden = false;
   drawNav(); drawCur(); drawStatus(); render();
 }
@@ -652,6 +868,7 @@ $('cHUF').onclick = () => { S.cur = 'HUF'; store.set('bf-cur2', 'HUF'); drawCur(
 $('cUSD').onclick = () => { S.cur = 'USD'; store.set('bf-cur2', 'USD'); drawCur(); render(true); };
 $('refreshBtn').onclick = () => refresh();
 $('setBtn').onclick = openSettings;
+$('bellBtn').onclick = () => M && openAlerts();
 $('fileIn').onchange = e => { importFiles([...e.target.files]); e.target.value = ''; };
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => render(true), 150); });
 window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (V[h] && h !== S.tab) { S.tab = h; drawNav(); render(); } });
