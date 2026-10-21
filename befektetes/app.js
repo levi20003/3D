@@ -215,8 +215,10 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
   const ctx = canvas.getContext('2d');
   const a = pts[0];
   const idx = S.mode === 'idx' || opt.price;
-  const y = p => opt.price ? p.nav : idx ? (p.nav / a.nav - 1) * 100 : p.value * K();
-  const b = p => !opt.price && S.bench ? (idx ? (p.spyIdx && a.spyIdx ? (p.spyIdx / a.spyIdx - 1) * 100 : null) : (p.spyVal != null ? p.spyVal * K() : null)) : null;
+  // Árfolyam nézet pénzben: a vonal a mai értéknél végződik, a befizetések nem emelik meg
+  const zz = pts[pts.length - 1], base = zz.value * K(), b0 = a.nav * base / zz.nav;
+  const y = p => opt.price ? p.nav : idx ? base * p.nav / zz.nav : p.value * K();
+  const b = p => !opt.price && S.bench ? (idx ? (p.spyIdx && a.spyIdx ? b0 * p.spyIdx / a.spyIdx : null) : (p.spyVal != null ? p.spyVal * K() : null)) : null;
   const inv = p => idx ? null : p.invested * K();
   const ys = pts.map(y), bs = pts.map(b), is = pts.map(inv);
   const all = [...ys, ...bs, ...is, ...(opt.markers || []).map(k => k.price), ...(opt.ref ? [opt.ref] : [])].filter(v => v != null && isFinite(v));
@@ -230,16 +232,16 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
   const pal = opt.pal || {};
   const col = resNow >= -1e-9 ? (pal.up || css('--gain')) : (pal.down || css('--loss')), muted = pal.muted || css('--muted'), bench = pal.bench || css('--bench'), surf = pal.surf || css('--bg'), line = pal.line || css('--line');
   const fam = getComputedStyle(document.body).fontFamily;
-  const fmtY = v => opt.price ? usd(v) : idx ? pct(v) : money(v / K());
+  const fmtY = v => opt.price ? usd(v) : money(v / K(), { d: S.cur === 'USD' && Math.abs(v) >= 1000 ? 0 : 2 });
   const segs = vals => { const out = []; let cur = []; vals.forEach((v, i) => { if (v == null || !isFinite(v)) { if (cur.length) out.push(cur); cur = []; } else cur.push([X(i), Y(v)]); }); if (cur.length) out.push(cur); return out; };
   const main = segs(ys)[0] || [];
   let hiI = 0, loI = 0; ys.forEach((v, i) => { if (v > ys[hiI]) hiI = i; if (v < ys[loI]) loI = i; });
 
   function frame(prog) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-    if (opt.grid !== false) { const st = niceStep((hi - lo) / 3.2); ctx.font = `500 10px ${fam}`; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    if (opt.grid !== false) { const st = niceStep((hi - lo) / 4.5); ctx.font = `500 10px ${fam}`; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
       for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) { const yy = Y(v); if (yy < T + 8 || yy > T + h - 6) continue; ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L, yy); ctx.lineTo(L + w, yy); ctx.stroke();
-        if (!(S.hide && !idx) && !(opt.endTag !== false && Math.abs(yy - Y(ys[ys.length - 1])) < 16)) { ctx.fillStyle = muted; ctx.fillText(opt.price ? '$' + nf(v, v < 20 ? 2 : 0) : idx ? (v > 0 ? '+' : v < 0 ? '−' : '') + nf(Math.abs(v), st < 1 ? 1 : 0) + '%' : compact(v), L + w - TP, yy - 3); } }
+        if (!(S.hide && !opt.price) && !(opt.endTag !== false && Math.abs(yy - Y(ys[ys.length - 1])) < 16)) { const gl = opt.price ? '$' + nf(v, st < 1 ? 2 : 0) : compact(v, st); ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = surf; ctx.strokeText(gl, L + w - TP, yy - 3); ctx.fillStyle = muted; ctx.fillText(gl, L + w - TP, yy - 3); } }
       ctx.textBaseline = 'alphabetic'; }
     // kiindulási szint
     ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.setLineDash([1, 4]); ctx.beginPath(); ctx.moveTo(L, Y(ys[0])); ctx.lineTo(L + w, Y(ys[0])); ctx.stroke(); ctx.setLineDash([]);
@@ -262,11 +264,11 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
     // csúcs és mélypont
     ctx.font = `500 11px ${fam}`; ctx.fillStyle = muted; ctx.textBaseline = 'alphabetic';
     const tag = (i, above) => { const x = X(i), yy = Y(ys[i]) + (above ? -9 : 17); ctx.textAlign = x < 56 ? 'left' : x > W - 56 ? 'right' : 'center'; ctx.fillText(fmtY(ys[i]), Math.max(TP, Math.min(W - TP, x)), Math.max(12, Math.min(H - B + 2, yy))); };
-    if (pts.length > 2) { tag(hiI, true); if (loI !== hiI) tag(loI, false); }
+    if (pts.length > 2 && opt.grid === false) { tag(hiI, true); if (loI !== hiI) tag(loI, false); }
     ctx.textAlign = 'left'; ctx.fillText(dShort(pts[0].d), L + TP, H - 6); ctx.textAlign = 'right'; ctx.fillText(dShort(pts[pts.length - 1].d), L + w - TP, H - 6);
   }
   const dot = (i, c, r = 4) => { const x = X(i), yy = Y(ys[i]); ctx.beginPath(); ctx.arc(x, yy, r + 5, 0, 7); ctx.fillStyle = c + '26'; ctx.fill(); ctx.beginPath(); ctx.arc(x, yy, r, 0, 7); ctx.fillStyle = c; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = surf; ctx.stroke(); };
-  const endTag = () => { if (S.hide && !idx) return; const i = ys.length - 1, t = fmtY(ys[i]); ctx.font = `700 11px ${fam}`; const tw = ctx.measureText(t).width + 14, th = 20;
+  const endTag = () => { if (S.hide && !opt.price) return; const i = ys.length - 1, t = fmtY(ys[i]); ctx.font = `700 11px ${fam}`; const tw = ctx.measureText(t).width + 14, th = 20;
     let x = X(i) - tw - 12, yy = Y(ys[i]) - th / 2; yy = Math.max(2, Math.min(H - B - th, yy)); if (x < 4) x = X(i) + 12;
     ctx.beginPath(); ctx.roundRect(x, yy, tw, th, 10); ctx.fillStyle = col; ctx.fill(); ctx.fillStyle = inkOn(col); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(t, x + 7, yy + th / 2 + .5); ctx.textBaseline = 'alphabetic'; };
   const rest = () => { frame(1); dot(ys.length - 1, col); if (opt.endTag !== false) endTag(); };
@@ -293,7 +295,7 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
   canvas.onblur = () => { ki = null; scrubTo(null); };
 }
 function niceStep(raw) { const p = Math.pow(10, Math.floor(Math.log10(raw || 1))); const n = raw / p; return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * p; }
-function compact(v) { return S.cur === 'HUF' ? nf(v / 1000) + 'e' : '$' + nf(v); }
+function compact(v, st) { if (S.cur === 'HUF') return st && st < 1000 ? nf(v) + ' Ft' : nf(v / 1000, st && st < 10000 && st % 1000 ? 1 : 0) + 'e Ft'; return '$' + nf(v, st && st < 1 ? 2 : 0); }
 
 /* ---------- views ---------- */
 const V = {};
@@ -1070,8 +1072,9 @@ function diagHtml() {
 async function diagTest() {
   const o = $('dgOut'); o.hidden = false; o.textContent = 'Teszt fut…';
   const out = [];
-  for (const [l, u] of [['Twelve Data', `https://api.twelvedata.com/time_series?symbol=AAPL,SPY&interval=1day&outputsize=2&apikey=${encodeURIComponent(apiKey || 'demo')}`], ['ECB', 'https://api.frankfurter.dev/v1/latest?base=USD&symbols=HUF']]) {
-    try { const r = await fetch(u, { cache: 'no-store' }); const t = await r.text(); out.push(`${l}: HTTP ${r.status}\n${t.slice(0, 380)}`); } catch (e) { out.push(`${l}: HIBA ${e.message || e}`); }
+  if (S.busy) out.push('Twelve Data: most éppen letöltés fut, ezért a tesztet kihagyom, hogy ne fogyjon a perces keret. Próbáld újra, ha a felső sorban „Élő” látszik.');
+  for (const [l, u] of [...(S.busy ? [] : [['Twelve Data', `https://api.twelvedata.com/time_series?symbol=AAPL,SPY&interval=1day&outputsize=2&apikey=${encodeURIComponent(apiKey || 'demo')}`]]), ['ECB', 'https://api.frankfurter.dev/v1/latest?base=USD&symbols=HUF']]) {
+    try { const r = await fetch(u, { cache: 'no-store' }); const t = await r.text(); out.push(`${l}: HTTP ${r.status}${/"code":429/.test(t) ? ' (nem hiba: elfogyott a perces ingyenes keret, mert közben letöltés futott; egy perc múlva rendben lesz)' : r.ok && !/"status":"error"/.test(t) ? ' · rendben' : ''}\n${t.slice(0, 380)}`); if (/twelvedata/.test(u)) for (let k = 0; k < 2; k++) credits.push(Date.now()); } catch (e) { out.push(`${l}: HIBA ${e.message || e}`); }
   }
   o.textContent = out.join('\n\n');
 }
