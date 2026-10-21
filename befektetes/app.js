@@ -20,7 +20,7 @@ let apiKey = store.get('bf-key', '');
 const S = {
   tab: 'attekintes', cur: store.get('bf-cur2', 'USD'), theme: store.get('bf-theme', 'auto'),
   range: store.get('bf-range', 'all'), mode: store.get('bf-mode', 'idx'), bench: store.get('bf-bench', true),
-  hide: store.get('bf-hide', false), an: store.get('bf-an', 'trend'), hm: store.get('bf-hm', 'all'), bd: store.get('bf-bd', 'sector'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
+  hide: store.get('bf-hide', false), ps: store.get('bf-ps', 'value'), scroll: {}, an: store.get('bf-an', 'trend'), hm: store.get('bf-hm', 'all'), bd: store.get('bf-bd', 'sector'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
 };
 const OLDTAB = { eredmenyek: 'eredmeny', sp500: 'sp', koltsegek: 'koltseg' };
 try { const h = location.hash.slice(1); if (OLDTAB[h]) { S.tab = 'elemzes'; S.an = OLDTAB[h]; } else if (h) S.tab = h; } catch (e) {}
@@ -95,6 +95,12 @@ async function fetchPrices(force) {
     jobs.push({ s, start });
   }
   jobs.sort((a, b) => a.start < b.start ? -1 : 1);
+  if (!force) { // frissítéskor csak a 8 legrégebben frissített, így nincs várakozás a kereten
+    const fr = market.fetched = market.fetched || {};
+    const fresh = jobs.filter(j => !market.history[j.s]);
+    const inc = jobs.filter(j => market.history[j.s] && Date.now() - (fr[j.s] || 0) > 10 * 60e3).sort((a, b) => (fr[a.s] || 0) - (fr[b.s] || 0)).slice(0, Math.max(0, 8 - fresh.length));
+    jobs.length = 0; jobs.push(...fresh, ...inc); jobs.sort((a, b) => a.start < b.start ? -1 : 1);
+  }
   const errs = [];
   for (let i = 0; i < jobs.length; i += 8) {
     const batch = jobs.slice(i, i + 8); const start = batch[0].start;
@@ -112,7 +118,7 @@ async function fetchPrices(force) {
     for (const b of batch) {
       const d = per[b.s];
       if (!d || d.status === 'error' || !Array.isArray(d.values)) { errs.push(b.s + ': ' + ((d && d.message) || 'nincs adat')); continue; }
-      const h = market.history[b.s] = market.history[b.s] || {};
+      const h = market.history[b.s] = market.history[b.s] || {}; (market.fetched = market.fetched || {})[b.s] = Date.now();
       d.values.forEach(v => { const c = parseFloat(v.close); if (c > 0) h[v.datetime.slice(0, 10)] = c; });
     }
   }
@@ -297,14 +303,19 @@ const ICO = {
 };
 const ic = (k, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICO[k]}"/></svg>`;
 const SHADES = () => [css('--c1'), css('--c2'), css('--c3'), css('--c4'), css('--c5'), css('--c6')];
-const shade = i => { const s = SHADES(); return s[Math.min(i, s.length - 1)]; };
+const PAL = () => Array.from({ length: 10 }, (_, i) => css('--p' + (i + 1)));
+const shade = i => { const p = PAL(); return p[i % p.length]; };
+let TCOL = {};
+function buildColors() { TCOL = {}; if (!M) return; const p = PAL(); [...M.positions].sort((a, b) => b.value - a.value).forEach((x, i) => TCOL[x.tkr] = p[i % p.length]); }
+function tColor(t) { if (!TCOL[t]) { let h = 0; for (const c of t) h = (h * 31 + c.charCodeAt(0)) | 0; const p = PAL(); TCOL[t] = p[Math.abs(h) % p.length]; } return TCOL[t]; }
+function inkOn(hex) { const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})/i.exec(hex || ''); if (!m) return '#fff'; const [r, g, b] = m.slice(1).map(x => parseInt(x, 16) / 255); return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 ? '#12231a' : '#ffffff'; }
+const logo = (t, size = 44) => { const c = tColor(t); return `<span class="lg" style="--lg:${c};--lgc:${inkOn(c)};width:${size}px;height:${size}px;font-size:${Math.max(9, size * 0.25)}px">${esc(String(t).slice(0, 4))}</span>`; };
 const greet = () => { const h = new Date().getHours(); return h < 5 ? 'Jó éjszakát' : h < 10 ? 'Jó reggelt' : h < 18 ? 'Szép napot' : 'Jó estét'; };
 const heroPal = () => ({ up: css('--hero-up'), down: css('--hero-down'), muted: css('--hero-muted'), line: css('--hero-line'), bench: css('--hero-bench'), surf: css('--hero'), text: css('--hero-muted') });
 function txIcon(r) {
   if (r.type === 'DEP') return `<span class="lg lg-in">${ic('add')}</span>`;
   if (r.type === 'FX') return `<span class="lg lg-fx">${ic('swap')}</span>`;
-  let h = 0; for (const c of r.tkr) h = (h * 31 + c.charCodeAt(0)) | 0;
-  return `<span class="lg" style="--lg:${shade(Math.abs(h) % 4)}">${esc(r.tkr.slice(0, 4))}</span>`;
+  return logo(r.tkr, 44);
 }
 function txRow(r) {
   const f = (v) => r.ccy === 'HUF' ? (S.hide ? '••••' : nf(v) + ' Ft') : r.ccy === 'EUR' ? (S.hide ? '••••' : nf(v, 2) + ' €') : (S.hide ? '••••' : usd(v));
@@ -364,7 +375,7 @@ V.attekintes.after = m => {
   const head = i => {
     const p = i == null ? z : pts[i];
     const res = (p.value - p.invested) - (a.value - a.invested), pc = (p.nav / a.nav - 1) * 100;
-    $('hv').innerHTML = moneyHTML(i == null ? m.value : p.value);
+    $('hv').innerHTML = moneyHTML(i == null ? m.value : p.value); if (i == null) delete $('hv').dataset.scrub; else $('hv').dataset.scrub = 1;
     $('hc').innerHTML = `<span class="hpill ${pc >= 0 ? 'up' : 'down'}">${arr(pc)} ${pct(pc)}</span><span class="hc-abs">${money(res, { sign: true })}</span><small>${i == null ? rangeLabel(S.range) : dShort(p.d)}</small>`;
   };
   const tip = $('ftip');
@@ -377,6 +388,7 @@ V.attekintes.after = m => {
     tip.style.transform = `translate(${Math.max(8, left)}px, ${Math.max(0, Math.min(y - 40, tip.parentElement.clientHeight - tip.offsetHeight - 30))}px)`;
   };
   head(null);
+  if (animNext && !REDUCED && !S.hide) { const t0 = performance.now(), v1 = m.value, v0 = v1 * 0.92; const st = t => { const k = Math.min(1, (t - t0) / 800), e = 1 - Math.pow(1 - k, 3); const el = $('hv'); if (!el || el.dataset.scrub) return; el.innerHTML = moneyHTML(v0 + (v1 - v0) * e); if (k < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); }
   stockChart($('sc'), pts, onScrub, { animate: animNext, pal: heroPal() }); animNext = false;
   const days = M.series.map(x => x.d);
   document.querySelectorAll('[data-sp]').forEach(c => { const t = c.dataset.sp, from = rangeFrom(S.range), hs = holdStart(t); const st = !from || (hs && hs > from) ? hs : from; const ds = days.filter(d => d >= st); spark(c, ds.map(d => M.priceAt(t, d))); });
@@ -399,7 +411,13 @@ V.attekintes.after = m => {
   bindTickers();
 };
 function bindGo(scope) { (scope || document).querySelectorAll('[data-go]').forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.go, a.dataset.sub); }); }
-function go(tab, sub) { if (sub) S.an = sub; S.tab = tab; try { history.replaceState(null, '', '#' + tab); } catch (_) {} drawNav(); render(); window.scrollTo({ top: 0 }); }
+function go(tab, sub) { if (sub) S.an = sub; switchTab(tab); }
+function switchTab(tab, push = true) {
+  if (tab === S.tab && push) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  S.scroll[S.tab] = window.scrollY; S.tab = tab;
+  if (push) { try { history.pushState({ tab }, '', '#' + tab); } catch (_) {} }
+  drawNav(); S.enter = true; render(); window.scrollTo({ top: S.scroll[tab] || 0 });
+}
 
 /* ---------- Elemzés ---------- */
 const AN = [['trend', 'Áttekintés'], ['eredmeny', 'Eredmény'], ['sp', 'S&P 500'], ['koltseg', 'Költségek']];
@@ -422,7 +440,7 @@ function ring(canvasId, centerId, items, onPick, center) {
   const draw = hl => { c.clearRect(0, 0, S0, S0); segs.forEach(s => { const on = hl === s.i, r1 = on ? R1 + 5 : R1;
       c.beginPath(); c.arc(cx, cx, r1, s.a0 + 0.02, s.a1 - 0.02); c.arc(cx, cx, R0, s.a1 - 0.02, s.a0 + 0.02, true); c.closePath(); c.lineJoin = 'round'; c.lineWidth = 3; c.strokeStyle = css('--surface');
       c.fillStyle = shade(s.i); c.globalAlpha = hl == null || on ? 1 : 0.45; c.fill(); c.stroke(); c.globalAlpha = 1; });
-    $(centerId).innerHTML = center(hl == null ? null : items[hl]); onPick && onPick(hl); };
+    const ce = $(centerId); if (ce) ce.innerHTML = center(hl == null ? null : items[hl]); onPick && onPick(hl); };
   const hit = e => { const r = cv.getBoundingClientRect(); const x = e.clientX - r.left - cx, y = e.clientY - r.top - cx; const d = Math.hypot(x, y); if (d < R0 - 6 || d > R1 + 10) return null; let a = Math.atan2(y, x); if (a < -Math.PI / 2) a += Math.PI * 2; const s = segs.find(s => a >= s.a0 && a < s.a1); return s ? s.i : null; };
   draw(null); cv.onpointermove = e => draw(hit(e)); cv.onpointerdown = e => draw(hit(e)); cv.onpointerleave = () => draw(null);
   return draw;
@@ -446,7 +464,7 @@ V.elemzes = m => {
   <section class="card">
     <div class="card-h"><div><h2>Értéktrend</h2><p class="sub">A portfólió értéke hónap végén</p></div></div>
     <div class="bars" id="bars">${(() => { const mx = Math.max(...mo.map(x => x.p.value)), mn = Math.min(...mo.map(x => x.p.value)) * 0.85;
-      return mo.map((x, i) => `<button class="bar${i === mo.length - 1 ? ' on' : ''}" data-bi="${i}" style="--h:${((x.p.value - mn) / (mx - mn || 1) * 78 + 22).toFixed(1)}%"><em class="num">${money(x.p.value, { d: 0 })}</em><i></i><span>${['jan', 'febr', 'márc', 'ápr', 'máj', 'jún', 'júl', 'aug', 'szept', 'okt', 'nov', 'dec'][+x.k.slice(5) - 1]}</span></button>`).join(''); })()}</div>
+      return mo.map((x, i) => `<button class="tbar${i === mo.length - 1 ? ' on' : ''}" data-bi="${i}" style="--h:${((x.p.value - mn) / (mx - mn || 1) * 78 + 22).toFixed(1)}%"><em class="num">${money(x.p.value, { d: 0 })}</em><i></i><span>${['jan', 'febr', 'márc', 'ápr', 'máj', 'jún', 'júl', 'aug', 'szept', 'okt', 'nov', 'dec'][+x.k.slice(5) - 1]}</span></button>`).join(''); })()}</div>
   </section>`;
 };
 V.elemzes.after = m => {
@@ -462,7 +480,7 @@ V.elemzes.after = m => {
   document.querySelectorAll('.rli').forEach(b => { b.onmouseenter = b.onfocus = () => draw(+b.dataset.ri); b.onmouseleave = () => draw(null); b.onclick = () => draw(+b.dataset.ri); });
   const ins = insights(m);
   document.querySelectorAll('[data-ins]').forEach(b => b.onclick = () => { const x = ins[+b.dataset.ins]; if (x.t2) openTicker(x.t2); else if (x.go) go(...x.go); });
-  document.querySelectorAll('.bar').forEach(b => b.onclick = () => { document.querySelectorAll('.bar').forEach(x => x.classList.toggle('on', x === b)); });
+  document.querySelectorAll('.tbar').forEach(b => b.onclick = () => { document.querySelectorAll('.tbar').forEach(x => x.classList.toggle('on', x === b)); });
 };
 
 /* ---------- gyorsműveletek (középső gomb) ---------- */
@@ -485,18 +503,36 @@ function openActions() {
 V.portfolio = m => {
   if (S.hm === 'day' && !m.positions.some(p => p.dayChg != null)) S.hm = 'all';
   const P = [...m.positions].sort((a, b) => b.value - a.value); const tot = sum(P, p => p.value);
+  const daily = P.some(p => p.dayChg != null);
+  const best = [...P].sort((a, b) => b.pct - a.pct)[0], worst = [...P].sort((a, b) => a.pct - b.pct)[0];
+  const SORTS = [['value', 'Érték'], ['pnl', 'Eredmény'], ['pct', '%'], ...(daily ? [['day', 'Ma']] : []), ['name', 'Név']];
+  const ps = SORTS.some(s => s[0] === S.ps) ? S.ps : 'value';
+  const L = [...P].sort((a, b) => ps === 'name' ? a.tkr.localeCompare(b.tkr) : ps === 'day' ? (b.dayChg ?? -1e9) - (a.dayChg ?? -1e9) : b[ps] - a[ps]);
+  const pnlTot = sum(P, p => p.pnl);
   return `
-  <section class="card lift"><div class="card-h"><div><h2>Allokáció</h2><p class="sub">Húzd az ujjad a körön, vagy koppints egy sorra</p></div></div>
+  <section class="pf-head">
+    <div class="pf-l"><span class="lbl-s">Részvények értéke</span><b class="num pf-v">${money(tot)}</b>
+      <div class="pf-chips"><span class="pchip ${pnlTot >= 0 ? 'up' : 'down'}">${arr(pnlTot)} ${money(pnlTot, { sign: true })} összesen</span>${daily ? `<span class="pchip ${m.dayChange >= 0 ? 'up' : 'down'}">${money(m.dayChange, { sign: true })} ma</span>` : ''}</div></div>
+    <div class="pf-bw">
+      <button class="bw up" data-t="${best.tkr}"><small>Legjobb</small>${logo(best.tkr, 28)}<b>${best.tkr}</b><span class="num">${pct(best.pct)}</span></button>
+      <button class="bw down" data-t="${worst.tkr}"><small>Leggyengébb</small>${logo(worst.tkr, 28)}<b>${worst.tkr}</b><span class="num">${pct(worst.pct)}</span></button>
+    </div>
+  </section>
+  <section class="card"><div class="card-h"><div><h2>Allokáció</h2><p class="sub">${P.length} részvény · húzd az ujjad a körön</p></div></div>
     <div class="donut-wrap"><div class="donut"><canvas id="dn" aria-label="Allokáció"></canvas><div class="dc" id="dc"></div></div>
-    <div class="dl" id="dl">${P.map((p, i) => `<button class="dli" data-i="${i}" data-t="${p.tkr}"><i style="opacity:${(1 - i / (P.length + 2)).toFixed(2)}"></i><b>${p.tkr}</b><span class="num">${nf(p.value / tot * 100, 1)}%</span></button>`).join('')}</div></div></section>
+    <div class="dl" id="dl">${P.map((p, i) => `<button class="dli" data-i="${i}" data-t="${p.tkr}"><i style="background:${tColor(p.tkr)}"></i><b>${p.tkr}</b><span class="num">${nf(p.value / tot * 100, 1)}%</span></button>`).join('')}</div></div>
+    <div class="stack" aria-hidden="true">${P.map(p => `<i style="flex:${p.value};background:${tColor(p.tkr)}"></i>`).join('')}</div></section>
+  <section class="card"><div class="card-h"><div><h2>Pozíciók</h2><p class="sub">készpénz ${money(m.cashUsd)}</p></div></div>
+    <div class="chips sorts" role="group" aria-label="Rendezés">${SORTS.map(([k, l]) => `<button class="chip" data-ps="${k}" aria-pressed="${ps === k}">${l}</button>`).join('')}</div>
+    <div class="plist">${L.map(p => `<button class="prow" data-t="${p.tkr}">${logo(p.tkr, 44)}
+      <span class="pm"><b>${esc(nm(p.tkr))}</b><small class="num">${p.tkr} · ${nf(p.qty, 3)} db · ${usd(p.price)}${p.dayChg != null ? ` · <span class="${cls(p.dayChg)}">${pct(p.dayChg)}</span>` : ''}</small>
+        <span class="wbar"><i style="width:${(p.value / P[0].value * 100).toFixed(1)}%;background:${tColor(p.tkr)}"></i></span></span>
+      <canvas class="psp" data-sp2="${p.tkr}"></canvas>
+      <span class="pv"><b class="num">${money(p.value)}</b><span class="pp ${p.pnl >= 0 ? 'up' : 'down'} num">${pct(p.pct)}</span></span></button>`).join('')}</div></section>
   ${breakdownCard(m)}
-  <section class="card"><div class="card-h"><div><h2>Hőtérkép</h2><p class="sub">Méret = érték, szín = változás a választott időszakban</p></div>
-    <div class="seg" role="group" aria-label="Időszak">${[['all', 'Mind'], ['ytd', 'YTD'], ['day', 'Mai']].map(([k, l]) => `<button data-hm="${k}" aria-pressed="${S.hm === k}" ${k === 'day' && !m.positions.some(p => p.dayChg != null) ? 'disabled title="Ehhez élő árfolyam kell"' : ''}>${l}</button>`).join('')}</div></div>
-    <div class="tm" id="tm"></div><div class="legend"><span>${S.hm === 'day' ? '−4%' : '−40%'}</span><i></i><span>${S.hm === 'day' ? '+4%' : '+40%'}</span></div>${S.hm === 'day' && !m.positions.some(p => p.dayChg != null) ? '' : ''}</section>
-  <section class="card"><div class="card-h"><div><h2>Pozíciók</h2><p class="sub">${P.length} részvény · készpénz ${money(m.cashUsd)}</p></div></div>
-    <div class="tw"><table><thead><tr><th>Részvény</th><th>Súly</th><th>Ár</th><th>Ma</th><th>Érték</th><th>Eredmény</th><th>%</th></tr></thead><tbody>
-    ${P.map(p => `<tr class="click" data-t="${p.tkr}"><td><b>${p.tkr}</b> <span style="color:var(--muted)">${esc(nm(p.tkr))}</span></td><td class="num">${nf(p.value / tot * 100, 1)}%</td><td class="num">${usd(p.price)}</td><td class="num ${cls(p.dayChg || 0)}">${p.dayChg != null ? pct(p.dayChg) : '–'}</td><td class="num">${money(p.value)}</td><td class="num ${cls(p.pnl)}">${money(p.pnl, { sign: true })}</td><td class="num ${cls(p.pnl)}">${pct(p.pct)}</td></tr>`).join('')}
-    </tbody></table></div></section>`;
+  <section class="card"><div class="card-h"><div><h2>Hőtérkép</h2><p class="sub">Méret = érték, szín = változás</p></div>
+    <div class="seg" role="group" aria-label="Időszak">${[['all', 'Mind'], ['ytd', 'YTD'], ['day', 'Mai']].map(([k, l]) => `<button data-hm="${k}" aria-pressed="${S.hm === k}" ${k === 'day' && !daily ? 'disabled title="Ehhez élő árfolyam kell"' : ''}>${l}</button>`).join('')}</div></div>
+    <div class="tm" id="tm"></div><div class="legend"><span>${S.hm === 'day' ? '−4%' : '−40%'}</span><i></i><span>${S.hm === 'day' ? '+4%' : '+40%'}</span></div></section>`;
 };
 V.portfolio.after = m => {
   const el = $('tm'); const W = el.clientWidth, H = el.clientHeight;
@@ -507,22 +543,27 @@ V.portfolio.after = m => {
     return `<button class="tile" data-t="${r.tkr}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${c}" aria-label="${r.tkr} ${pct(r.pct)}"><b>${r.tkr}</b>${small ? (r.w > 44 && r.h > 34 ? `<span class="num">${pct(r.pct)}</span>` : '') : `<span class="num"><b class="tp">${pct(r.pct)}</b>${r.w > 120 ? `<br>${money(r.abs, { sign: true })}` : ''}<br><span class="tvv">${money(r.value)}</span></span>`}</button>`; }).join('');
   bindTickers();
   document.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => { S.hm = b.dataset.hm; store.set('bf-hm', S.hm); render(true); });
+  document.querySelectorAll('[data-ps]').forEach(b => b.onclick = () => { S.ps = b.dataset.ps; store.set('bf-ps', S.ps); render(true); });
   donut(m);
+  const days = M.series.map(x => x.d).slice(-66);
+  document.querySelectorAll('[data-sp2]').forEach(c => { const t = c.dataset.sp2; const hs = holdStart(t); spark(c, days.filter(d => !hs || d >= hs).map(d => M.priceAt(t, d))); });
   document.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => { S.bd = b.dataset.bd; store.set('bf-bd', S.bd); render(true); });
 };
 function donut(m) {
   const cv = $('dn'); if (!cv) return; const P = [...m.positions].sort((a, b) => b.value - a.value); const tot = sum(P, p => p.value);
   const dpr = devicePixelRatio || 1, S0 = cv.clientWidth; cv.width = cv.height = S0 * dpr; const c = cv.getContext('2d'); c.scale(dpr, dpr);
-  const cx = S0 / 2, R1 = S0 / 2 - 6, R0 = R1 * 0.68; const ink = css('--ink'), acc = css('--gain'), surf = css('--surface');
+  const cx = S0 / 2, R1 = S0 / 2 - 8, R0 = R1 * 0.7; const surf = css('--surface');
   const segs = []; let a0 = -Math.PI / 2; P.forEach((p, i) => { const a1 = a0 + p.value / tot * Math.PI * 2; segs.push({ p, i, a0, a1 }); a0 = a1; });
-  const center = i => { const p = i == null ? null : P[i]; $('dc').innerHTML = p ? `<b>${p.tkr}</b><span class="num">${nf(p.value / tot * 100, 1)}%</span><small class="num">${money(p.value)}</small>` : `<span class="lbl-s">${P.length} részvény</span><b class="num">${money(tot)}</b>`; };
-  const draw = hl => { c.clearRect(0, 0, S0, S0); segs.forEach(s => { const on = hl === s.i; const r1 = on ? R1 + 4 : R1;
-    c.beginPath(); c.arc(cx, cx, r1, s.a0 + 0.012, s.a1 - 0.012); c.arc(cx, cx, R0, s.a1 - 0.012, s.a0 + 0.012, true); c.closePath();
-    c.fillStyle = on ? acc : ink; c.globalAlpha = on ? 1 : (hl == null ? 1 - s.i / (P.length + 2) : 0.18 + 0.5 * (1 - s.i / (P.length + 2))); c.fill(); c.globalAlpha = 1; });
+  const center = i => { const p = i == null ? null : P[i]; $('dc').innerHTML = p ? `${logo(p.tkr, 30)}<b class="num">${nf(p.value / tot * 100, 1)}%</b><small class="num">${money(p.value)}</small>` : `<span class="lbl-s">Összesen</span><b class="num">${money(tot)}</b><small>${P.length} részvény</small>`; };
+  let cur = null, prog = REDUCED ? 1 : 0;
+  const draw = hl => { if (!cv.isConnected) return; cur = hl; c.clearRect(0, 0, S0, S0); const lim = -Math.PI / 2 + prog * Math.PI * 2;
+    segs.forEach(s => { if (s.a0 >= lim) return; const on = hl === s.i, r1 = on ? R1 + 6 : R1, e = Math.min(s.a1, lim);
+      c.beginPath(); c.arc(cx, cx, r1, s.a0 + 0.018, e - 0.018); c.arc(cx, cx, R0 - (on ? 2 : 0), e - 0.018, s.a0 + 0.018, true); c.closePath();
+      c.fillStyle = tColor(s.p.tkr); c.globalAlpha = hl == null || on ? 1 : 0.32; c.fill(); c.globalAlpha = 1; c.lineWidth = 2; c.strokeStyle = surf; c.stroke(); });
     document.querySelectorAll('.dli').forEach(b => b.classList.toggle('on', +b.dataset.i === hl)); center(hl); };
-  const hit = e => { const r = cv.getBoundingClientRect(); const x = e.clientX - r.left - cx, y = e.clientY - r.top - cx; const d = Math.hypot(x, y); if (d < R0 - 4 || d > R1 + 8) return null; let a = Math.atan2(y, x); if (a < -Math.PI / 2) a += Math.PI * 2; const s = segs.find(s => a >= s.a0 && a < s.a1); return s ? s.i : null; };
-  draw(null);
-  cv.onpointermove = e => draw(hit(e)); cv.onpointerdown = e => draw(hit(e)); cv.onpointerleave = () => draw(null);
+  const hit = e => { const r = cv.getBoundingClientRect(); const x = e.clientX - r.left - cx, y = e.clientY - r.top - cx; const d = Math.hypot(x, y); if (d < R0 - 6 || d > R1 + 10) return null; let a = Math.atan2(y, x); if (a < -Math.PI / 2) a += Math.PI * 2; const s = segs.find(s => a >= s.a0 && a < s.a1); return s ? s.i : null; };
+  if (prog < 1) { const t0 = performance.now(); const st = t => { prog = Math.min(1, (t - t0) / 650); prog = 1 - Math.pow(1 - prog, 3); draw(cur); if (prog < 1 && cv.isConnected) requestAnimationFrame(st); }; requestAnimationFrame(st); } else draw(null);
+  cv.onpointermove = e => { const h = hit(e); if (h !== cur) draw(h); }; cv.onpointerdown = e => draw(hit(e)); cv.onpointerleave = () => draw(null);
   cv.onclick = e => { const i = hit(e); if (i != null) openTicker(P[i].tkr); };
   document.querySelectorAll('.dli').forEach(b => { b.onmouseenter = () => draw(+b.dataset.i); b.onmouseleave = () => draw(null); b.onfocus = () => draw(+b.dataset.i); });
 }
@@ -703,10 +744,14 @@ function mergeStatement(st) {
 }
 
 /* ---------- sheets ---------- */
+let sheetClose = null, skipPop = false;
 function sheet(html) {
-  const root = $('sheetRoot'); const prev = document.activeElement;
+  const root = $('sheetRoot'); const prev = sheetClose ? null : document.activeElement;
+  if (!sheetClose) { try { history.pushState({ sheet: 1 }, ''); } catch (_) {} }
   root.innerHTML = `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" tabindex="-1">${html}</aside>`;
-  const close = () => { root.innerHTML = ''; document.removeEventListener('keydown', k); prev && prev.focus && prev.focus(); };
+  const close = fromPop => { if (sheetClose !== close) return; root.innerHTML = ''; sheetClose = null; document.removeEventListener('keydown', k); if (!fromPop) { skipPop = true; history.back(); } prev && prev.focus && prev.focus(); };
+  if (sheetClose) { const old = sheetClose; sheetClose = null; old.silent = true; }
+  sheetClose = close;
   const k = e => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', k);
   root.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
@@ -816,7 +861,7 @@ function breakdownCard(m) {
   const tot = sum(m.positions, p => p.value); const rows = Object.values(g).sort((a, b) => b.v - a.v);
   return `<section class="card lift"><div class="card-h"><div><h2>Megoszlás</h2><p class="sub">Koppints egy sorra a részvényekért</p></div>
     <div class="seg" role="group" aria-label="Megoszlás"><button data-bd="sector" aria-pressed="${S.bd !== 'country'}">Ágazat</button><button data-bd="country" aria-pressed="${S.bd === 'country'}">Ország</button></div></div>
-    <div class="bd">${rows.map((r, i) => `<details class="bdr"><summary><span class="bdn">${esc(r.k)}</span><span class="num bdp">${nf(r.v / tot * 100, 1)}%</span><span class="bdb"><i style="width:${r.v / rows[0].v * 100}%;opacity:${(1 - i / (rows.length + 1)).toFixed(2)}"></i></span></summary>
+    <div class="bd">${rows.map((r, i) => `<details class="bdr"><summary><span class="bdn">${esc(r.k)}</span><span class="num bdp">${nf(r.v / tot * 100, 1)}%</span><span class="bdb"><i style="width:${r.v / rows[0].v * 100}%;background:${shade(i)}"></i></span></summary>
       <div class="bdi">${r.items.sort((a, b) => b.value - a.value).map(p => `<button class="li" data-t="${p.tkr}"><span class="tk">${p.tkr}</span><span><div class="n">${esc(nm(p.tkr))}</div><div class="s num">${nf(p.value / tot * 100, 1)}% a portfólióból</div></span><span class="r num">${money(p.value)}<div class="s ${cls(p.pnl)}">${pct(p.pct)}</div></span></button>`).join('')}</div></details>`).join('')}</div></section>`;
 }
 
@@ -831,7 +876,7 @@ function pushAlert(key, title, body, tkr) {
   }
 }
 function checkAlerts() {
-  if (!M) return; const d = M.today; const c = alertCfg;
+  if (!M) return; const d = M.today; const c = alertCfg; const hid = S.hide; S.hide = false;
   for (const p of M.positions) {
     if (p.dayChg != null && Math.abs(p.dayChg) >= c.day) pushAlert(`${d}|day|${p.tkr}`, `${p.tkr} ${pct(p.dayChg)} ma`, `${nm(p.tkr)}: ${usd(p.price)}, a pozíciód ${money(p.dayAbs, { sign: true })}.`, p.tkr);
     const pa = c.price[p.tkr];
@@ -841,7 +886,7 @@ function checkAlerts() {
   const base = M.value - M.dayChange; const pp = base > 0 ? M.dayChange / base * 100 : 0;
   if (M.positions.some(p => p.dayChg != null) && Math.abs(pp) >= c.port) pushAlert(`${d}|port`, `A portfólió ${pct(pp)} ma`, `Mai változás: ${money(M.dayChange, { sign: true })}.`);
   if (c.ath && M.series.length > 20) { const s = M.series; const last = s[s.length - 1].nav; const prevMax = Math.max(...s.slice(0, -1).map(x => x.nav)); if (last > prevMax) pushAlert(`${d}|ath`, 'Új csúcs', `A portfóliód árfolyama még sosem volt ilyen magasan (${pct(last - 100)} a kezdés óta).`); }
-  drawBell();
+  S.hide = hid; drawBell();
 }
 function drawBell() { const b = $('bellBtn'); if (!b) return; const n = alertLog.filter(a => !a.read).length; b.querySelector('em').textContent = n || ''; b.querySelector('em').hidden = !n; }
 function openAlerts() {
@@ -977,14 +1022,16 @@ function drawNav() {
   const T = Object.fromEntries(TABS.map(t => [t[0], t]));
   $('bnav').innerHTML = a(...T.attekintes, true) + a(...T.portfolio, true) + `<button class="fab" id="fab" aria-label="Gyorsműveletek"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></button>` + a(...T.elemzes, true) + a(...T.naptar, true);
   $('fab').onclick = openActions;
-  document.querySelectorAll('[data-tab]').forEach(x => x.onclick = e => { e.preventDefault(); S.tab = x.dataset.tab; try { history.replaceState(null, '', '#' + S.tab); } catch (_) {} drawNav(); render(); window.scrollTo({ top: 0 }); });
+  document.querySelectorAll('[data-tab]').forEach(x => x.onclick = e => { e.preventDefault(); switchTab(x.dataset.tab); });
 }
 function render(keep) {
   if (!M) return;
+  buildColors();
   charts.forEach(c => c.destroy()); charts = [];
   if (!V[S.tab]) S.tab = 'attekintes';
   const y = window.scrollY;
-  $('main').innerHTML = V[S.tab](M);
+  const mn = $('main'); mn.innerHTML = V[S.tab](M);
+  if (S.enter) { mn.classList.remove('enter'); void mn.offsetWidth; mn.classList.add('enter'); S.enter = false; clearTimeout(render.t); render.t = setTimeout(() => mn.classList.remove('enter'), 700); }
   V[S.tab].after && V[S.tab].after(M);
   if (keep) window.scrollTo({ top: y });
 }
@@ -1003,7 +1050,21 @@ $('setBtn').onclick = openSettings;
 $('bellBtn').onclick = () => M && openAlerts();
 $('fileIn').onchange = e => { importFiles([...e.target.files]); e.target.value = ''; };
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => render(true), 150); });
-window.addEventListener('hashchange', () => { let h = location.hash.slice(1); if (OLDTAB[h]) { S.an = OLDTAB[h]; h = 'elemzes'; } if (V[h] && h !== S.tab) { S.tab = h; drawNav(); render(); } });
+window.addEventListener('popstate', () => {
+  if (skipPop) { skipPop = false; return; }
+  if (sheetClose) { sheetClose(true); return; }
+  let h = location.hash.slice(1) || 'attekintes'; if (OLDTAB[h]) { S.an = OLDTAB[h]; h = 'elemzes'; }
+  if (V[h] && h !== S.tab && M) switchTab(h, false);
+});
+window.addEventListener('scroll', () => { const b = $('bar'); if (b) b.classList.toggle('scrolled', window.scrollY > 4); }, { passive: true });
+document.addEventListener('click', e => { if (e.target.closest('button, .tabs a, .bnav a') && navigator.vibrate) { try { navigator.vibrate(6); } catch (_) {} } });
+// lehúzással frissítés
+(() => {
+  const el = $('ptr'); let y0 = null, dy = 0; const reset = () => { el.style.transform = ''; el.style.opacity = ''; };
+  addEventListener('touchstart', e => { if (window.scrollY > 0 || !M || sheetClose || S.busy || e.target.closest('canvas,.rail,.tm,.ptabs')) { y0 = null; return; } y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+  addEventListener('touchmove', e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 4) { el.style.transform = `translate(-50%, ${Math.min(dy * 0.5, 72)}px) rotate(${dy * 2}deg)`; el.style.opacity = Math.min(1, dy / 90); } }, { passive: true });
+  addEventListener('touchend', () => { if (y0 == null) return; y0 = null; if (dy > 120) { try { navigator.vibrate && navigator.vibrate(12); } catch (_) {} el.classList.add('on'); reset(); refresh({}).finally(() => el.classList.remove('on')); } else reset(); });
+})();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { applyTheme(); render(true); });
 new MutationObserver(() => render(true)).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 window.addEventListener('online', () => refresh());
