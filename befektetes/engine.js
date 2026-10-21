@@ -106,7 +106,7 @@
     closed.forEach(c => g(c.tkr).real += c.pnl); P.forEach(p => { g(p.tkr).unreal += p.pnl; g(p.tkr).open = true; }); divs.forEach(r => g(r.tkr).div += r.netUsd);
     const ledgerCash = series.length ? sum(Object.entries(cash), ([c, v]) => toUsd(v, c, today)) : 0;
     return {
-      tx, closed, positions: P, divs, fees, flows, series, names, R, today, asOf, usTickers: [...usTickers],
+      tx, closed, positions: P, divs, fees, flows, series, names, R, today, asOf, usTickers: [...usTickers], priceAt,
       cashUsd, value, dep, realized, unreal, divNet, divTax, divGross, other: value - (dep + realized + unreal + divNet),
       result: value - dep, depHuf, fxHuf: hufFlowsUsd * R - hufFlows, resultHuf: value * R - depHuf,
       feeUsd: sum(fees, f => f.usd), T: Object.values(tick).map(x => ({ ...x, total: x.real + x.unreal + x.div })), ledgerCash,

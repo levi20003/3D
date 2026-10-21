@@ -18,9 +18,9 @@ let statements = store.get('bf-st', []);
 let market = store.get('bf-mkt', { history: {}, fx: {}, usdhuf: null, updatedAt: 0, errors: [] });
 let apiKey = store.get('bf-key', '');
 const S = {
-  tab: 'attekintes', cur: store.get('bf-cur', 'HUF'), theme: store.get('bf-theme', 'auto'),
+  tab: 'attekintes', cur: store.get('bf-cur2', 'USD'), theme: store.get('bf-theme', 'auto'),
   range: store.get('bf-range', 'all'), mode: store.get('bf-mode', 'idx'), bench: store.get('bf-bench', true),
-  thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
+  hm: store.get('bf-hm', 'all'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
 };
 try { const h = location.hash.slice(1); if (h) S.tab = h; } catch (e) {}
 let M = null;
@@ -160,12 +160,14 @@ const grid = () => ({ color: css('--line'), drawTicks: false });
 const axisMoney = () => ({ callback: v => S.cur === 'HUF' ? (v < 0 ? '−' : '') + nf(Math.abs(v) / 1000) + 'e Ft' : (v < 0 ? '−$' : '$') + nf(Math.abs(v)) });
 
 /* ---------- nagy árfolyamgrafikon (saját canvas) ---------- */
-const RANGES = [['1w', '1 hét', 7], ['1m', '1 hó', 31], ['3m', '3 hó', 92], ['6m', '6 hó', 183], ['1y', '1 év', 366], ['all', 'Mind', null]];
+const RANGES = [['1w', '1 hét', 7], ['1m', '1 hó', 31], ['3m', '3 hó', 92], ['6m', '6 hó', 183], ['ytd', 'YTD', 'ytd'], ['1y', '1 év', 366], ['all', 'Mind', null]];
+const rangeFrom = key => { const r = RANGES.find(x => x[0] === key) || RANGES[6]; if (!r[2]) return null; return r[2] === 'ytd' ? M.today.slice(0, 4) + '-01-01' : Engine.addDays(M.today, -r[2]); };
+const rangeLabel = key => key === 'all' ? 'kezdés óta' : key === 'ytd' ? 'az év eleje óta' : 'az elmúlt ' + RANGES.find(r => r[0] === key)[1];
 function rangePoints() {
-  const s = M.series; const r = RANGES.find(x => x[0] === S.range) || RANGES[5];
-  if (!r[2]) return s;
-  const from = Engine.addDays(M.today, -r[2]); const i = s.findIndex(p => p.d >= from);
-  return s.slice(Math.max(0, i - 1));
+  const s = M.series; const from = rangeFrom(S.range);
+  if (!from) return s;
+  const i = s.findIndex(p => p.d >= from);
+  return i < 0 ? s.slice(-2) : s.slice(Math.max(0, i - 1));
 }
 // monoton köbös görbe (Fritsch–Carlson): sima, de nem lő túl a valós értékeken
 function monoPath(ctx, P, move = true) {
@@ -234,7 +236,7 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
     frame(1);
     const x = X(i); ctx.strokeStyle = muted; ctx.globalAlpha = .5; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, T - 8); ctx.lineTo(x, T + h); ctx.stroke(); ctx.globalAlpha = 1;
     if (bs[i] != null) { ctx.beginPath(); ctx.arc(x, Y(bs[i]), 3.5, 0, 7); ctx.fillStyle = bench; ctx.fill(); }
-    dot(i, col); onScrub(i);
+    dot(i, col); onScrub(i, X(i), Y(ys[i]), W);
   };
   const pick = e => { const r = canvas.getBoundingClientRect(); const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left; return Math.max(0, Math.min(pts.length - 1, Math.round((cx - L) / w * (pts.length - 1)))); };
   canvas.onpointermove = e => scrubTo(pick(e));
@@ -255,6 +257,27 @@ const V = {};
 const TABS = [['attekintes', 'Áttekintés', 'M3 13h4v8H3zM10 3h4v18h-4zM17 9h4v12h-4z'], ['portfolio', 'Portfólió', 'M3 3h8v10H3zM13 3h8v6h-8zM13 11h8v10h-8zM3 15h8v6H3z'], ['eredmenyek', 'Eredmények', 'M4 20V10M10 20V4M16 20v-7M22 20H2'], ['sp500', 'S&P 500', 'M3 17l6-6 4 4 8-8M15 7h6v6'], ['koltsegek', 'Költségek', 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'], ['naplo', 'Napló', 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01']];
 const hasHist = () => Object.keys(market.history || {}).length > 0;
 
+// mikor kezdődött a mostani tartási időszak (0-ról nyitott pozíció)
+function holdStart(t) { let q = 0, st = null; for (const r of M.tx) { if (r.tkr !== t || (r.type !== 'B' && r.type !== 'S')) continue; const was = q; q += r.type === 'B' ? r.qty : -r.qty; if (was < 1e-7 && q > 1e-7) st = r.date; if (q < 1e-7) q = 0; } return st; }
+// pozíció változása egy időszakban: ha a pozíció azóta nyílt, a bekerüléshez képest
+function perf(p, from) {
+  if (from === 'day') return p.dayChg == null ? null : { pct: p.dayChg, abs: p.dayAbs };
+  const hs = holdStart(p.tkr);
+  if (!from || (hs && hs >= from)) return { pct: p.pct, abs: p.pnl };
+  const p0 = M.priceAt(p.tkr, from); if (!p0) return { pct: p.pct, abs: p.pnl };
+  return { pct: (p.price / p0 - 1) * 100, abs: p.qty * (p.price - p0) };
+}
+function spark(canvas, vals) {
+  const dpr = devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight; canvas.width = W * dpr; canvas.height = H * dpr;
+  const c = canvas.getContext('2d'); c.scale(dpr, dpr); if (vals.length < 2) return;
+  const lo = Math.min(...vals), hi = Math.max(...vals), r = hi - lo || 1;
+  const P = vals.map((v, i) => [i / (vals.length - 1) * (W - 2) + 1, H - 3 - (v - lo) / r * (H - 6)]);
+  const col = css(vals[vals.length - 1] >= vals[0] ? '--gain' : '--loss');
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, col + '30'); g.addColorStop(1, col + '00');
+  c.beginPath(); monoPath(c, P); c.lineTo(W, H); c.lineTo(0, H); c.closePath(); c.fillStyle = g; c.fill();
+  c.beginPath(); monoPath(c, P); c.strokeStyle = col; c.lineWidth = 1.6; c.stroke();
+}
+
 V.attekintes = m => {
   const top = [...m.positions].sort((a, b) => b.pnl - a.pnl);
   const movers = top.length > 6 ? [...top.slice(0, 3), ...top.slice(-3).reverse()] : top;
@@ -264,7 +287,7 @@ V.attekintes = m => {
     <div class="lbl-s" id="hl">Portfólió értéke</div>
     <div class="big num" id="hv"></div>
     <div class="chg num" id="hc"></div>
-    <div class="chart bleed"><canvas id="sc" role="img" aria-label="A portfólió értékének alakulása. Húzd végig az ujjad a részletekért."></canvas></div>
+    <div class="chart bleed"><canvas id="sc" role="img" aria-label="A portfólió értékének alakulása. Húzd végig az ujjad a részletekért."></canvas><div class="ftip" id="ftip" hidden></div></div>
     <div class="ranges2" role="group" aria-label="Időszak">${RANGES.map(r => `<button data-r="${r[0]}" aria-pressed="${S.range === r[0]}">${r[1]}</button>`).join('')}</div>
     <div class="opts">
       <div class="seg" role="group" aria-label="Nézet"><button data-mo="idx" aria-pressed="${S.mode === 'idx'}">Árfolyam</button><button data-mo="val" aria-pressed="${S.mode === 'val'}">Érték</button></div>
@@ -273,11 +296,16 @@ V.attekintes = m => {
     <div class="keys">${S.mode === 'idx' ? '<span>A portfólió mint egy részvény: a befizetések nem mozdítják a vonalat.</span>' : '<span><i style="border-top-style:dashed;border-color:var(--muted)"></i>Befizetett összeg</span>'}${S.bench ? `<span><i style="border-color:var(--bench)"></i>${S.mode === 'idx' ? 'S&P 500 (SPY)' : 'Ha mindent S&P 500-ba tettél volna'}${!market.history.SPY ? ' · élő árfolyammal' : ''}</span>` : ''}</div>
   </section>
   ${!apiKey ? `<div class="tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><p><b>Kapcsold be az élő árfolyamokat.</b> Most a kivonat árai és a vételi árak alapján rajzolok. Egy ingyenes Twelve Data kulccsal a grafikon napi záróárakból készül, és az app 15 percenként magától frissít. <a href="#" id="tipKey">Beállítás</a></p></div>` : ''}
-  <section class="stats">
-    <div class="stat"><div class="lbl-s">${daily ? 'Mai változás' : 'Nem realizált'}</div><div class="v num ${cls(daily ? m.dayChange : m.unreal)}">${money(daily ? m.dayChange : m.unreal, { sign: true })}</div></div>
-    <div class="stat"><div class="lbl-s">Befizetve</div><div class="v num">${money(m.dep)}</div></div>
-    <div class="stat"><div class="lbl-s">Osztalék</div><div class="v num pos">${money(m.divNet, { sign: true })}</div></div>
-    <div class="stat"><div class="lbl-s">Díjak</div><div class="v num neg">${money(-m.feeUsd, { sign: true })}</div></div>
+  <section class="fstats">
+    ${[[daily ? 'Ma' : 'Nyitott eredmény', daily ? m.dayChange : m.unreal, 1, daily ? 'M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z' : 'M3 17l6-6 4 4 8-8'],
+       ['Befizetve', m.dep, 0, 'M12 5v14M5 12h14'],
+       ['Osztalék', m.divNet, 1, 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
+       ['Díjak', -m.feeUsd, 1, 'M19 5L5 19M6.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM17.5 20a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z']]
+      .map(([l, v, sg, ic]) => `<div class="fcard"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${ic}"/></svg></span><div class="lbl-s">${l}</div><div class="v num ${sg ? cls(v) : ''}">${money(v, { sign: !!sg })}</div></div>`).join('')}
+  </section>
+  <section>
+    <div class="sec-h"><h2>Eszközeid</h2><span class="sub">${esc(rangeLabel(S.range))}</span></div>
+    <div class="rail" id="rail">${[...m.positions].sort((a, b) => b.value - a.value).map(p => { const f = perf(p, rangeFrom(S.range)); return `<button class="acard" data-t="${p.tkr}"><div class="ah"><span class="tk">${p.tkr}</span><span class="ach num ${cls(f.pct)}">${pct(f.pct)}</span></div><div class="an">${esc(nm(p.tkr))}</div><canvas class="sp" data-sp="${p.tkr}"></canvas><div class="av num">${money(p.value)}</div><div class="s num ${cls(f.abs)}">${money(f.abs, { sign: true })}</div></button>`; }).join('')}</div>
   </section>
   <section class="grid">
     <div class="card"><div class="card-h"><div><h2>Honnan jön az eredmény?</h2><p class="sub">A befizetéstől a mai értékig (a tengely nem nulláról indul)</p></div></div><div class="cv"><canvas id="wf" role="img" aria-label="Eredmény bontása"></canvas></div></div>
@@ -292,10 +320,22 @@ V.attekintes.after = m => {
     const res = (p.value - p.invested) - (a.value - a.invested), pc = (p.nav / a.nav - 1) * 100;
     const rl = RANGES.find(r => r[0] === S.range);
     $('hv').innerHTML = moneyHTML(i == null ? m.value : p.value);
-    $('hc').innerHTML = `<span class="${cls(res)}">${arr(res)} ${money(res, { sign: true })} (${pct(pc)})</span><small>${i == null ? (S.range === 'all' ? 'kezdés óta' : 'az elmúlt ' + rl[1]) : dShort(p.d) + (p.spyIdx && a.spyIdx && S.bench ? ` · S&P ${pct((p.spyIdx / a.spyIdx - 1) * 100)}` : '')}</small>`;
+    $('hc').innerHTML = `<span class="${cls(res)}">${arr(res)} ${money(res, { sign: true })} (${pct(pc)})</span><small>${i == null ? rangeLabel(S.range) : dShort(p.d)}</small>`;
+  };
+  const tip = $('ftip');
+  const onScrub = (i, x, y, W) => {
+    head(i);
+    if (i == null) { tip.hidden = true; return; }
+    const p = pts[i], pc = (p.nav / a.nav - 1) * 100, res = (p.value - p.invested) - (a.value - a.invested);
+    tip.innerHTML = `<div class="td">${dShort(p.d)}</div><div class="tv num">${money(p.value)}</div><div class="num ${cls(pc)}">${pct(pc)} · ${money(res, { sign: true })}</div>${p.spyIdx && a.spyIdx && S.bench ? `<div class="tb num"><i></i>S&P ${pct((p.spyIdx / a.spyIdx - 1) * 100)}</div>` : ''}${S.mode === 'val' ? `<div class="tb num">Befizetve ${money(p.invested)}</div>` : ''}`;
+    tip.hidden = false; const tw = tip.offsetWidth; const left = x + 14 + tw > W - 8 ? x - 14 - tw : x + 14;
+    tip.style.transform = `translate(${Math.max(8, left)}px, ${Math.max(0, Math.min(y - 40, tip.parentElement.clientHeight - tip.offsetHeight - 30))}px)`;
   };
   head(null);
-  stockChart($('sc'), pts, head, { animate: animNext }); animNext = false;
+  stockChart($('sc'), pts, onScrub, { animate: animNext }); animNext = false;
+  const days = M.series.map(x => x.d);
+  document.querySelectorAll('[data-sp]').forEach(c => { const t = c.dataset.sp, from = rangeFrom(S.range), hs = holdStart(t); const st = !from || (hs && hs > from) ? hs : from; const ds = days.filter(d => d >= st); spark(c, ds.map(d => M.priceAt(t, d))); });
+  const rail = $('rail'); if (rail) { rail.onwheel = e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { rail.scrollLeft += e.deltaY; e.preventDefault(); } }; }
   document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.range = b.dataset.r; store.set('bf-range', S.range); animNext = true; render(true); });
   document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); animNext = true; render(true); });
   $('benchBtn').onclick = () => { S.bench = !S.bench; store.set('bf-bench', S.bench); render(true); };
@@ -314,10 +354,15 @@ V.attekintes.after = m => {
 };
 
 V.portfolio = m => {
+  if (S.hm === 'day' && !m.positions.some(p => p.dayChg != null)) S.hm = 'all';
   const P = [...m.positions].sort((a, b) => b.value - a.value); const tot = sum(P, p => p.value);
   return `
-  <section class="card"><div class="card-h"><div><h2>Hőtérkép</h2><p class="sub">Méret = mai érték, szín = eredmény a bekerüléshez képest. Koppints egy részvényre.</p></div></div>
-    <div class="tm" id="tm"></div><div class="legend"><span>−40%</span><i></i><span>+40%</span></div></section>
+  <section class="card lift"><div class="card-h"><div><h2>Allokáció</h2><p class="sub">Húzd az ujjad a körön, vagy koppints egy sorra</p></div></div>
+    <div class="donut-wrap"><div class="donut"><canvas id="dn" aria-label="Allokáció"></canvas><div class="dc" id="dc"></div></div>
+    <div class="dl" id="dl">${P.map((p, i) => `<button class="dli" data-i="${i}" data-t="${p.tkr}"><i style="opacity:${(1 - i / (P.length + 2)).toFixed(2)}"></i><b>${p.tkr}</b><span class="num">${nf(p.value / tot * 100, 1)}%</span></button>`).join('')}</div></div></section>
+  <section class="card"><div class="card-h"><div><h2>Hőtérkép</h2><p class="sub">Méret = érték, szín = változás a választott időszakban</p></div>
+    <div class="seg" role="group" aria-label="Időszak">${[['all', 'Mind'], ['ytd', 'YTD'], ['day', 'Mai']].map(([k, l]) => `<button data-hm="${k}" aria-pressed="${S.hm === k}" ${k === 'day' && !m.positions.some(p => p.dayChg != null) ? 'disabled title="Ehhez élő árfolyam kell"' : ''}>${l}</button>`).join('')}</div></div>
+    <div class="tm" id="tm"></div><div class="legend"><span>${S.hm === 'day' ? '−4%' : '−40%'}</span><i></i><span>${S.hm === 'day' ? '+4%' : '+40%'}</span></div>${S.hm === 'day' && !m.positions.some(p => p.dayChg != null) ? '' : ''}</section>
   <section class="card"><div class="card-h"><div><h2>Pozíciók</h2><p class="sub">${P.length} részvény · készpénz ${money(m.cashUsd)}</p></div></div>
     <div class="tw"><table><thead><tr><th>Részvény</th><th>Súly</th><th>Ár</th><th>Ma</th><th>Érték</th><th>Eredmény</th><th>%</th></tr></thead><tbody>
     ${P.map(p => `<tr class="click" data-t="${p.tkr}"><td><b>${p.tkr}</b> <span style="color:var(--muted)">${esc(nm(p.tkr))}</span></td><td class="num">${nf(p.value / tot * 100, 1)}%</td><td class="num">${usd(p.price)}</td><td class="num ${cls(p.dayChg || 0)}">${p.dayChg != null ? pct(p.dayChg) : '–'}</td><td class="num">${money(p.value)}</td><td class="num ${cls(p.pnl)}">${money(p.pnl, { sign: true })}</td><td class="num ${cls(p.pnl)}">${pct(p.pct)}</td></tr>`).join('')}
@@ -325,12 +370,31 @@ V.portfolio = m => {
 };
 V.portfolio.after = m => {
   const el = $('tm'); const W = el.clientWidth, H = el.clientHeight;
-  const rects = squarify([...m.positions].sort((a, b) => b.value - a.value).map(p => ({ ...p, v: p.value })), 0, 0, W, H);
-  el.innerHTML = rects.map(r => { const t = Math.max(-1, Math.min(1, r.pct / 40)); const c = t >= 0 ? `color-mix(in oklab,var(--gain) ${Math.round(t * 70)}%,var(--tile))` : `color-mix(in oklab,var(--loss) ${Math.round(-t * 70)}%,var(--tile))`;
+  const from = S.hm === 'ytd' ? M.today.slice(0, 4) + '-01-01' : S.hm === 'day' ? 'day' : null; const lim = S.hm === 'day' ? 4 : 40;
+  const rects = squarify([...m.positions].sort((a, b) => b.value - a.value).map(p => { const f = perf(p, from) || { pct: 0, abs: 0 }; return { ...p, v: p.value, pct: f.pct, abs: f.abs }; }), 0, 0, W, H);
+  el.innerHTML = rects.map(r => { const t = Math.max(-1, Math.min(1, r.pct / lim)); const c = t >= 0 ? `color-mix(in oklab,var(--gain) ${Math.round(t * 70)}%,var(--tile))` : `color-mix(in oklab,var(--loss) ${Math.round(-t * 70)}%,var(--tile))`;
     const small = r.w < 70 || r.h < 48;
-    return `<button class="tile" data-t="${r.tkr}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${c}" aria-label="${r.tkr} ${pct(r.pct)}"><b>${r.tkr}</b>${small ? '' : `<span class="num">${pct(r.pct)}<br>${money(r.value)}</span>`}</button>`; }).join('');
+    return `<button class="tile" data-t="${r.tkr}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${c}" aria-label="${r.tkr} ${pct(r.pct)}"><b>${r.tkr}</b>${small ? (r.w > 44 && r.h > 34 ? `<span class="num">${pct(r.pct)}</span>` : '') : `<span class="num"><b class="tp">${pct(r.pct)}</b>${r.w > 120 ? `<br>${money(r.abs, { sign: true })}` : ''}<br><span class="tvv">${money(r.value)}</span></span>`}</button>`; }).join('');
   bindTickers();
+  document.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => { S.hm = b.dataset.hm; store.set('bf-hm', S.hm); render(true); });
+  donut(m);
 };
+function donut(m) {
+  const cv = $('dn'); if (!cv) return; const P = [...m.positions].sort((a, b) => b.value - a.value); const tot = sum(P, p => p.value);
+  const dpr = devicePixelRatio || 1, S0 = cv.clientWidth; cv.width = cv.height = S0 * dpr; const c = cv.getContext('2d'); c.scale(dpr, dpr);
+  const cx = S0 / 2, R1 = S0 / 2 - 6, R0 = R1 * 0.68; const ink = css('--ink'), acc = css('--gain'), surf = css('--surface');
+  const segs = []; let a0 = -Math.PI / 2; P.forEach((p, i) => { const a1 = a0 + p.value / tot * Math.PI * 2; segs.push({ p, i, a0, a1 }); a0 = a1; });
+  const center = i => { const p = i == null ? null : P[i]; $('dc').innerHTML = p ? `<b>${p.tkr}</b><span class="num">${nf(p.value / tot * 100, 1)}%</span><small class="num">${money(p.value)}</small>` : `<span class="lbl-s">${P.length} részvény</span><b class="num">${money(tot)}</b>`; };
+  const draw = hl => { c.clearRect(0, 0, S0, S0); segs.forEach(s => { const on = hl === s.i; const r1 = on ? R1 + 4 : R1;
+    c.beginPath(); c.arc(cx, cx, r1, s.a0 + 0.012, s.a1 - 0.012); c.arc(cx, cx, R0, s.a1 - 0.012, s.a0 + 0.012, true); c.closePath();
+    c.fillStyle = on ? acc : ink; c.globalAlpha = on ? 1 : (hl == null ? 1 - s.i / (P.length + 2) : 0.18 + 0.5 * (1 - s.i / (P.length + 2))); c.fill(); c.globalAlpha = 1; });
+    document.querySelectorAll('.dli').forEach(b => b.classList.toggle('on', +b.dataset.i === hl)); center(hl); };
+  const hit = e => { const r = cv.getBoundingClientRect(); const x = e.clientX - r.left - cx, y = e.clientY - r.top - cx; const d = Math.hypot(x, y); if (d < R0 - 4 || d > R1 + 8) return null; let a = Math.atan2(y, x); if (a < -Math.PI / 2) a += Math.PI * 2; const s = segs.find(s => a >= s.a0 && a < s.a1); return s ? s.i : null; };
+  draw(null);
+  cv.onpointermove = e => draw(hit(e)); cv.onpointerdown = e => draw(hit(e)); cv.onpointerleave = () => draw(null);
+  cv.onclick = e => { const i = hit(e); if (i != null) openTicker(P[i].tkr); };
+  document.querySelectorAll('.dli').forEach(b => { b.onmouseenter = () => draw(+b.dataset.i); b.onmouseleave = () => draw(null); b.onfocus = () => draw(+b.dataset.i); });
+}
 function squarify(items, x, y, w, h) {
   const out = []; const total = sum(items, i => i.v); if (!total) return out; let rest = items.map(i => ({ ...i, a: i.v * w * h / total }));
   const worst = (row, s) => { const a = row.reduce((t, r) => t + r.a, 0), mx = Math.max(...row.map(r => r.a)), mn = Math.min(...row.map(r => r.a)); return Math.max(s * s * mx / (a * a), a * a / (s * s * mn)); };
@@ -584,8 +648,8 @@ function boot() {
 }
 
 $('themeBtn').onclick = () => { S.theme = { auto: 'light', light: 'dark', dark: 'auto' }[S.theme]; store.set('bf-theme', S.theme); applyTheme(); };
-$('cHUF').onclick = () => { S.cur = 'HUF'; store.set('bf-cur', 'HUF'); drawCur(); render(true); };
-$('cUSD').onclick = () => { S.cur = 'USD'; store.set('bf-cur', 'USD'); drawCur(); render(true); };
+$('cHUF').onclick = () => { S.cur = 'HUF'; store.set('bf-cur2', 'HUF'); drawCur(); render(true); };
+$('cUSD').onclick = () => { S.cur = 'USD'; store.set('bf-cur2', 'USD'); drawCur(); render(true); };
 $('refreshBtn').onclick = () => refresh();
 $('setBtn').onclick = openSettings;
 $('fileIn').onchange = e => { importFiles([...e.target.files]); e.target.value = ''; };
