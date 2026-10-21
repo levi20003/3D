@@ -421,23 +421,50 @@ QR-kódos asztali tábla
   <section id="p-gen" hidden>
     <div class="grid2">
       <div class="card" id="gen-ctl">
-        <h3>Szöveg → 3D tábla, kulcstartó</h3>
-        <label class="field"><span>Felirat (több sor is lehet)</span><textarea id="g-text" rows="3">Kovács család
+        <h3>Szöveg vagy QR → 3D tábla, kulcstartó, QR-állvány</h3>
+        <label class="field" data-std><span>Felirat (több sor is lehet)</span><textarea id="g-text" rows="3">Kovács család
 Szeged</textarea></label>
-        <div class="grid3">
-          <label class="field"><span>Forma</span><select id="g-mode"><option value="plate">Névtábla</option><option value="key">Kulcstartó</option><option value="text">Csak felirat</option></select></label>
-          <label class="field"><span>Betűtípus</span><select id="g-font"><option value="archivo">Archivo (vastag)</option><option value="oswald">Oswald (keskeny)</option><option value="playfair">Playfair (talpas)</option><option value="mono">JetBrains Mono</option></select></label>
-          <label class="field"><span>Igazítás</span><select id="g-align"><option value="center">Középre</option><option value="left">Balra</option><option value="right">Jobbra</option></select></label>
-          <label class="field"><span>Betűmagasság (mm)</span><input type="number" id="g-cap" min="3" max="80" step="0.5" value="14"></label>
-          <label class="field"><span>Felirat vastagsága (mm)</span><input type="number" id="g-rel" min="0.4" max="10" step="0.2" value="2"></label>
-          <label class="field"><span>Alap vastagsága (mm)</span><input type="number" id="g-base" min="0.8" max="10" step="0.2" value="2.4"></label>
-          <label class="field"><span>Szegély (mm)</span><input type="number" id="g-pad" min="1" max="30" step="0.5" value="5"></label>
-          <label class="field"><span>Sarokkerekítés (mm)</span><input type="number" id="g-rad" min="0" max="30" step="0.5" value="4"></label>
-          <label class="field"><span>Lyuk átmérője (mm)</span><input type="number" id="g-hole" min="2" max="12" step="0.5" value="4.5"></label>
-          <label class="field"><span>Sortávolság (×)</span><input type="number" id="g-ls" min="1" max="3" step="0.1" value="1.6"></label>
-          <label class="field"><span>Betűköz (mm)</span><input type="number" id="g-sp" min="-2" max="10" step="0.2" value="0"></label>
+        <div id="g-qr" hidden style="display:grid;gap:8px">
+          <div class="grid3">
+            <label class="field"><span>QR tartalma</span><select id="q-type"><option value="link">Link (menü, weboldal)</option><option value="review">Google-értékelés</option><option value="wifi">Wi-Fi</option></select></label>
+            <label class="field"><span>Kártya formája</span><select id="q-shape"><option value="rect">Lekerekített</option><option value="arch">Boltíves</option><option value="fish">Hal</option></select></label>
+            <label class="field"><span>Asztalszám</span><input type="text" id="q-num" maxlength="4" placeholder="pl. 12"></label>
+          </div>
+          <label class="field" id="q-urlw"><span id="q-urll">Link</span><input type="text" id="q-url" placeholder="https://..." value="https://claude.ai/artifact/WZLdSDK19twEH9KM9WbH56"></label>
+          <div class="grid2" id="q-wifiw" hidden>
+            <label class="field"><span>Wi-Fi hálózat neve</span><input type="text" id="q-ssid" autocomplete="off"></label>
+            <label class="field"><span>Jelszó (üresen: nyílt hálózat)</span><input type="text" id="q-pass" autocomplete="off"></label>
+          </div>
+          <div class="grid2">
+            <label class="field"><span>Felső felirat</span><input type="text" id="q-title" value="MENÜ"></label>
+            <label class="field"><span>Alsó felirat</span><input type="text" id="q-sub" placeholder="pl. a hely neve"></label>
+          </div>
+          <div class="grid3">
+            <label class="field"><span>QR modulméret (mm)</span><input type="number" id="q-ms" min="1.2" max="4" step="0.1" value="2"></label>
+            <label class="field"><span>Dőlés hátra (°)</span><input type="number" id="q-tilt" min="0" max="25" step="1" value="12"></label>
+            <label class="field"><span>Hibajavítás</span><select id="q-ecc"><option value="L">Alacsony (kisebb kód)</option><option value="M" selected>Közepes</option><option value="Q">Magas (karcolástűrő)</option></select></label>
+          </div>
+          <div class="grid2">
+            <label class="field" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="q-nfc" checked style="width:auto"><span style="text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)">NFC-matrica helye a talpban</span></label>
+            <label class="field" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="q-weight" checked style="width:auto"><span style="text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)">Súlyzseb a talpban</span></label>
+          </div>
+          <p class="note" id="q-help" style="margin:0"></p>
         </div>
-        <div class="note">A felirat a tábla felületéből kiemelkedik. Két színhez töltsd le külön az alapot és a feliratot, és a nyomtatás közben cserélj filamentet a felirat előtt.</div>
+        <div class="grid3">
+          <label class="field"><span>Forma</span><select id="g-mode"><option value="plate">Névtábla</option><option value="key">Kulcstartó</option><option value="text">Csak felirat</option><option value="qr">QR-állvány</option></select></label>
+          <label class="field"><span>Betűtípus</span><select id="g-font"><option value="archivo">Archivo (vastag)</option><option value="oswald">Oswald (keskeny)</option><option value="playfair">Playfair (talpas)</option><option value="mono">JetBrains Mono</option></select></label>
+          <label class="field" data-std><span>Igazítás</span><select id="g-align"><option value="center">Középre</option><option value="left">Balra</option><option value="right">Jobbra</option></select></label>
+          <label class="field" data-std><span>Betűmagasság (mm)</span><input type="number" id="g-cap" min="3" max="80" step="0.5" value="14"></label>
+          <label class="field"><span id="g-rell">Felirat vastagsága (mm)</span><input type="number" id="g-rel" min="0.4" max="10" step="0.2" value="2"></label>
+          <label class="field"><span id="g-basel">Alap vastagsága (mm)</span><input type="number" id="g-base" min="0.8" max="10" step="0.2" value="2.4"></label>
+          <label class="field" data-std><span>Szegély (mm)</span><input type="number" id="g-pad" min="1" max="30" step="0.5" value="5"></label>
+          <label class="field"><span>Sarokkerekítés (mm)</span><input type="number" id="g-rad" min="0" max="30" step="0.5" value="4"></label>
+          <label class="field" data-std><span>Lyuk átmérője (mm)</span><input type="number" id="g-hole" min="2" max="12" step="0.5" value="4.5"></label>
+          <label class="field" data-std><span>Sortávolság (×)</span><input type="number" id="g-ls" min="1" max="3" step="0.1" value="1.6"></label>
+          <label class="field" data-std><span>Betűköz (mm)</span><input type="number" id="g-sp" min="-2" max="10" step="0.2" value="0"></label>
+        </div>
+        <div class="note" data-std>A felirat a tábla felületéből kiemelkedik. Két színhez töltsd le külön az alapot és a feliratot, és a nyomtatás közben cserélj filamentet a felirat előtt.</div>
+        <div class="note" id="g-qrnote" hidden>Két részből áll: a kártyát fekve nyomtasd (fehér alap, fekete QR), a talpat állva, támasz nélkül. Két színhez a „Két színhez” gomb külön adja a kártya alapját és a QR-t; vagy egy STL-ből cserélj filamentet az alap vastagságánál. A kártya a talp résébe csúszik, és bármikor cserélhető. A talp aljába 20 Ft-os érme vagy M12-es alátét fér súlynak, és egy Ø 25 mm-es NFC-matrica (NTAG213/215), amit érintésre a Google-értékelésre lehet állítani.</div>
         <div id="g-warn"></div>
       </div>
       <div class="card" id="gen-view">
@@ -523,6 +550,7 @@ window.GEN_FONTS={"archivo": ["d09GRgABAAAAAElsAA8AAAAAn1wAAQABAAAAAAAAAAAAAAAAA
 const $g=id=>document.getElementById(id);
 const CDN_THREE="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
 const CDN_OT="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js";
+const CDN_QR="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js";
 const MAXMM=180;
 const S={ready:false,loading:false,fonts:{},model:null,dirty:true,timer:0,cam:{th:-Math.PI/2,ph:0.8,r:100,t:null}};
 let T,R,scene,camera,meshes=[],downloads=null,dlTried=false;
@@ -605,7 +633,87 @@ function rrect(x0,y0,w,h,r){
   s.lineTo(x0,y0+r);s.absarc(x0+r,y0+r,r,Math.PI,Math.PI*1.5,false);
   return s;
 }
+// ---------- QR-állvány ----------
+function qrPayload(p){
+  if(p.qtype==="wifi"){const e=s=>String(s).replace(/([\\;,:"])/g,"\\$1");if(!p.ssid.trim())return "";
+    return p.pass?`WIFI:T:WPA;S:${e(p.ssid)};P:${e(p.pass)};;`:`WIFI:T:nopass;S:${e(p.ssid)};;`}
+  let u=p.url.trim();if(!u)return "";
+  if(!/^[a-z][a-z0-9+.-]*:/i.test(u)&&/\./.test(u))u="https://"+u;
+  return u;
+}
+function textShapes(str,font,cap,cx,cy,maxW){
+  const lay=c=>layout({text:str,font,cap:c,align:"center",ls:1.3,sp:0});
+  let L=lay(cap);if(!L.shapes.length)return{shapes:[],missing:L.missing,cap};
+  let bb=bbox(L.shapes);
+  if(maxW&&bb.x1-bb.x0>maxW){cap=cap*maxW/(bb.x1-bb.x0);L=lay(cap);bb=bbox(L.shapes)}
+  const ox=cx-(bb.x0+bb.x1)/2,oy=cy-(bb.y0+bb.y1)/2;
+  const shapes=L.shapes.map(s=>{const t=new THREE.Shape(s.outer.map(q=>new THREE.Vector2(q.x+ox,q.y+oy)));
+    s.holes.forEach(h=>t.holes.push(new THREE.Path(h.map(q=>new THREE.Vector2(q.x+ox,q.y+oy)))));return t});
+  return{shapes,missing:L.missing,cap};
+}
+function circ(x,y,r,cw){const s=cw?new THREE.Path():new THREE.Shape();s.absarc(x,y,r,0,Math.PI*2,!!cw);return s}
+function buildQR(p){
+  const res={warn:[],qr:true,empty:false,missing:[]};
+  const data=qrPayload(p);
+  if(!data){res.empty=true;res.warn.push(p.qtype==="wifi"?"Add meg a Wi-Fi hálózat nevét.":"Add meg a linket, ahová a QR-kód vigyen.");return res}
+  if(typeof qrcode!=="function"){res.empty=true;res.warn.push("A QR-kód könyvtár nem töltődött be. Ellenőrizd a netkapcsolatot, majd válts másik fülre és vissza.");return res}
+  let q;try{q=qrcode(0,p.ecc);q.addData(data,"Byte");q.make()}catch(e){res.empty=true;res.warn.push("Ez a tartalom túl hosszú egy QR-kódhoz, rövidíts rajta.");return res}
+  const n=q.getModuleCount(),ms=p.ms,Q=n*ms,m=Math.max(5,3*ms),gap=Math.max(4,2*ms),INS=8,T0=p.base,fish=p.shape==="fish";
+  const base=[],rel=[];let W,H,botW;
+  let qcx=0,qcy;
+  if(fish){
+    const s=Q/2+m,A=s*1.8,B=s*1.3,yc=INS+4+B,tx=A*0.9;
+    const body=new THREE.Shape();body.absellipse(0,yc,A,B,0,Math.PI*2,false);
+    base.push(new THREE.ExtrudeGeometry(body,{depth:T0,bevelEnabled:false,curveSegments:48}));
+    base.push(new THREE.ExtrudeGeometry(new THREE.Shape([[tx,yc],[tx+B*0.9,yc+B*0.85],[tx+B*0.6,yc],[tx+B*0.9,yc-B*0.85]].map(([x,y])=>new THREE.Vector2(x,y))),{depth:T0,bevelEnabled:false}));
+    const ov=Math.max(4,B*0.07);base.push(new THREE.ExtrudeGeometry(rrect(-15,0,30,yc-B+ov,1),{depth:T0,bevelEnabled:false}));
+    rel.push(circ(-A*0.62,yc+B*0.42,Math.max(2,ms*1.2)));
+    qcy=yc;W=A+tx+B*0.9;H=yc+B;botW=30;
+    if(p.num||p.title||p.sub)res.warn.push("Hal formánál csak a QR-kód és a hal szeme kerül a kártyára. Feliratot és asztalszámot a lekerekített vagy a boltíves forma tud.");
+  }else{
+    W=Q+2*m;const capT=Math.max(5,Math.min(12,Q*0.13)),capS=Math.max(4,Math.min(8,Q*0.09)),capN=Math.max(10,Math.min(26,Q*0.32));
+    let y=INS+3;const place=[];
+    if(p.sub){place.push([p.sub,capS,y+capS/2]);y+=capS+gap}
+    qcy=y+Q/2;y+=Q;
+    if(p.title){y+=gap;place.push([p.title,capT,y+capT/2]);y+=capT}
+    if(p.num){y+=gap;place.push([p.num,capN,y+capN/2]);y+=capN}
+    y+=m;if(p.shape==="arch")y+=W*0.3;H=y;botW=W;
+    let outline;
+    if(p.shape==="arch"){const r=W/2;outline=new THREE.Shape();outline.moveTo(-r,0);outline.lineTo(r,0);outline.lineTo(r,H-r);outline.absarc(0,H-r,r,0,Math.PI,false);outline.lineTo(-r,0)}
+    else outline=rrect(-W/2,0,W,H,p.rad);
+    base.push(new THREE.ExtrudeGeometry(outline,{depth:T0,bevelEnabled:false,curveSegments:24}));
+    place.forEach(([t,c,cy])=>{const r=textShapes(t,p.font,c,0,cy,W-2*m);rel.push(...r.shapes);res.missing.push(...r.missing)});
+  }
+  const qx0=qcx-Q/2,qyTop=qcy+Q/2;
+  for(let r=0;r<n;r++){let c=0;while(c<n){if(!q.isDark(r,c)){c++;continue}let c1=c;while(c1+1<n&&q.isDark(r,c1+1))c1++;
+    const x0=qx0+c*ms-0.01,x1=qx0+(c1+1)*ms+0.01,y1=qyTop-r*ms+0.01,y0=qyTop-(r+1)*ms-0.01;
+    const s=new THREE.Shape();s.moveTo(x0,y0);s.lineTo(x1,y0);s.lineTo(x1,y1);s.lineTo(x0,y1);s.closePath();rel.push(s);c=c1+1}}
+  const relG=new THREE.ExtrudeGeometry(rel,{depth:p.rel+0.2,bevelEnabled:false,curveSegments:8});relG.translate(0,0,T0-0.2);
+  // talp: oldalprofil (mélység × magasság) kihúzva a szélességre, alatta zsebes alaplap
+  const th=p.tilt*Math.PI/180,cl=0.4,sd=INS,Hb=Math.max(12,sd+6),pk=3.2;
+  const D=Math.max(38,Math.min(90,H*0.42)),Wb=fish?Math.max(40,W*0.55):botW+10;
+  const ws=(T0+cl)/Math.cos(th),sf=Math.max(12,D*0.38),sb=sf+ws,sh=sd*Math.tan(th),Hf=Hb*0.55;
+  const prof=new THREE.Shape([[0,pk],[D,pk],[D,Hb],[sb,Hb],[sb-sh,Hb-sd],[sf-sh,Hb-sd],[sf,Hb],[Math.max(2,sf-4),Hb],[0,Hf]].map(([u,v])=>new THREE.Vector2(u,v)));
+  const pg=new THREE.ExtrudeGeometry(prof,{depth:Wb,bevelEnabled:false});
+  pg.applyMatrix4(new THREE.Matrix4().set(0,0,1,-Wb/2, 1,0,0,0, 0,1,0,0, 0,0,0,1));
+  const plate=rrect(-Wb/2,0,Wb,D,2),holes=[];
+  const tryHole=(x,y,r,what)=>{if(Math.abs(x)+r>Wb/2-2||y-r<2||y+r>D-2||holes.some(h=>Math.hypot(h[0]-x,h[1]-y)<h[2]+r+2)){res.warn.push(what+" nem fér el ekkora talpban.");return}holes.push([x,y,r])};
+  if(p.nfc)tryHole(0,15,13,"Az NFC-matrica helye");
+  if(p.weight){if(Wb>=70){tryHole(-(Wb/2-16),D-16,13.5,"A bal súlyzseb");tryHole(Wb/2-16,D-16,13.5,"A jobb súlyzseb")}else tryHole(0,D-16,13.5,"A súlyzseb")}
+  holes.forEach(([x,y,r])=>plate.holes.push(circ(x,y,r,true)));
+  const pl=new THREE.ExtrudeGeometry(plate,{depth:pk+0.2,bevelEnabled:false,curveSegments:32});
+  res.cardBase=base;res.cardRel=relG;res.stand=[pg,pl];
+  const uc=(sf-sh+sb-sh)/2;res.rotX=Math.PI/2-th;res.pos=[0,uc+(T0/2)*Math.cos(th),Hb-sd-(T0/2)*Math.sin(th)];
+  res.info={n,ms,W,H,Wb,D,Hb,data};
+  if(W>MAXMM||H>MAXMM)res.warn.push(`A kártya (${W.toFixed(0)} × ${H.toFixed(0)} mm) nem fér el a 180 mm-es tálcán. Csökkentsd a modulméretet vagy rövidítsd a linket.`);
+  if(ms<1.5)res.warn.push("1,5 mm alatti modulméretnél a nyomtatott QR-t a telefon nehezen olvassa be.");
+  if(n>41)res.warn.push(`Hosszú a tartalom (${n} × ${n} modul). Rövidebb linkkel nagyobb, könnyebben olvasható kódot kapsz.`);
+  if(p.rel<0.6)res.warn.push("0,6 mm-nél vékonyabb QR-rétegen átlátszhat az alap színe.");
+  if(res.missing.length)res.warn.push("Ezek a karakterek nincsenek a betűtípusban, kihagytam: "+[...new Set(res.missing)].join(" "));
+  return res;
+}
 function build(p){
+  if(p.mode==="qr")return buildQR(p);
   const L=layout(p);
   const res={warn:[],text:null,base:null,missing:L.missing,empty:false};
   if(!L.shapes.length){res.empty=true;return res}
@@ -651,7 +759,21 @@ function params(){
   const n=(id,d)=>{const v=parseFloat($g(id).value);return isFinite(v)?v:d};
   return{text:$g("g-text").value,mode:$g("g-mode").value,font:$g("g-font").value,align:$g("g-align").value,
     cap:Math.max(1,n("g-cap",14)),rel:Math.max(0.2,n("g-rel",2)),base:Math.max(0.4,n("g-base",2.4)),pad:Math.max(0,n("g-pad",5)),
-    rad:Math.max(0,n("g-rad",4)),hole:Math.max(1,n("g-hole",4.5)),ls:Math.max(0.8,n("g-ls",1.6)),sp:n("g-sp",0)};
+    rad:Math.max(0,n("g-rad",4)),hole:Math.max(1,n("g-hole",4.5)),ls:Math.max(0.8,n("g-ls",1.6)),sp:n("g-sp",0),
+    qtype:$g("q-type").value,url:$g("q-url").value,ssid:$g("q-ssid").value,pass:$g("q-pass").value,num:$g("q-num").value.trim(),
+    title:$g("q-title").value.trim(),sub:$g("q-sub").value.trim(),shape:$g("q-shape").value,ms:Math.min(4,Math.max(1,n("q-ms",2))),
+    tilt:Math.min(25,Math.max(0,n("q-tilt",12))),ecc:$g("q-ecc").value,nfc:$g("q-nfc").checked,weight:$g("q-weight").checked};
+}
+function syncQRUI(){
+  const qr=$g("g-mode").value==="qr",t=$g("q-type").value;
+  document.querySelectorAll("#gen-ctl [data-std]").forEach(e=>e.hidden=qr);
+  $g("g-qr").hidden=!qr;$g("g-qrnote").hidden=!qr;
+  $g("g-rell").textContent=qr?"QR és felirat vastagsága (mm)":"Felirat vastagsága (mm)";
+  $g("g-basel").textContent=qr?"Kártya vastagsága (mm)":"Alap vastagsága (mm)";
+  $g("q-wifiw").hidden=t!=="wifi";$g("q-urlw").hidden=t==="wifi";
+  $g("q-urll").textContent=t==="review"?"Google-értékelés linkje":"Link";
+  $g("q-help").textContent=t==="review"?"A linket a Google Cégprofilban az „Értékelések kérése” gombnál találod (g.page/r/… kezdetű). A felső feliratnak jó például: „Értékelj minket!”":t==="wifi"?"A telefon beolvasás után felajánlja a csatlakozást, a jelszót nem kell begépelni.":"Ha a link később változhat, használj olyat, amit te tudsz átirányítani, vagy cseréld a kártyát.";
+  $g("g-dl2").textContent=qr?"Két színhez: kártya és QR külön":"Két színhez: alap + felirat";
 }
 // ---------- preview ----------
 function setupScene(){
@@ -685,6 +807,15 @@ function draw(){
 }
 function showModel(m){
   meshes.forEach(x=>{scene.remove(x);});meshes=[];
+  if(m.qr){
+    const cm=new T.MeshStandardMaterial({color:0xf3f1ea,roughness:0.6}),rm=new T.MeshStandardMaterial({color:0x23251a,roughness:0.5}),sm=new T.MeshStandardMaterial({color:0xc9aa80,roughness:0.65});
+    const grp=new T.Group();m.cardBase.forEach(g=>grp.add(new T.Mesh(g,cm)));grp.add(new T.Mesh(m.cardRel,rm));
+    grp.rotation.x=m.rotX;grp.position.set(...m.pos);scene.add(grp);meshes.push(grp);
+    m.stand.forEach(g=>{const x=new T.Mesh(g,sm);scene.add(x);meshes.push(x)});
+    const box=new T.Box3();meshes.forEach(x=>{x.updateMatrixWorld(true);box.expandByObject(x)});
+    const c=new T.Vector3(),sz=box.getSize(new T.Vector3());box.getCenter(c);S.cam.t=c;S.cam.r=Math.max(sz.x,sz.z*1.3,40)*1.7;
+    draw();return;
+  }
   const bm=new T.MeshStandardMaterial({color:0xc9aa80,roughness:0.65,metalness:0});
   const tm=new T.MeshStandardMaterial({color:S.cur&&S.cur.mode==="text"?0x5f6239:0x3a3c26,roughness:0.55,metalness:0});
   if(m.base)m.base.forEach(g=>{const x=new T.Mesh(g,bm);scene.add(x);meshes.push(x)});
@@ -733,10 +864,13 @@ function zip(files){ // store-only zip
 function slug(){const s=($g("g-text").value.split("\n")[0]||"felirat").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,30);return s||"felirat"}
 function toast2(t){if(typeof toast==="function")toast(t);else $g("g-dlnote").textContent=t}
 async function save(two){
-  const m=S.model;if(!m||m.empty){toast2("Nincs mit letölteni, írj be egy szöveget");return}
+  const m=S.model;if(!m||m.empty){toast2(S.cur&&S.cur.mode==="qr"?"Nincs mit letölteni, add meg a QR tartalmát":"Nincs mit letölteni, írj be egy szöveget");return}
   if(!downloads){toast2("A letöltés ebben a nézetben nem érhető el");return}
-  const nm=slug();let files;
-  if(two&&m.base)files=[{name:nm+"_alap.stl",data:stlBytes(m.base)},{name:nm+"_felirat.stl",data:stlBytes([m.text])}];
+  let nm=slug();let files;
+  if(m.qr){const p=S.cur;nm=((p.sub||p.title||"qr-allvany")+(p.num?"-"+p.num:"")).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,30)||"qr-allvany";
+    files=two?[{name:nm+"_kartya_alap.stl",data:stlBytes(m.cardBase)},{name:nm+"_kartya_qr.stl",data:stlBytes([m.cardRel])},{name:nm+"_talp.stl",data:stlBytes(m.stand)}]
+      :[{name:nm+"_kartya.stl",data:stlBytes(m.cardBase.concat([m.cardRel]))},{name:nm+"_talp.stl",data:stlBytes(m.stand)}]}
+  else if(two&&m.base)files=[{name:nm+"_alap.stl",data:stlBytes(m.base)},{name:nm+"_felirat.stl",data:stlBytes([m.text])}];
   else files=[{name:nm+".stl",data:stlBytes((m.base||[]).concat([m.text]))}];
   try{await downloads.save({filename:nm+".zip",data:zip(files)});toast2("Elmentve")}
   catch(e){if(e&&e.code==="declined")return;toast2("Mentés nem sikerült"+(e&&e.code?" ("+e.code+")":""))}
@@ -752,15 +886,19 @@ function update(){
   m.warn.forEach(t=>{const d=document.createElement("div");d.className="note";d.style.cssText="color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:6px 9px;margin-top:6px";d.textContent=t;w.appendChild(d)});
   const dis=!!m.empty;["g-dl","g-dl2"].forEach(i=>$g(i).disabled=dis||!downloads);$g("g-dl2").hidden=p.mode==="text";
   if(m.empty){$g("g-info").textContent="";if(R){meshes.forEach(x=>scene.remove(x));meshes=[];draw()}return}
-  $g("g-info").textContent=m.size.x.toFixed(1)+" × "+m.size.y.toFixed(1)+" × "+m.size.z.toFixed(1)+" mm";
+  if(m.qr){const i=m.info;$g("g-info").textContent=`Kártya: ${i.W.toFixed(0)} × ${i.H.toFixed(0)} mm · QR: ${i.n} × ${i.n} modul, ${(i.n*i.ms).toFixed(0)} mm · Talp: ${i.Wb.toFixed(0)} × ${i.D.toFixed(0)} × ${i.Hb.toFixed(0)} mm`}
+  else $g("g-info").textContent=m.size.x.toFixed(1)+" × "+m.size.y.toFixed(1)+" × "+m.size.z.toFixed(1)+" mm";
   if(R){$g("g-msg").style.display="none";showModel(m)}
 }
 function later(){clearTimeout(S.timer);S.timer=setTimeout(update,160)}
 async function init(){
   if(S.ready||S.loading)return;S.loading=true;
   try{
-    await Promise.all([loadScript(CDN_THREE),loadScript(CDN_OT)]);
+    await Promise.all([loadScript(CDN_THREE),loadScript(CDN_OT),loadScript(CDN_QR).then(()=>{if(window.qrcode&&qrcode.stringToBytesFuncs)qrcode.stringToBytes=qrcode.stringToBytesFuncs["UTF-8"]}).catch(()=>{})]);
     S.ready=true;
+    syncQRUI();
+    $g("g-mode").addEventListener("change",()=>{if($g("g-mode").value==="qr"&&+$g("g-rel").value>=2)$g("g-rel").value="1";syncQRUI()});
+    $g("q-type").addEventListener("change",()=>{if($g("q-type").value==="review"&&$g("q-title").value==="MENÜ")$g("q-title").value="Értékelj minket!";if($g("q-type").value==="wifi"&&$g("q-title").value==="MENÜ")$g("q-title").value="Wi-Fi";syncQRUI()});
     const ok=setupScene();
     if(!ok){$g("g-msg").textContent="Az előnézet ezen az eszközön nem érhető el, a letöltés működik.";}
     $g("gen-ctl").addEventListener("input",later);$g("gen-ctl").addEventListener("change",later);
@@ -779,7 +917,7 @@ async function open(){
   init();
 }
 window.genOpen=open;
-window.__gen={build,params,stlBytes,zip,S,THREE_ready:()=>!!window.THREE};
+window.__gen={build,params,stlBytes,zip,S,qrPayload,THREE_ready:()=>!!window.THREE};
 })();
 
 </script>
