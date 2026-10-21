@@ -25,6 +25,8 @@ Levente Claude Pro előfizetéssel dolgozik, ezért **minden lépésnél a lehet
 7. Válaszok legyenek rövidek; ne ismételd meg, amit a pult már mutat.
 
 ## Címlista utántöltése
+- **Visszapattanók:** minden futás elején keress a Gmailben: `from:mailer-daemon newer_than:2d` (METADATA_ONLY vagy MINIMAL nézet). Ahol a cím nem létezik, a domain nem található, vagy a szerver letiltotta a levelet, a contacts rekordot állítsd `status: lezarva`, `bounced: true`, `bouncedAt`, a `note`-ba az okkal. A késleltetett (Delay) értesítéssel még ne foglalkozz.
+- **Csak ellenőrzött cím:** csak olyan e-mail címet vegyél fel, amit a cég saját, most is elérhető oldalán (vagy friss Google Térkép-, illetve Facebook-adatlapján) láttál. Keresési összefoglalóból, régi turisztikai kiadványból vagy listából átvett címet ne vegyél fel. Ha az oldal nem nyitható meg, hagyd ki a céget.
 - Ha a napi futáskor az `uj` és `javasolt` állapotú címek együtt kevesebb mint 60-an vannak, gyűjts új címeket.
 - **Előbb olvasd el a `settings/search` dokumentumot** (ArtifactData get). A `plan.targets` listában vannak a mai keresések (`q`: keresőkifejezés, `cat`, `city`), a `plan.rules` a szabályok, a `plan.perRun` a futásonkénti felső határ. A pult számolja ki a válaszarányok és a lefedettség alapján; ettől ne térj el.
 - Minden célra: webes keresés a `q` kifejezéssel (Google Térkép-találatok, céges weboldalak), majd a cég Kapcsolat/Impresszum oldala vagy Facebook-névjegye.

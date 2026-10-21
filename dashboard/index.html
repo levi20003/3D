@@ -1492,7 +1492,7 @@ function renderList(){
     return `<div class="row s-${s}">
       <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${c.note?`<div class="note">${esc(c.note)}</div>`:""}</div>
       <div class="meta cat">${esc(CATS[c.cat]?.label||c.cat)}<br>${esc(c.city||"")}</div>
-      <div class="meta"><span class="pill p-${s}">${s==="fu"?fuStage(c)+". follow-up esedékes":STATUS[s]}</span><br>${when}</div>
+      <div class="meta"><span class="pill p-${s}">${s==="fu"?fuStage(c)+". follow-up esedékes":c.bounced?"Visszapattant":STATUS[s]}</span><br>${when}</div>
       <div class="acts">${main}<button class="btn ghost" data-act="open" data-id="${id}" aria-expanded="${openId===c.email}">${openId===c.email?"Bezár":"Részletek"}</button>
         <span class="more"><button class="btn ghost" data-act="menu" data-id="${id}" aria-label="További műveletek">•••</button>${menuId===c.email?`<div class="menu">
           ${s==="uj"?`<button data-act="dmsent" data-id="${id}">DM-ben küldtem el</button>`:""}
@@ -2094,10 +2094,10 @@ document.addEventListener("click",async e=>{const id=e.target.dataset?.ldel;if(!
 /* ---------- Célok ---------- */
 function addDays(s,n){const d=new Date(s+"T12:00:00");d.setDate(d.getDate()+n);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function daysBetween(a,b){return Math.round((new Date(b+"T12:00:00")-new Date(a+"T12:00:00"))/864e5)}
-function didReply(c){const st=c.status||"uj";if(st==="valaszolt"||st==="ugyfel")return true;return st==="lezarva"&&!/nem válaszolt|nem jött válasz/i.test(c.note||"")}
+function didReply(c){if(c.bounced)return false;const st=c.status||"uj";if(st==="valaszolt"||st==="ugyfel")return true;return st==="lezarva"&&!/nem válaszolt|nem jött válasz/i.test(c.note||"")}
 function goalStats(){
   const all=[...contacts.values()];
-  const sentList=dm=>all.filter(c=>isDM(c)===dm&&(c.status||"uj")!=="uj"&&c.sentAt&&!/^Ugyanaz a cég/i.test(c.note||""));
+  const sentList=dm=>all.filter(c=>isDM(c)===dm&&(c.status||"uj")!=="uj"&&c.sentAt&&!c.bounced&&!/^Ugyanaz a cég/i.test(c.note||""));
   const sum=l=>({sent:l.length,rep:l.filter(didReply).length,cust:l.filter(c=>c.status==="ugyfel").length});
   const E=sum(sentList(false)),D=sum(sentList(true));
   const t14=addDays(today(),-14);
@@ -2229,7 +2229,7 @@ function catStats(){
     const ct=cityOf(c)||"–";x.city[ct]=(x.city[ct]||0)+1;
     if(s==="javasolt"){x.jav++;continue}
     x.n++;if(s==="uj")x.uj++;
-    if(c.sentAt){x.sent++;S++;if(didReply(c)){x.rep++;R++}if(s==="ugyfel")x.cust++}}
+    if(c.sentAt&&!c.bounced){x.sent++;S++;if(didReply(c)){x.rep++;R++}if(s==="ugyfel")x.cust++}}
   const p=(R+1)/(S+10),skip=skipSet();
   for(const [k,x] of Object.entries(st)){x.rate=(x.rep+5*p)/(x.sent+5);x.prio=skip.has(k)||k==="egyeb"?0:x.rate/(1+(x.uj+x.jav)/15)}
   return {st,p};
