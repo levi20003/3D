@@ -99,6 +99,23 @@ input[type=search]{flex:1 1 220px;min-width:0}
 .bulkbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
 .bulkbar.warn{border-color:var(--warn);background:var(--warn-soft)}
 .bulkbar span{flex:1 1 200px}
+.p-javasolt{background:var(--info-soft);color:var(--info)} .p-elvetve{background:var(--line);color:var(--muted)}
+.row.s-javasolt{border-left-color:var(--info)} .row.s-elvetve{opacity:.5}
+.i-javaslat .ik{background:var(--info-soft);color:var(--info)}
+.covwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table.cov{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+.cov th,.cov td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.cov th{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;position:sticky;top:0;background:var(--panel)}
+.cov th:first-child,.cov td:first-child{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1}
+.cov td.c0{color:var(--silver)}
+.cov td.cell{cursor:pointer}
+.cov td.cell:hover{background:var(--accent-soft)}
+.cov tr.skip td{opacity:.45}
+.prio{display:inline-block;height:6px;border-radius:3px;background:var(--accent);vertical-align:middle;margin-right:6px}
+.tgt{display:grid;gap:0}
+.tgt div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:8px 0;border-top:1px solid var(--line)}
+.tgt b{font-weight:600}
+.tgt .pill{align-self:start;margin-top:1px}
 .smlist{display:grid;gap:0;margin-top:10px}
 .smrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) minmax(0,1.3fr) minmax(0,.8fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
 .smrow input,.smrow select{width:100%;min-width:0;font-size:13.5px;padding:6px 8px}
@@ -209,6 +226,7 @@ input[type=search]{flex:1 1 220px;min-width:0}
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" id="t-todo" aria-selected="true" data-tab="todo">Teendőim</button>
     <button class="tab" role="tab" id="t-queue" aria-selected="false" data-tab="queue">Címlista</button>
+    <button class="tab" role="tab" id="t-cov" aria-selected="false" data-tab="cov">Lefedettség</button>
     <button class="tab" role="tab" id="t-orders" aria-selected="false" data-tab="orders">Pénzügy és rendelések</button>
     <button class="tab" role="tab" id="t-goals" aria-selected="false" data-tab="goals">Célok</button>
     <button class="tab" role="tab" id="t-plan" aria-selected="false" data-tab="plan">Tervező</button>
@@ -228,6 +246,28 @@ input[type=search]{flex:1 1 220px;min-width:0}
     <div class="bar-tools"><input type="search" id="q" placeholder="Keresés név, e-mail, város vagy megjegyzés szerint"></div>
     <div id="bulk"></div>
     <div class="list" id="list"><div class="empty">A címek az adatbázisból töltődnek be. Ha üres marad, az „Új címek” fülön adhatsz hozzá.</div></div>
+  </section>
+
+  <section id="p-cov" hidden>
+    <div class="grid2" style="margin-bottom:14px">
+      <div class="card">
+        <h3>Keresési terv</h3>
+        <p class="hint">A napi automatikus feladat ez alapján keres új címeket. Oda irányítom, ahol eddig jól válaszoltak és kevés a még kiküldetlen cím, plusz minden nap két kipróbálatlan témát. A talált címek „Javasolt” állapotba kerülnek, te hagyod jóvá őket.</p>
+        <label class="field"><span>Keresési terület</span><select id="cv-area"></select></label>
+        <label class="field"><span>Napi új javaslat legfeljebb</span><input type="number" id="cv-per" min="5" max="50" value="15"></label>
+        <div id="cv-tgt" class="tgt"></div>
+        <p class="small" id="cv-run" style="margin:0"></p>
+      </div>
+      <div class="card">
+        <h3>Új kategóriák</h3>
+        <p class="hint">Az „Egyéb” címekben ismétlődő szavakból. Egy kattintással külön kategória lesz belőlük, és saját sablont kaphatnak.</p>
+        <div id="cv-new"></div>
+        <h3 style="margin-top:10px">Még nem próbált kategóriák</h3>
+        <div id="cv-untried" class="small"></div>
+      </div>
+    </div>
+    <div class="covwrap"><table class="cov" id="cv-table"></table></div>
+    <p class="small" style="margin-top:8px">A cellára kattintva megnyílik az adott kategória és város címlistája. A „Keres” oszlopban kapcsolhatod ki azokat a kategóriákat, amelyekben ne keressen.</p>
   </section>
 
   <section id="p-orders" hidden>
@@ -767,7 +807,7 @@ const CATS = {
 };
 const DM_FOR={nyomda:"dm_b2b",dekor:"dm_b2b",ipar:"dm_b2b",epitoipar:"dm_b2b",mezogazd:"dm_b2b",epitesz:"dm_b2b",kisker:"dm",szolg:"dm_szolg",sport:"dm_sport",rendezveny:"dm_rendezveny",hobbi:"dm_hobbi",turizmus:"dm_turizmus",auto:"dm_b2b",lakber:"dm",civil:"dm_sport",allat:"dm_szolg"};
 const dmKey=c=>DM_FOR[c.cat]||"dm";
-const STATUS = {uj:"Új",elkuldve:"Elküldve",fu:"Follow-up esedékes",valaszolt:"Válaszolt",ugyfel:"Ügyfél",lezarva:"Lezárva"};
+const STATUS = {javasolt:"Javasolt",elvetve:"Elvetve",uj:"Új",elkuldve:"Elküldve",fu:"Follow-up esedékes",valaszolt:"Válaszolt",ugyfel:"Ügyfél",lezarva:"Lezárva"};
 const SIG_DEFAULT = "Üdvözlettel:\nLevente\nLevente 3D · nyomtatás, Szeged\n+36 70 596 1640\nlevente3d.szeged@gmail.com";
 const TPL_DEFAULT = {
   dekor:{subject:"Egyedi reklámtárgyak, logók és dekorációs elemek 3D nyomtatással – Szeged",
@@ -1224,7 +1264,7 @@ function counts(){
 function renderStats(){
   const {all,st,ma}=counts();const g=+settings.goal||30;
   $("#st-uj").textContent=st.uj||0;$("#st-fu").textContent=st.fu||0;$("#st-val").textContent=(st.valaszolt||0)+(st.ugyfel||0);
-  $("#st-all").textContent=all.length;$("#st-ma").textContent=ma+" / "+g;$("#st-bar").style.width=Math.min(100,ma/g*100)+"%";
+  $("#st-all").textContent=all.filter(c=>!PRE.has(c.status)).length;$("#st-ma").textContent=ma+" / "+g;$("#st-bar").style.width=Math.min(100,ma/g*100)+"%";
 }
 function inGroup(c){return fGroup==="dm"?isDM(c):!isDM(c)}
 function cityOf(c){return (c.city||"").trim()}
@@ -1234,11 +1274,14 @@ function resolveCat(x){x=(x||"").trim();if(!x)return{cat:"egyeb"};const k=x.toLo
   const slug="x-"+k.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,24);
   if(CATS[slug])return{cat:slug,catLabel:CATS[slug].label};
   const label=x.charAt(0).toUpperCase()+x.slice(1);CATS[slug]={label};return{cat:slug,catLabel:label}}
-function matchS(c){if(!inGroup(c))return false;const s=effStatus(c);return fStatus==="all"||(fStatus==="dmq"?(s==="uj"||s==="fu"):s===fStatus)}
+const PRE=new Set(["javasolt","elvetve"]);
+function matchS(c){const s=effStatus(c);if(fStatus==="javasolt"||fStatus==="elvetve")return s===fStatus;if(!inGroup(c)||PRE.has(s))return false;return fStatus==="all"||(fStatus==="dmq"?(s==="uj"||s==="fu"):s===fStatus)}
 function renderChips(){
   const {all,st}=counts();
   const sOpts=[["uj","Kiküldendő"],["fu",fGroup==="dm"?"Emlékeztető":"Follow-up"],["elkuldve","Elküldve"],["valaszolt","Válaszolt"],["ugyfel","Ügyfél"],["lezarva","Lezárva"],["all","Mind"]];
-  const gAll=all.filter(inGroup),gst={};gAll.forEach(c=>{const x=effStatus(c);gst[x]=(gst[x]||0)+1});
+  const nJ=all.filter(c=>c.status==="javasolt").length,nX=all.filter(c=>c.status==="elvetve").length;
+  if(nJ)sOpts.unshift(["javasolt","Javaslatok"]);if(nX)sOpts.push(["elvetve","Elvetett"]);
+  const gAll=all.filter(c=>inGroup(c)&&!PRE.has(c.status)),gst={javasolt:nJ,elvetve:nX};gAll.forEach(c=>{const x=effStatus(c);gst[x]=(gst[x]||0)+1});
   const nE=all.filter(c=>!isDM(c)).length,nD=all.length-nE;
   $("#groupChips").innerHTML=`<button class="chip" data-g="email" aria-pressed="${fGroup==="email"}">E-mail<span class="c">${nE}</span></button><button class="chip" data-g="dm" aria-pressed="${fGroup==="dm"}">Privát üzenet (Instagram, Facebook)<span class="c">${nD}</span></button>`;
   $("#statusChips").innerHTML=sOpts.map(([k,l])=>`<button class="chip" data-s="${k}" aria-pressed="${fStatus===k}">${l}<span class="c">${k==="all"?gAll.length:(gst[k]||0)}</span></button>`).join("");
@@ -1254,16 +1297,17 @@ function renderChips(){
 function renderList(){
   const q=$("#q").value.trim().toLowerCase();
   let rows=[...contacts.values()].filter(c=>matchS(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&(!q||[c.name,c.email,c.city,c.note,c.hook].join(" ").toLowerCase().includes(q)));
-  rows.sort((a,b)=>{const o=["fu","uj","valaszolt","ugyfel","elkuldve","lezarva"];return o.indexOf(effStatus(a))-o.indexOf(effStatus(b))||catRank(a)-catRank(b)||(b.sentAt||"").localeCompare(a.sentAt||"")||displayName(a).localeCompare(displayName(b),"hu")});
+  rows.sort((a,b)=>{const o=["javasolt","fu","uj","valaszolt","ugyfel","elkuldve","lezarva","elvetve"];return o.indexOf(effStatus(a))-o.indexOf(effStatus(b))||catRank(a)-catRank(b)||(b.sentAt||"").localeCompare(a.sentAt||"")||displayName(a).localeCompare(displayName(b),"hu")});
   if(!contacts.size){$("#list").innerHTML=`<div class="empty">${db?"Még nincs cím. Az „Új címek” fülön adhatsz hozzá.":"Az adatbázis ebben a nézetben nem érhető el. Nyisd meg az oldalt a claude.ai-on bejelentkezve."}</div>`;return}
   if(!rows.length){$("#list").innerHTML=`<div class="empty">Ebben a szűrésben nincs cím.</div>`;return}
-  const total=rows.length;rows=rows.slice(0,listLimit);
-  $("#list").innerHTML=rows.map(c=>{
+  const total=rows.length;const jRows=fStatus==="javasolt"?rows.map(c=>c.email):[];lastJRows=jRows;rows=rows.slice(0,listLimit);
+  $("#list").innerHTML=(jRows.length?`<div class="bulkbar"><span><b>${jRows.length} javasolt cím</b> a napi keresésből. Nézd meg a forrást, és hagyd jóvá, amit érdemes megkeresni. Az elvetettek nem jönnek vissza.</span><button class="btn primary" type="button" data-jall="1">Mind jóváhagyása (${jRows.length})</button></div>`:"")+rows.map(c=>{
     const s=effStatus(c);const id=esc(c.email);
     const via=c.channel==="dm"?" · DM":"";const when=(c.followup2At?`2. follow-up: ${huDate(c.followup2At)}`:c.followupAt?`1. follow-up: ${huDate(c.followupAt)}`:c.sentAt?`Küldve: ${huDate(c.sentAt)} (${daysSince(c.sentAt)} napja)`:"")+(c.sentAt?via:"");
-    let main="";
-    const canSend=!!mcpNs, pend=pendingSend===c.email, busy=sending.has(c.email);
-    if(s==="uj"&&isDM(c))main=`<button class="btn primary" data-act="copydm" data-id="${id}">DM szöveg másolása</button>${dmLinks(c)}<button class="btn" data-act="dmsent" data-id="${id}">Elküldtem DM-ben</button>`;
+    let main="";const canSend=!!mcpNs, pend=pendingSend===c.email, busy=sending.has(c.email);const srcUrl=((c.source||"").match(/https?:\/\/[^\s,]+/)||[])[0];
+    if(s==="javasolt")main=`<button class="btn primary" data-act="approve" data-id="${id}">Jóváhagyás</button><button class="btn" data-act="reject" data-id="${id}">Elvetés</button>${srcUrl?`<a class="btn ghost" href="${esc(srcUrl)}" target="_blank" rel="noopener">Forrás</a>`:""}`;
+    else if(s==="elvetve")main=`<button class="btn" data-act="approve" data-id="${id}">Mégis jóváhagyom</button>`;
+    else if(s==="uj"&&isDM(c))main=`<button class="btn primary" data-act="copydm" data-id="${id}">DM szöveg másolása</button>${dmLinks(c)}<button class="btn" data-act="dmsent" data-id="${id}">Elküldtem DM-ben</button>`;
     else if(s==="fu"&&isDM(c))main=`<button class="btn primary" data-act="copydmfu" data-id="${id}">Emlékeztető másolása</button>${dmLinks(c)}<button class="btn" data-act="fusent" data-id="${id}">Emlékeztető elküldve</button>`;
     else if(s==="uj")main=canSend?`<button class="btn primary${pend?" confirm":""}" data-act="send" data-id="${id}"${busy?" disabled":""}>${busy?"Küldés…":pend?"Biztos? Küldés most":"Küldés"}</button><a class="btn ghost" href="${esc(gmailUrl(c))}" target="_blank" rel="noopener" title="Megnyitás Gmailben szerkesztéshez">Gmailben</a>`
       :`<a class="btn primary" href="${esc(gmailUrl(c))}" target="_blank" rel="noopener">Megnyitás Gmailben</a><button class="btn" data-act="sent" data-id="${id}">Elküldtem</button>`;
@@ -1283,7 +1327,7 @@ function renderList(){
         <div class="acts" style="justify-content:flex-start"><button class="btn" data-act="copybody" data-id="${id}">Szöveg másolása</button><button class="btn" data-act="copysubj" data-id="${id}">Tárgy másolása</button><button class="btn" data-act="copydm" data-id="${id}">DM szöveg másolása</button><span class="small">Forrás: ${esc(c.source||"–")}</span></div>
       </div>`:"";
     return `<div class="row s-${s}">
-      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${c.note?`<div class="note">${esc(c.note)}</div>`:""}</div>
+      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${c.note?`<div class="note">${esc(c.note)}</div>`:""}</div>
       <div class="meta cat">${esc(CATS[c.cat]?.label||c.cat)}<br>${esc(c.city||"")}</div>
       <div class="meta"><span class="pill p-${s}">${s==="fu"?fuStage(c)+". follow-up esedékes":STATUS[s]}</span><br>${when}</div>
       <div class="acts">${main}<button class="btn ghost" data-act="open" data-id="${id}" aria-expanded="${openId===c.email}">${openId===c.email?"Bezár":"Részletek"}</button>
@@ -1300,7 +1344,7 @@ function renderList(){
 const LIST_STEP=150;let listLimit=LIST_STEP,qT,rafR=0;
 function scheduleRender(){if(rafR)return;rafR=requestAnimationFrame(()=>{rafR=0;renderAll()})}
 document.addEventListener("click",e=>{if(e.target.dataset?.more){listLimit+=LIST_STEP;renderList()}});
-function renderAll(){renderStats();renderChips();renderList();try{renderBulk()}catch(e){};try{renderGoals()}catch(e){};if(typeof renderInbox==="function"&&$("#tInbox"))try{renderInbox()}catch(e){}}
+function renderAll(){renderStats();renderChips();renderList();try{maybeSavePlan();if(!$("#p-cov").hidden)renderCov()}catch(e){};try{renderBulk()}catch(e){};try{renderGoals()}catch(e){};if(typeof renderInbox==="function"&&$("#tInbox"))try{renderInbox()}catch(e){}}
 
 async function save(c,patch){
   const next={...c,...patch};contacts.set(c.email,next);renderAll();
@@ -1311,9 +1355,9 @@ async function save(c,patch){
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-act],[data-s],[data-c],[data-g],[data-tab],[data-go]");
   if(!b){if(menuId){menuId=null;renderList()}return}
-  if(b.dataset.tab){document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===b.dataset.tab));["queue","orders","goals","plan","calc","gen","todo","tpl","add","set"].forEach(k=>$("#p-"+k).hidden=k!==b.dataset.tab);if(b.dataset.tab==="goals")renderGoals();if(b.dataset.tab==="gen"&&window.genOpen)window.genOpen();return}
+  if(b.dataset.tab){document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===b.dataset.tab));["queue","cov","orders","goals","plan","calc","gen","todo","tpl","add","set"].forEach(k=>$("#p-"+k).hidden=k!==b.dataset.tab);if(b.dataset.tab==="cov")renderCov();if(b.dataset.tab==="goals")renderGoals();if(b.dataset.tab==="gen"&&window.genOpen)window.genOpen();return}
   if(b.dataset.g){listLimit=LIST_STEP;fGroup=b.dataset.g;fStatus="uj";fCat="all";sel.clear();renderAll();return}
-  if(b.dataset.go){listLimit=LIST_STEP;const g=b.dataset.go;fGroup=g==="dmq"?"dm":"email";fStatus=g==="ma"?"elkuldve":g==="dmq"?"uj":g;fCat="all";$("#t-queue").click();renderAll();return}
+  if(b.dataset.go){listLimit=LIST_STEP;const g=b.dataset.go;fGroup=g==="dmq"?"dm":"email";if(g==="javasolt")fCity="all";fStatus=g==="ma"?"elkuldve":g==="dmq"?"uj":g;fCat="all";$("#t-queue").click();renderAll();return}
   if(b.dataset.s){listLimit=LIST_STEP;fStatus=b.dataset.s;fCat="all";renderAll();return}
   if(b.dataset.c){listLimit=LIST_STEP;fCat=b.dataset.c;renderAll();return}
   const c=contacts.get(b.dataset.id);if(!c)return;
@@ -1335,6 +1379,8 @@ document.addEventListener("click",async e=>{
   if(a==="unfu"){await save(c,c.followup2At?{followup2At:""}:{followupAt:""});toast("Follow-up visszavonva",undo)}
   if(a==="copydm")return copy(fill(tplFor(dmKey(c)).body,c),"DM szöveg kimásolva");
   if(a==="copydmfu")return copy(fill(tplFor("dm_fu").body,c),"Emlékeztető kimásolva");
+  if(a==="approve"){await save(c,{status:"uj",approvedAt:today()});toast("Jóváhagyva: "+displayName(c),undo);return}
+  if(a==="reject"){await save(c,{status:"elvetve",rejectedAt:today()});toast("Elvetve: "+displayName(c),undo);return}
   if(a==="set"){const v=b.dataset.v;const p={status:v};if(v==="uj"){p.sentAt="";p.followupAt=""}if(v==="elkuldve"&&!c.sentAt)p.sentAt=today();await save(c,p);toast(STATUS[v]+" állapotra állítva")}
   if(a==="cat"){openId=c.email;renderList();document.getElementById("cs-"+c.email)?.focus();return}
   if(a==="del"){if(b.dataset.sure){contacts.delete(c.email);renderAll();try{await db?.collection("contacts").doc(c.email).delete();toast("Törölve")}catch(e){toast("Törlés nem sikerült")}}else{menuId=c.email;renderList();const x=document.querySelector(`.menu [data-act="del"][data-id="${CSS.escape(c.email)}"]`);if(x){x.dataset.sure="1";x.textContent="Biztosan törlöd? Kattints újra"}}}
@@ -1735,6 +1781,8 @@ function renderInbox(){
   if(fu)items.push({k:"fu",title:`${fu} follow-up esedékes${fu>fuToday?` · ma ${fuToday} belőle`:""}`,detail:(fu>fuToday?`Mai adag a ${+settings.goal||30}-as célból: előbb ${fuToday} follow-up, ${ujToday?`utána ${ujToday} új cím. `:"az új címek holnap jönnek. "}`:"")+"Kategóriára szabott emlékeztető a levél szálában (6 nap után), majd egy rövid utolsó levél (+8 nap). A legjobban válaszoló kategóriák vannak elöl.",go:"fu"});
   const uj=cs.filter(c=>effStatus(c)==="uj").length;const sentToday=cs.filter(c=>c.sentAt===today()).length;const goal=+settings.goal||30;
   if(uj&&sentToday<goal)items.push({k:"kuld",title:`Mai kiküldés: ${sentToday} / ${Math.min(goal,uj+sentToday)}${fu&&ujToday<uj?(ujToday?` · ma ${ujToday} jut rá`:" · holnap jön"):""}`,detail:`${uj} cím vár kiküldésre. Egyenként, csatolmány nélkül.`,go:"uj"});
+  const nJav=cs.filter(c=>c.status==="javasolt").length;
+  if(nJav)items.push({k:"javaslat",title:`${nJav} új cím vár jóváhagyásra`,detail:"A napi keresés találta őket. Nézd át a forrást, és hagyd jóvá, amit érdemes megkeresni.",go:"javasolt"});
   const dmq=cs.filter(c=>isDM(c)&&["uj","fu"].includes(effStatus(c))).length;
   if(dmq)items.push({k:"dm",title:`${dmq} cég vár DM-re`,detail:"Facebookon vagy Instagramon érhetők el. A pult kimásolja a cégre szabott üzenetet és megnyitja a profilt, te küldöd el.",go:"dmq"});
   const os=[...orders.values()];
@@ -1745,7 +1793,7 @@ function renderInbox(){
   os.filter(o=>o.status==="keres").forEach(o=>items.push({k:"ajanlat",title:`Ajánlatkérés érkezett: ${o.company}`,detail:`${o.item||""}${o.qty?" · "+o.qty+" db":""}${o.draftUrl?" · Claude válaszpiszkozatot készített, nézd át és küldd el, utána állítsd Ajánlat kiküldve-re.":" · Számold ki a Tervezőben, és küldj ajánlatot."}`,link:o.draftUrl||"",tab:"orders"}));
   os.filter(o=>o.status==="fizetve"&&!o.thanksDone).forEach(o=>items.push({k:"koszon",title:`Köszönd meg és kérj véleményt: ${o.company}`,detail:`${o.item} · A levél kész, nézd át és küldd el.${o.email?"":" Az ügyfél e-mail-címét írd be a címzetthez."}`,link:GM(o.email,"Köszönöm a rendelést – Levente 3D",thanksText(o)),oid:o.id,of:"thanksDone"}));
   os.filter(o=>o.status==="fizetve"&&!o.reorderDone&&daysSince(o.paidAt||o.date)>=45).forEach(o=>items.push({k:"ujra",title:`Kérdezz rá az újrarendelésre: ${o.company}`,detail:`${daysSince(o.paidAt||o.date)} napja fizetett: ${o.qty} db ${o.item}`,link:GM(o.email,"Kellene még belőle? – Levente 3D",reorderText(o)),oid:o.id,of:"reorderDone"}));
-  const label={koszon:"Köszönet",ujra:"Újrarendelés",valasz:"Válaszolj",fu:"Follow-up",dm:"DM",havi:"Havi zárás",kuld:"Kiküldés",ajanlat:"Ajánlat",gyart:"Gyártás",penz:"Pénz"};
+  const label={javaslat:"Új címek",koszon:"Köszönet",ujra:"Újrarendelés",valasz:"Válaszolj",fu:"Follow-up",dm:"DM",havi:"Havi zárás",kuld:"Kiküldés",ajanlat:"Ajánlat",gyart:"Gyártás",penz:"Pénz"};
   const shownInbox=items.filter(i=>i.id||i.oid||!isAcked(ackKey(i)));
   $("#tInbox").innerHTML=`<div class="card"><h3>Mire kell ma válaszolnod, mit kell megcsinálnod</h3>${shownInbox.length?shownInbox.map(i=>`<div class="irow i-${i.k}"><span class="pill ik">${label[i.k]}</span><div class="who"><b>${esc(i.title)}</b>${i.detail?`<div class="note">${esc(i.detail)}</div>`:""}</div><div class="acts">${i.link?`<a class="btn primary" href="${esc(i.link)}" target="_blank" rel="noopener">Megnyitás Gmailben</a>`:""}${i.id?`<button class="btn" data-tdone="${esc(i.id)}">Kész</button>`:(i.oid?"":`<button class="btn" data-ack="${esc(ackKey(i))}" title="Nem aktuális vagy már megvan, eltűnik a listából">Kész</button>`)}${i.oid?`<button class="btn" data-odone="${esc(i.oid)}" data-of="${i.of}">Elküldtem</button>`:""}${i.go?`<button class="btn" data-go="${i.go}">Megnyitás</button>`:""}${i.tab?`<button class="btn" data-tab="${i.tab}">Megnyitás</button>`:""}</div></div>`).join(""):`<p class="small">Most nincs semmi sürgős. Nincs megválaszolatlan levél, esedékes follow-up vagy nyitott rendelés.</p>`}</div>`;
 }
@@ -1970,6 +2018,128 @@ document.addEventListener("click",e=>{
     saveGoals(g)}
 });
 
+/* ---------- Lefedettség és keresési terv ---------- */
+const AREAS=[
+  {n:"Szeged és környéke",c:["Szeged","Hódmezővásárhely","Makó","Szentes","Csongrád","Kistelek","Mórahalom","Sándorfalva","Algyő","Deszk"]},
+  {n:"Békés vármegye",c:["Békéscsaba","Orosháza","Gyula","Szarvas","Békés"]},
+  {n:"Bács-Kiskun vármegye",c:["Kecskemét","Kiskunhalas","Kiskunfélegyháza","Baja","Kiskőrös"]},
+  {n:"Budapest",c:["Budapest"]}];
+// Lakosság ezer főben: a város "telítettsége" = címek / lakosság, a legkevésbé lefedett városba megy a keresés.
+const POP={"Szeged":160,"Hódmezővásárhely":43,"Makó":22,"Szentes":27,"Csongrád":15,"Kistelek":7,"Mórahalom":6,"Sándorfalva":8,"Algyő":5,"Deszk":4,"Békéscsaba":57,"Orosháza":27,"Gyula":30,"Szarvas":16,"Békés":19,"Kecskemét":108,"Kiskunhalas":27,"Kiskunfélegyháza":29,"Baja":34,"Kiskőrös":13,"Budapest":1700};
+const NICHES={
+  nyomda:["nyomda","címkenyomda","csomagolóanyag gyártó","könyvkötészet","szitanyomás"],
+  dekor:["reklámstúdió","lézergravírozás","matricázás","reklámtábla készítés","dekorációs stúdió"],
+  ipar:["gépgyártó","műanyagipari cég","fémmegmunkálás","CNC megmunkálás","laboratórium","elektronikai gyártás"],
+  epitoipar:["asztalos","villanyszerelő","lakatos","nyílászáró","burkoló","épületgépész"],
+  mezogazd:["kertészet","faiskola","méhészet","pincészet","mezőgazdasági gépjavító","gazdabolt"],
+  epitesz:["építésziroda","belsőépítész","ingatlaniroda","makettkészítő"],
+  oktatas:["általános iskola","szakképző iskola","óvoda","múzeum","nyelviskola"],
+  sport:["sportegyesület","úszóklub","kosárlabda klub","lovarda","harcművészeti egyesület"],
+  rendezveny:["esküvőszervező","rendezvényszervező","dekoratőr","fotobox","lufidekoráció"],
+  kisker:["ajándékbolt","könyvesbolt","játékbolt","virágbolt","papír-írószer bolt","kézműves bolt"],
+  turizmus:["szuvenír bolt","tourinform","látogatóközpont","idegenvezetés"],
+  hobbi:["társasjáték bolt","szabadulószoba","modellező bolt","horgászbolt","hangszerbolt","fotóstúdió"],
+  szolg:["fogtechnikai labor","optika","kozmetikai szalon","szálláshely","gyógytorna","fodrászat"],
+  lakber:["lakberendezés","bútorüzlet","konyhastúdió","lámpabolt"],
+  civil:["alapítvány","egyesület","művelődési ház","színház","könyvtár"],
+  allat:["állatorvos","kutyakozmetika","állateledel bolt","akvarisztika","lovarda"],
+  auto:["kerékpárbolt","motorosbolt"], vendeglato:["cukrászda","kávézó"]
+};
+const SKIP_DEFAULT=["vendeglato","auto"];
+const SEARCH_RULES=[
+  "Minden olyan e-mail címet vegyél fel, amelyet a cég maga tesz közzé (weboldal Kapcsolat vagy Impresszum, Google Térkép adatlap, Facebook névjegy), nem csak info@ kezdetűt. Csak ténylegesen látott címet, soha ne tippelj.",
+  "Cégenként egy címet: ha több van, az általános vagy az értékesítési címet. Ha a domain vagy a doc_id már szerepel a contacts-ban (az elvetve állapotúakat is beleértve), hagyd ki.",
+  "Ha a cégnek nincs e-mail címe, de van Facebook- vagy Instagram-oldala, DM-kapcsolatként vedd fel: doc_id dm-<név>-<város> (kisbetű, kötőjel), email mező ugyanez, channel: dm, fb vagy ig mező a profil linkjével.",
+  "Új rekord: status javasolt, cat, city, name, hook (egy mondat arról, mit csinálnak), source (az oldal URL-je és a dátum). Levente a pultban hagyja jóvá.",
+  "Magánszemély címét ne vedd fel, és tartsd be a settings/blocklist tiltólistát meg a skill tiltólistáját.",
+  "Futás végén írd be a settings/search dokumentum lastRun mezőjébe: {date, found, empty: [azok a keresések, amelyekre nem volt új találat]}."];
+let searchDoc=null,planT=null,lastJRows=[];
+const areaN=()=>Math.min(AREAS.length,Math.max(1,+settings.area||1));
+const areaCities=()=>AREAS.slice(0,areaN()).flatMap(a=>a.c);
+const skipSet=()=>new Set(settings.searchSkip||SKIP_DEFAULT);
+function dayIdx(){const d=new Date();return Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)}
+function catStats(){
+  const st={};let S=0,R=0;
+  for(const c of contacts.values()){const s=c.status||"uj";if(s==="elvetve")continue;const k=c.cat||"egyeb";
+    const x=st[k]||(st[k]={n:0,uj:0,jav:0,sent:0,rep:0,cust:0,city:{}});
+    const ct=cityOf(c)||"–";x.city[ct]=(x.city[ct]||0)+1;
+    if(s==="javasolt"){x.jav++;continue}
+    x.n++;if(s==="uj")x.uj++;
+    if(c.sentAt){x.sent++;S++;if(didReply(c)){x.rep++;R++}if(s==="ugyfel")x.cust++}}
+  const p=(R+1)/(S+10),skip=skipSet();
+  for(const [k,x] of Object.entries(st)){x.rate=(x.rep+5*p)/(x.sent+5);x.prio=skip.has(k)||k==="egyeb"?0:x.rate/(1+(x.uj+x.jav)/15)}
+  return {st,p};
+}
+function buildPlan(){
+  const {st,p}=catStats(),skip=skipSet(),cities=areaCities(),day=dayIdx();
+  const E=k=>st[k]||{n:0,uj:0,jav:0,sent:0,rep:0,cust:0,city:{},rate:p,prio:p};
+  const keys=Object.keys(CATS).filter(k=>k!=="egyeb"&&!skip.has(k));
+  const allCity={};for(const c of contacts.values()){const t=cityOf(c);if(t)allCity[t]=(allCity[t]||0)+1}
+  const need=(x,c)=>(POP[c]||10)/(1+(x.city[c]||0)+(allCity[c]||0)/10);
+  const citiesFor=(x,n)=>{const pool=[...cities].sort((a,b)=>need(x,b)-need(x,a)).slice(0,Math.max(n,3));
+    return [...new Set(Array.from({length:n},(_,i)=>pool[(day+i)%pool.length]))]};
+  const niche=(k,i)=>{const L=NICHES[k]||[CATS[k]?.label||k];return L[(day+i)%L.length]};
+  const ranked=keys.map(k=>[k,E(k)]).filter(([,x])=>x.sent>=3).sort((a,b)=>b[1].prio-a[1].prio).slice(0,4);
+  const untried=keys.filter(k=>E(k).sent<3).sort((a,b)=>E(a).n-E(b).n);
+  const explore=[...new Set([untried[day%(untried.length||1)],untried[(day+1)%(untried.length||1)]])].filter(Boolean);
+  const T=[];
+  ranked.forEach(([k,x],ri)=>citiesFor(x,2).forEach((ct,i)=>T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,ri+i)+" "+ct,why:`${x.rep}/${x.sent} válaszolt (${Math.round(x.rep/x.sent*100)}%), ${x.uj+x.jav} cím vár kiküldésre`})));
+  explore.forEach((k,i)=>{const ct=citiesFor(E(k),1)[0]||cities[0];T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,i)+" "+ct,why:"Még kipróbálatlan kategória"})});
+  return {area:AREAS.slice(0,areaN()).map(a=>a.n).join(" + "),cities,perRun:Math.max(5,Math.min(50,+settings.perRun||15)),skip:[...skip],targets:T,rules:SEARCH_RULES};
+}
+function maybeSavePlan(){if(!db||!contacts.size)return;clearTimeout(planT);planT=setTimeout(async()=>{
+  const pl=buildPlan();if(searchDoc&&JSON.stringify(searchDoc.plan)===JSON.stringify(pl))return;
+  const d=new Date(),upd=today()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  try{await db.doc("settings/search").set({...(searchDoc||{}),plan:pl,updated:upd})}catch(e){}},3000)}
+const STOPW=new Set(["szeged","szegedi","hungary","magyar","magyarorszag","studio","center","centrum","company","group","szolgaltato","kereskedelmi","kozpont","gmail","freemail","citromail"]);
+function newCatIdeas(){
+  const m=new Map();let n=0;
+  for(const c of contacts.values()){if(c.cat!=="egyeb"||c.status==="elvetve")continue;n++;
+    const dom=String(c.email).includes("@")?c.email.split("@")[1].split(".")[0]:"";
+    for(const w of new Set(((c.name||"")+" "+dom).toLowerCase().match(/[a-záéíóöőúüű]{5,}/g)||[])){const k=deacc(w);if(STOPW.has(k))continue;
+      const e=m.get(k)||{w,ids:new Set()};e.ids.add(c.email);m.set(k,e)}}
+  return {n,ideas:[...m.values()].filter(e=>e.ids.size>=3).sort((a,b)=>b.ids.size-a.ids.size).slice(0,6)};
+}
+function renderCov(){
+  const {st}=catStats(),skip=skipSet(),cities=areaCities(),pl=buildPlan();
+  $("#cv-area").innerHTML=AREAS.map((a,i)=>`<option value="${i+1}"${i+1===areaN()?" selected":""}>${esc(AREAS.slice(0,i+1).map(x=>x.n).join(" + "))}</option>`).join("");
+  if(document.activeElement!==$("#cv-per"))$("#cv-per").value=pl.perRun;
+  $("#cv-tgt").innerHTML=pl.targets.map(t=>`<div><span class="pill p-uj">${esc(t.city)}</span><span><b>${esc(t.q)}</b> · ${esc(t.label)}<br><span class="small">${esc(t.why)}</span></span></div>`).join("");
+  const lr=searchDoc?.lastRun;
+  $("#cv-run").textContent=(searchDoc?.updated?"Terv mentve: "+searchDoc.updated+". ":"")+(lr?`Utolsó keresés: ${lr.date||"?"}, ${lr.found??"?"} új javaslat${lr.empty&&lr.empty.length?". Nem volt új találat: "+lr.empty.join(", "):""}.`:"A napi feladat még nem futott ezzel a tervvel.");
+  const Z={n:0,uj:0,jav:0,sent:0,rep:0,cust:0,city:{},prio:0};
+  const keys=Object.keys(CATS).filter(k=>st[k]||k!=="egyeb").sort((a,b)=>((st[b]||Z).prio-(st[a]||Z).prio)||((st[b]||Z).n-(st[a]||Z).n));
+  const maxP=Math.max(...keys.map(k=>(st[k]||Z).prio),1e-6),showC=cities.slice(0,12);
+  const tot={n:0,jav:0,sent:0,rep:0,cust:0,city:{}};
+  $("#cv-table").innerHTML=`<thead><tr><th>Kategória</th><th>Prioritás</th><th>Címek</th><th>Javasolt</th><th>Kiküldve</th><th>Válasz</th><th>Ügyfél</th>${showC.map(c=>`<th>${esc(c)}</th>`).join("")}<th>Többi</th><th>Keres</th></tr></thead><tbody>`+keys.map(k=>{
+    const x=st[k]||Z;const inArea=showC.reduce((a,c)=>a+(x.city[c]||0),0),allN=x.n+x.jav;
+    ["n","jav","sent","rep","cust"].forEach(f=>tot[f]+=x[f]);showC.forEach(c=>tot.city[c]=(tot.city[c]||0)+(x.city[c]||0));
+    return `<tr class="${skip.has(k)?"skip":""}"><td>${esc(CATS[k].label)}</td><td><span class="prio" style="width:${Math.round(48*x.prio/maxP)}px"></span></td><td>${x.n}</td><td class="${x.jav?"":"c0"}">${x.jav||"·"}</td><td>${x.sent}</td><td>${x.sent?`${x.rep} · ${Math.round(x.rep/x.sent*100)}%`:"–"}</td><td class="${x.cust?"":"c0"}">${x.cust||"·"}</td>`+
+      showC.map(c=>`<td class="cell${x.city[c]?"":" c0"}" data-cc="${esc(k)}|${esc(c)}">${x.city[c]||"·"}</td>`).join("")+
+      `<td class="cell${allN-inArea>0?"":" c0"}" data-cc="${esc(k)}|all">${Math.max(0,allN-inArea)||"·"}</td><td>${k==="egyeb"?"":`<input type="checkbox" data-cskip="${esc(k)}"${skip.has(k)?"":" checked"} aria-label="Keresés ebben a kategóriában">`}</td></tr>`}).join("")+
+    `<tr><td><b>Összesen</b></td><td></td><td><b>${tot.n}</b></td><td>${tot.jav}</td><td>${tot.sent}</td><td>${tot.sent?`${tot.rep} · ${Math.round(tot.rep/tot.sent*100)}%`:"–"}</td><td>${tot.cust}</td>${showC.map(c=>`<td>${tot.city[c]||"·"}</td>`).join("")}<td></td><td></td></tr></tbody>`;
+  const ni=newCatIdeas();
+  $("#cv-new").innerHTML=ni.ideas.length?ni.ideas.map(e=>`<div class="bar-tools" style="margin:6px 0"><span style="flex:1"><b>${esc(e.w.charAt(0).toUpperCase()+e.w.slice(1))}</b> <span class="small">· ${e.ids.size} cím az Egyébben</span></span><button class="btn" type="button" data-newcat="${esc(e.w)}">Kategória létrehozása</button></div>`).join(""):`<p class="small" style="margin:0">Most nincs ismétlődő téma az Egyéb címek között (${ni.n} cím). Ha egy cégtípusból legalább 3 összegyűlik, itt megjelenik.</p>`;
+  const untried=Object.keys(CATS).filter(k=>k!=="egyeb"&&!skip.has(k)&&(st[k]||Z).sent<3);
+  $("#cv-untried").innerHTML=untried.length?untried.map(k=>`${esc(CATS[k].label)} <span style="color:var(--silver)">(${(st[k]||Z).n+(st[k]||Z).jav} cím)</span>`).join(" · ")+`<br>A terv naponta kettőt kipróbál, kis témákra bontva (pl. ${esc((NICHES[untried[0]]||[]).slice(0,3).join(", "))}).`:"Minden kategóriát kipróbáltál már legalább 3 levéllel.";
+}
+async function saveSettings(msg){try{await db?.doc("settings/main").set(settings);if(msg)toast(msg)}catch(e){toast("Mentés nem sikerült")}}
+$("#cv-area").addEventListener("change",e=>{settings.area=+e.target.value;renderCov();saveSettings("Keresési terület: "+AREAS.slice(0,areaN()).map(a=>a.n).join(" + "));maybeSavePlan()});
+$("#cv-per").addEventListener("change",e=>{settings.perRun=Math.max(5,Math.min(50,+e.target.value||15));renderCov();saveSettings("Mentve");maybeSavePlan()});
+document.addEventListener("change",e=>{const k=e.target.dataset?.cskip;if(!k)return;const s=skipSet();e.target.checked?s.delete(k):s.add(k);settings.searchSkip=[...s];renderCov();saveSettings(e.target.checked?"Ebben is keres: "+CATS[k].label:"Ebben nem keres: "+CATS[k].label);maybeSavePlan()});
+document.addEventListener("click",async e=>{
+  const cc=e.target.closest?.("[data-cc]");
+  if(cc){const [k,ct]=cc.dataset.cc.split("|");fGroup="email";fStatus="all";fCat=k;fCity=ct==="all"?"all":ct;listLimit=LIST_STEP;$("#t-queue").click();renderAll();return}
+  if(e.target.dataset?.jall){const ids=lastJRows.slice();e.target.disabled=true;
+    for(let i=0;i<ids.length;i+=8)await Promise.all(ids.slice(i,i+8).map(async id=>{const c=contacts.get(id);if(!c||c.status!=="javasolt")return;const nx={...c,status:"uj",approvedAt:today()};contacts.set(id,nx);try{await db?.collection("contacts").doc(id).set(nx)}catch(err){}}));
+    fStatus="uj";renderAll();toast(ids.length+" cím jóváhagyva, bekerültek a kiküldendők közé");return}
+  const w=e.target.dataset?.newcat;
+  if(w){const idea=newCatIdeas().ideas.find(x=>x.w===w);if(!idea)return;const r=resolveCat(w.charAt(0).toUpperCase()+w.slice(1));
+    const patch={cat:r.cat,catLabel:CATS[r.cat].label};e.target.disabled=true;
+    await Promise.all([...idea.ids].map(async id=>{const c=contacts.get(id);if(!c)return;const nx={...c,...patch};contacts.set(id,nx);try{await db?.collection("contacts").doc(id).set(nx)}catch(err){}}));
+    fillCatSelect();renderAll();renderCov();renderTpl();toast(`Új kategória: ${patch.catLabel} (${idea.ids.size} cím). A Sablonok fülön saját levelet is írhatsz neki.`)}
+});
+
 renderTpl();renderSettings();renderAll();renderOrders();renderLedger();renderRates();renderCalc();renderPlan();renderTodos();renderGoals();
 (async()=>{
   window.claude?.use?.("mcp").then(m=>{mcpNs=m||null;renderList();renderBulk()}).catch(()=>{});
@@ -1980,6 +2150,7 @@ renderTpl();renderSettings();renderAll();renderOrders();renderLedger();renderRat
   db.collection("templates").onSnapshot(s=>{tpls={};s.docs.forEach(d=>tpls[d.id]=d.data());if(!document.activeElement?.closest?.("[data-tpl]"))renderTpl();renderList()},()=>{});
   db.doc("settings/main").onSnapshot(s=>{if(s.exists){settings={...settings,...s.data()};if(!document.activeElement?.closest?.("#setForm"))renderSettings();if(!document.activeElement?.closest?.(".rates"))renderRates();renderAll();renderCalc()}},()=>{});
   db.collection("orders").onSnapshot(s=>{orders=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));renderOrders();renderInbox();try{renderGoals()}catch(e){}},()=>{});
+  db.doc("settings/search").onSnapshot(s=>{searchDoc=s.exists?s.data():null;if(!$("#p-cov").hidden)renderCov()},()=>{});
   db.doc("settings/blocklist").onSnapshot(s=>{if(s.exists)blocklist=s.data()},()=>{});
   db.collection("ledger").onSnapshot(s=>{ledger=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));renderLedger();try{renderGoals()}catch(e){}},()=>{});
   db.collection("todos").onSnapshot(s=>{todos=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));renderTodos();setTimeout(ensureMonthly,1500);setTimeout(ensureAuto,2500)},()=>{});
