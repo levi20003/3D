@@ -33,12 +33,13 @@ Levente Claude Pro előfizetéssel dolgozik, ezért **minden lépésnél a lehet
 - Duplikáció-ellenőrzés: `contacts` doc_id és domain (az `elvetve` állapotúakat is beleértve), Gmail `to:` keresés, tiltólista. Az `elvetve` állapotú cégeket soha ne vedd fel újra.
 - Új rekord: **status `javasolt`** (Levente a pultban hagyja jóvá), `cat`, `city`, `name`, rövid `hook` (egy mondat arról, mit csinálnak), `source` = az oldal URL-je és a dátum.
 - Futás végén `update`-tel írd a `settings/search` dokumentumba: `lastRun: {date, found, empty: [azok a q-k, amelyekre nem volt új találat]}`. A `plan` mezőhöz ne nyúlj.
-- Ha nem sikerül elég címet találni, ne erőltesd.
+- **Tartalék:** ha a `plan.targets` keresései együtt 0 új címet hoztak, végezd el a `plan.fallback.targets` kereséseit is (szegedi éttermek, gyorséttermek, `cat: vendeglato`). Csak olyan helyet vegyél fel, ahová még nem ment levél vagy DM: contacts doc_id és domain, azonos nevű `dm-` kapcsolat, Gmail `to:`. A `lastRun`-ba írd be: `fallbackUsed: true`.
+- Ha így sem sikerül elég címet találni, ne erőltesd.
 
 ## Üzleti szabályok
 - **Soha ne küldj e-mailt** Levente kifejezett kérése nélkül; ha kéri, egyenként, sosem BCC-ben. Levente általában maga küld a pult Küldés gombjával.
-- **Tiltólista:** informatikai cégek, N-System (n-system.hu – Levente gyakorlati helye), `settings/blocklist`, egyetemi tanulmányi és könyvtári címek, magánszemélyek, éttermek, pubok, szórakozóhelyek, fitness, autósiskola, autószerviz.
+- **Tiltólista:** informatikai cégek, N-System (n-system.hu – Levente gyakorlati helye), `settings/blocklist`, egyetemi tanulmányi és könyvtári címek, magánszemélyek, pubok, bárok, szórakozóhelyek (éttermek és gyorséttermek csak tartalékként, a `plan.fallback` szerint), fitness, autósiskola, autószerviz.
 - Soha ne találj ki e-mail-címet; csak oldalon ténylegesen látott címet vegyél fel, duplikáció-ellenőrzéssel (contacts + Gmail `to:/bcc:`).
-- Kategóriák: nyomda, ipar, epitoipar, mezogazd, epitesz, oktatas, sport, rendezveny, kisker, turizmus, hobbi, szolg, egyeb.
+- Kategóriák: nyomda, ipar, epitoipar, mezogazd, epitesz, oktatas, sport, rendezveny, kisker, turizmus, hobbi, szolg, auto, lakber, civil, allat, vendeglato, egyeb.
 - Gép: Bambu A1 mini, max 18×18×18 cm, PLA fekete/fehér/ezüst/pink. Árazás a pult Árkalkulátorában (Perfect Profil kapocs: 1 000 Ft/db).
 - Jogi/adó kérdésnél tényeket adj, és jelezd, hogy nem vagy könyvelő/jogász.

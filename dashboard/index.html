@@ -805,7 +805,7 @@ const CATS = {
   vendeglato:{label:"Vendéglátás"},
   egyeb:{label:"Egyéb"}
 };
-const DM_FOR={nyomda:"dm_b2b",dekor:"dm_b2b",ipar:"dm_b2b",epitoipar:"dm_b2b",mezogazd:"dm_b2b",epitesz:"dm_b2b",kisker:"dm",szolg:"dm_szolg",sport:"dm_sport",rendezveny:"dm_rendezveny",hobbi:"dm_hobbi",turizmus:"dm_turizmus",auto:"dm_b2b",lakber:"dm",civil:"dm_sport",allat:"dm_szolg"};
+const DM_FOR={nyomda:"dm_b2b",dekor:"dm_b2b",ipar:"dm_b2b",epitoipar:"dm_b2b",mezogazd:"dm_b2b",epitesz:"dm_b2b",kisker:"dm",szolg:"dm_szolg",sport:"dm_sport",rendezveny:"dm_rendezveny",hobbi:"dm_hobbi",turizmus:"dm_turizmus",auto:"dm_b2b",lakber:"dm",civil:"dm_sport",allat:"dm_szolg",vendeglato:"dm_vendeglato"};
 const dmKey=c=>DM_FOR[c.cat]||"dm";
 const STATUS = {javasolt:"Javasolt",elvetve:"Elvetve",uj:"Új",elkuldve:"Elküldve",fu:"Follow-up esedékes",valaszolt:"Válaszolt",ugyfel:"Ügyfél",lezarva:"Lezárva"};
 const SIG_DEFAULT = "Üdvözlettel:\nLevente\nLevente 3D · nyomtatás, Szeged\n+36 70 596 1640\nlevente3d.szeged@gmail.com";
@@ -903,6 +903,24 @@ A gyártást meglévő 3D modell, referenciafotó vagy konkrét elképzelés ala
 Néhány korábbi munkámat a weblapomon találja: {link}
 
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
+  vendeglato:{subject:"QR-kódos asztali táblák és asztalszámok – {cegnev}",
+body:`Szép napot kívánok!
+
+{szemelyes}
+
+Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
+
+Éttermeknek és gyorséttermeknek az Önök arculatához illő apró tárgyakat készítek, például:
+• QR-kódos asztali tábla (menü, Google-értékelés vagy Wi-Fi)
+• asztalszám és „Foglalt” tábla
+• pult- és szórólaptartó
+• logós kulcstartó vagy apró ajándék törzsvendégeknek
+
+Ha eltört egy műanyag tartó, fogantyú vagy polcelem, azt is le tudom gyártani fotó és pár méret alapján.
+
+Néhány korábbi munkámat a weblapomon találja: {link}
+
+Ha van ilyen igényük, egy darabot szívesen elkészítek ingyen mintának.`},
   egyeb:{subject:"Egyedi műanyag alkatrész vagy logós termék 3D nyomtatással – Szeged",
 body:`Szép napot kívánok!
 
@@ -1193,6 +1211,7 @@ Munkáim: {link}`},
   fu_kisker:{"subject": "1. follow-up – bolt", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Hogy ne legyen kockázata, bizományba is adom a termékeket: kihelyezek néhány darabot, és csak az eladottak után számolunk el.\n\nHa érdekli, egy 10 perces alkalommal beviszem a mintákat, vagy előbb küldök fotókat.\n\nMunkáim: {link}"},
   fu_turizmus:{"subject": "1. follow-up – turizmus", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. A szegedi szuvenírekből (Dóm-modell, mágnes, kulcstartó, könyvjelző) bizományba is adok, így csak az eladott darabok után számolunk el, és kérésre az Önök logójával is elkészítem őket.\n\nHa érdekli, beviszek néhány mintát.\n\nMunkáim: {link}"},
   fu_hobbi:{"subject": "1. follow-up – hobbi", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha a vásárlóik kérdeznek olyat, ami készen nem kapható (társasjáték-inzert, tartó, adapter, eltört műanyag alkatrész), szívesen átvállalom ezeket a kéréseket, Önök pedig árréssel továbbadhatják.\n\nHa érdekli, beviszek néhány mintát.\n\nMunkáim: {link}"},
+  fu_vendeglato:{"subject": "1. follow-up – vendéglátás", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha jól jönne néhány QR-kódos asztali tábla (menü, értékelés vagy Wi-Fi) vagy asztalszám az Önök arculatában, egy darabot ingyen elkészítek mintának.\n\nElég egy válasz, hogy mire lenne szükség.\n\nMunkáim: {link}"},
   fu_szolg:{"subject": "1. follow-up – szolgáltatás", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha jól jönne egy QR-kódos asztali tábla, egy ajtó- vagy névtábla az Önök arculatában, egy darabot ingyen elkészítek mintának.\n\nElég egy válasz, hogy mire lenne szükség.\n\nMunkáim: {link}"},
   fu_egyeb:{"subject": "1. follow-up – egyéb", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha van egy eltört vagy már nem kapható műanyag alkatrész, vagy egy egyedi ötlet, egy fotó és pár méret alapján 24 órán belül árat adok, Szegeden, pár napos átfutással.\n\nMunkáim: {link}"},
   fu_auto:{"subject": "1. follow-up – autó, kerékpár", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Autós és kerékpáros alkatrészeknél gyakori, hogy egy apró műanyag elem (takarósapka, rögzítőkapocs, tartó, burkolat) már nem kapható, vagy miatta egy egész egységet kellene cserélni. Egy fotó és pár méret alapján pár nap alatt elkészítem.\n\nHa van ilyen darab, egy válasz a fotóval elég.\n\nMunkáim: {link}"},
@@ -1210,6 +1229,12 @@ Munkáim: {link}`},
 body:`Szia! Levente vagyok, Szegeden 3D nyomtatással készítek egyedi apró tárgyakat vállalkozásoknak.
 {szemelyes}
 Nektek pl. névtáblát, QR-kódos pulttáblát, ajtótáblát vagy logós kis ajándékot tudnék készíteni a ti stílusotokban, 10 db-tól.
+Egy darabot szívesen megcsinálok ingyen mintának. Megmutassam, hogy nézne ki?
+Munkáim: {link}`},
+  dm_vendeglato:{subject:"DM – étterem, gyorsétterem",
+body:`Szia! Levente vagyok, Szegeden 3D nyomtatással készítek egyedi apró tárgyakat vállalkozásoknak.
+{szemelyes}
+Nektek pl. QR-kódos asztali táblát (menü, Google-értékelés, Wi-Fi), asztalszámot vagy pulttáblát tudnék készíteni a logótokkal, 10 db-tól.
 Egy darabot szívesen megcsinálok ingyen mintának. Megmutassam, hogy nézne ki?
 Munkáim: {link}`},
   dm_fu:{subject:"DM – emlékeztető (5–7 nap után)",
@@ -2043,7 +2068,7 @@ const NICHES={
   lakber:["lakberendezés","bútorüzlet","konyhastúdió","lámpabolt"],
   civil:["alapítvány","egyesület","művelődési ház","színház","könyvtár"],
   allat:["állatorvos","kutyakozmetika","állateledel bolt","akvarisztika","lovarda"],
-  auto:["kerékpárbolt","motorosbolt"], vendeglato:["cukrászda","kávézó"]
+  auto:["kerékpárbolt","motorosbolt"], vendeglato:["étterem","gyorsétterem","pizzéria","bisztró","hamburgerező","gyros","büfé","kifőzde"]
 };
 const SKIP_DEFAULT=["vendeglato","auto"];
 const SEARCH_RULES=[
@@ -2052,7 +2077,8 @@ const SEARCH_RULES=[
   "Ha a cégnek nincs e-mail címe, de van Facebook- vagy Instagram-oldala, DM-kapcsolatként vedd fel: doc_id dm-<név>-<város> (kisbetű, kötőjel), email mező ugyanez, channel: dm, fb vagy ig mező a profil linkjével.",
   "Új rekord: status javasolt, cat, city, name, hook (egy mondat arról, mit csinálnak), source (az oldal URL-je és a dátum). Levente a pultban hagyja jóvá.",
   "Magánszemély címét ne vedd fel, és tartsd be a settings/blocklist tiltólistát meg a skill tiltólistáját.",
-  "Futás végén írd be a settings/search dokumentum lastRun mezőjébe: {date, found, empty: [azok a keresések, amelyekre nem volt új találat]}."];
+  "Tartalék: ha a targets keresései együtt 0 új címet hoztak, végezd el a fallback.targets kereséseit is (szegedi éttermek, gyorséttermek, cat vendeglato). Csak olyan helyet, ahová még nem ment levél vagy DM: ellenőrizd a contacts doc_id-t és domaint, az azonos nevű dm- kapcsolatot és a Gmail to: keresést. Pubot, bárt, szórakozóhelyet továbbra se.",
+  "Futás végén írd be a settings/search dokumentum lastRun mezőjébe: {date, found, fallbackUsed: true/false, empty: [azok a keresések, amelyekre nem volt új találat]}."];
 let searchDoc=null,planT=null,lastJRows=[];
 const areaN=()=>Math.min(AREAS.length,Math.max(1,+settings.area||1));
 const areaCities=()=>AREAS.slice(0,areaN()).flatMap(a=>a.c);
@@ -2085,7 +2111,8 @@ function buildPlan(){
   const T=[];
   ranked.forEach(([k,x],ri)=>citiesFor(x,2).forEach((ct,i)=>T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,ri+i)+" "+ct,why:`${x.rep}/${x.sent} válaszolt (${Math.round(x.rep/x.sent*100)}%), ${x.uj+x.jav} cím vár kiküldésre`})));
   explore.forEach((k,i)=>{const ct=citiesFor(E(k),1)[0]||cities[0];T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,i)+" "+ct,why:"Még kipróbálatlan kategória"})});
-  return {area:AREAS.slice(0,areaN()).map(a=>a.n).join(" + "),cities,perRun:Math.max(5,Math.min(50,+settings.perRun||15)),skip:[...skip],targets:T,rules:SEARCH_RULES};
+  const FB=NICHES.vendeglato,fallback={when:"Ha a targets keresései együtt 0 új címet hoztak",targets:[0,1,2].map(i=>{const q=FB[(day*3+i)%FB.length];return {cat:"vendeglato",label:CATS.vendeglato.label,city:"Szeged",q:q+" Szeged",why:"Tartalék: szegedi vendéglátóhely, ahová még nem írtunk"}})};
+  return {area:AREAS.slice(0,areaN()).map(a=>a.n).join(" + "),cities,perRun:Math.max(5,Math.min(50,+settings.perRun||15)),skip:[...skip],targets:T,fallback,rules:SEARCH_RULES};
 }
 function maybeSavePlan(){if(!db||!contacts.size)return;clearTimeout(planT);planT=setTimeout(async()=>{
   const pl=buildPlan();if(searchDoc&&JSON.stringify(searchDoc.plan)===JSON.stringify(pl))return;
@@ -2104,9 +2131,9 @@ function renderCov(){
   const {st}=catStats(),skip=skipSet(),cities=areaCities(),pl=buildPlan();
   $("#cv-area").innerHTML=AREAS.map((a,i)=>`<option value="${i+1}"${i+1===areaN()?" selected":""}>${esc(AREAS.slice(0,i+1).map(x=>x.n).join(" + "))}</option>`).join("");
   if(document.activeElement!==$("#cv-per"))$("#cv-per").value=pl.perRun;
-  $("#cv-tgt").innerHTML=pl.targets.map(t=>`<div><span class="pill p-uj">${esc(t.city)}</span><span><b>${esc(t.q)}</b> · ${esc(t.label)}<br><span class="small">${esc(t.why)}</span></span></div>`).join("");
+  $("#cv-tgt").innerHTML=pl.targets.map(t=>`<div><span class="pill p-uj">${esc(t.city)}</span><span><b>${esc(t.q)}</b> · ${esc(t.label)}<br><span class="small">${esc(t.why)}</span></span></div>`).join("")+`<div><span class="pill p-fu">Tartalék</span><span><b>${esc(pl.fallback.targets.map(t=>t.q).join(" · "))}</b><br><span class="small">Csak ha a fenti keresések nem hoznak új címet. Olyan éttermek és gyorséttermek, ahová még nem írtunk.</span></span></div>`;
   const lr=searchDoc?.lastRun;
-  $("#cv-run").textContent=(searchDoc?.updated?"Terv mentve: "+searchDoc.updated+". ":"")+(lr?`Utolsó keresés: ${lr.date||"?"}, ${lr.found??"?"} új javaslat${lr.empty&&lr.empty.length?". Nem volt új találat: "+lr.empty.join(", "):""}.`:"A napi feladat még nem futott ezzel a tervvel.");
+  $("#cv-run").textContent=(searchDoc?.updated?"Terv mentve: "+searchDoc.updated+". ":"")+(lr?`Utolsó keresés: ${lr.date||"?"}, ${lr.found??"?"} új javaslat${lr.fallbackUsed?" (a tartalék éttermi keresésből is)":""}${lr.empty&&lr.empty.length?". Nem volt új találat: "+lr.empty.join(", "):""}.`:"A napi feladat még nem futott ezzel a tervvel.");
   const Z={n:0,uj:0,jav:0,sent:0,rep:0,cust:0,city:{},prio:0};
   const keys=Object.keys(CATS).filter(k=>st[k]||k!=="egyeb").sort((a,b)=>((st[b]||Z).prio-(st[a]||Z).prio)||((st[b]||Z).n-(st[a]||Z).n));
   const maxP=Math.max(...keys.map(k=>(st[k]||Z).prio),1e-6),showC=cities.slice(0,12);
