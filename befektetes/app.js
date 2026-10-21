@@ -45,6 +45,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const todayIso = () => { const t = new Date(); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
 // gyakori részvények neve, ha a kivonat már nem sorolja fel (lezárt pozíció)
 const NAMES_FALLBACK = { AAPL: 'Apple', MSFT: 'Microsoft', AMZN: 'Amazon', GOOGL: 'Alphabet', GOOG: 'Alphabet', META: 'Meta', NVDA: 'Nvidia', TSLA: 'Tesla', NFLX: 'Netflix', ADBE: 'Adobe', CRM: 'Salesforce', ORCL: 'Oracle', AMD: 'AMD', INTC: 'Intel', PYPL: 'PayPal', UBER: 'Uber', ABNB: 'Airbnb', SHOP: 'Shopify', NOW: 'ServiceNow', DUOL: 'Duolingo', PLTR: 'Palantir', SOFI: 'SoFi', COIN: 'Coinbase', HOOD: 'Robinhood', NKE: 'Nike', SBUX: 'Starbucks', KO: 'Coca-Cola', PEP: 'PepsiCo', MCD: "McDonald's", DIS: 'Disney', V: 'Visa', MA: 'Mastercard', JPM: 'JPMorgan', BAC: 'Bank of America', NVO: 'Novo Nordisk', LLY: 'Eli Lilly', PFE: 'Pfizer', JNJ: 'Johnson & Johnson', CAKE: 'Cheesecake Factory', HNST: 'Honest Company', KULR: 'KULR Technology', ES: 'Esso S.A.F.', SPY: 'S&P 500 (SPY)', VOO: 'Vanguard S&P 500', QQQ: 'Invesco QQQ' };
+let animNext = true;
+const moneyHTML = v => S.cur === 'HUF' ? `${(v < -0.0049 ? '−' : '') + nf(Math.abs(v * R()))}<span class="cur">Ft</span>` : `<span class="cur pre">$</span>${(v < -0.0049 ? '−' : '') + nf(Math.abs(v), 2)}`;
 const nm = t => (M && M.names[t]) || NAMES_FALLBACK[t] || t;
 function toast(msg, ms = 3200) { const el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), ms); }
 const loaded = {};
@@ -138,8 +140,8 @@ function drawStatus() {
   if (S.busy) { el.innerHTML = `<i class="busy"></i>${esc(S.statusText)}`; return; }
   const t = market.updatedAt ? new Date(market.updatedAt) : null;
   const when = t ? (t.toDateString() === new Date().toDateString() ? t.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : t.toLocaleDateString('hu-HU')) : null;
-  if (!apiKey) el.innerHTML = `<i class="off"></i>Kivonat szerinti árak (${M ? dhu(M.asOf) : '–'}). <a href="#" id="stKey">Élő árfolyamok bekapcsolása</a>`;
-  else el.innerHTML = `<i${navigator.onLine ? '' : ' class="off"'}></i>Élő árak · frissítve ${when || '–'} · ${nf(R(), 2)} Ft/$ · automatikusan 15 percenként`;
+  if (!apiKey) el.innerHTML = `<i class="off"></i>Kivonat ára · ${M ? dhu(M.asOf) : '–'} · <a href="#" id="stKey">Élő árak bekapcsolása →</a>`;
+  else el.innerHTML = `<i${navigator.onLine ? '' : ' class="off"'}></i>Élő · ${when || '–'} · ${nf(R(), 2)} Ft/$`;
   const k = $('stKey'); if (k) k.onclick = e => { e.preventDefault(); openSettings(); };
 }
 
@@ -165,58 +167,81 @@ function rangePoints() {
   const from = Engine.addDays(M.today, -r[2]); const i = s.findIndex(p => p.d >= from);
   return s.slice(Math.max(0, i - 1));
 }
-function stockChart(canvas, pts, onScrub) {
+// monoton köbös görbe (Fritsch–Carlson): sima, de nem lő túl a valós értékeken
+function monoPath(ctx, P, move = true) {
+  const n = P.length; if (!n) return; if (move) ctx.moveTo(P[0][0], P[0][1]); else ctx.lineTo(P[0][0], P[0][1]);
+  if (n < 3) { for (let i = 1; i < n; i++) ctx.lineTo(P[i][0], P[i][1]); return; }
+  const d = [], m = [];
+  for (let i = 0; i < n - 1; i++) d.push((P[i + 1][1] - P[i][1]) / ((P[i + 1][0] - P[i][0]) || 1e-9));
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) { if (d[i] === 0) { m[i] = m[i + 1] = 0; continue; } const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b; if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; } }
+  for (let i = 0; i < n - 1; i++) { const dx = (P[i + 1][0] - P[i][0]) / 3; ctx.bezierCurveTo(P[i][0] + dx, P[i][1] + m[i] * dx, P[i + 1][0] - dx, P[i + 1][1] - m[i + 1] * dx, P[i + 1][0], P[i + 1][1]); }
+}
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function stockChart(canvas, pts, onScrub, opt = {}) {
   const box = canvas.parentElement; const dpr = window.devicePixelRatio || 1;
   const W = box.clientWidth, H = box.clientHeight; canvas.width = W * dpr; canvas.height = H * dpr;
-  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const ctx = canvas.getContext('2d');
   const a = pts[0];
-  const idx = S.mode === 'idx';
-  const y = p => idx ? (p.nav / a.nav - 1) * 100 : p.value * K();
-  const b = p => S.bench ? (idx ? (p.spyIdx && a.spyIdx ? (p.spyIdx / a.spyIdx - 1) * 100 : null) : (p.spyVal != null ? p.spyVal * K() : null)) : null;
+  const idx = S.mode === 'idx' || opt.price;
+  const y = p => opt.price ? p.nav : idx ? (p.nav / a.nav - 1) * 100 : p.value * K();
+  const b = p => !opt.price && S.bench ? (idx ? (p.spyIdx && a.spyIdx ? (p.spyIdx / a.spyIdx - 1) * 100 : null) : (p.spyVal != null ? p.spyVal * K() : null)) : null;
   const inv = p => idx ? null : p.invested * K();
   const ys = pts.map(y), bs = pts.map(b), is = pts.map(inv);
   const all = [...ys, ...bs, ...is].filter(v => v != null && isFinite(v));
-  let lo = Math.min(...all), hi = Math.max(...all); if (idx) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  let lo = Math.min(...all), hi = Math.max(...all);
   if (hi - lo < 1e-9) { hi += 1; lo -= 1; }
-  const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
-  const L = 4, Rr = 58, T = 10, B = 24, w = W - L - Rr, h = H - T - B;
+  const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
+  const TP = box.classList.contains('bleed') ? 16 : 0; // feliratok ne érjenek a képernyő széléhez
+  const L = 0, T = 26, B = 26, w = W - L - 12, h = H - T - B;
   const X = i => L + (pts.length === 1 ? w : i / (pts.length - 1) * w), Y = v => T + (hi - v) / (hi - lo) * h;
-  const up = ys[ys.length - 1] >= ys[0] - 1e-9 && (idx || (pts[pts.length - 1].value - pts[pts.length - 1].invested) >= (a.value - a.invested) - 1e-9);
-  const col = css(up ? '--gain' : '--loss'), line = css('--line'), muted = css('--muted'), bench = css('--bench'), surf = css('--surface');
-  const font = '11px ' + getComputedStyle(document.body).fontFamily;
-  // rács + tengelyfeliratok
-  const step = niceStep((hi - lo) / 4); ctx.font = font; ctx.fillStyle = muted; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
-    const yy = Y(v); ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.setLineDash(idx && Math.abs(v) < step / 2 ? [] : [2, 4]);
-    ctx.beginPath(); ctx.moveTo(L, yy); ctx.lineTo(L + w, yy); ctx.stroke();
-    ctx.fillText(idx ? (v > 0 ? '+' : v < 0 ? '−' : '') + nf(Math.abs(v), step < 1 ? 1 : 0) + '%' : compact(v), L + w + 8, yy);
+  const resNow = idx ? ys[ys.length - 1] - ys[0] : (pts[pts.length - 1].value - pts[pts.length - 1].invested) - (a.value - a.invested);
+  const col = css(resNow >= -1e-9 ? '--gain' : '--loss'), muted = css('--muted'), bench = css('--bench'), surf = css('--bg'), line = css('--line');
+  const fam = getComputedStyle(document.body).fontFamily;
+  const fmtY = v => opt.price ? usd(v) : idx ? pct(v) : money(v / K());
+  const segs = vals => { const out = []; let cur = []; vals.forEach((v, i) => { if (v == null || !isFinite(v)) { if (cur.length) out.push(cur); cur = []; } else cur.push([X(i), Y(v)]); }); if (cur.length) out.push(cur); return out; };
+  const main = segs(ys)[0] || [];
+  let hiI = 0, loI = 0; ys.forEach((v, i) => { if (v > ys[hiI]) hiI = i; if (v < ys[loI]) loI = i; });
+
+  function frame(prog) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    // kiindulási szint
+    ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.setLineDash([1, 4]); ctx.beginPath(); ctx.moveTo(L, Y(ys[0])); ctx.lineTo(L + w, Y(ys[0])); ctx.stroke(); ctx.setLineDash([]);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, L + w * prog + 1, H); ctx.clip();
+    for (const sg of segs(is)) { ctx.beginPath(); sg.forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.setLineDash([3, 4]); ctx.strokeStyle = muted; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]); }
+    for (const sg of segs(bs)) { ctx.beginPath(); monoPath(ctx, sg); ctx.strokeStyle = bench; ctx.globalAlpha = .9; ctx.lineWidth = 1.4; ctx.stroke(); ctx.globalAlpha = 1; }
+    if (main.length) {
+      const grad = ctx.createLinearGradient(0, T, 0, T + h); grad.addColorStop(0, col + '33'); grad.addColorStop(.7, col + '08'); grad.addColorStop(1, col + '00');
+      ctx.beginPath(); monoPath(ctx, main); ctx.lineTo(main[main.length - 1][0], T + h); ctx.lineTo(main[0][0], T + h); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+      ctx.beginPath(); monoPath(ctx, main); ctx.strokeStyle = col; ctx.lineWidth = 2.25; ctx.lineJoin = ctx.lineCap = 'round';
+      ctx.shadowColor = col + '66'; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+    if (prog < 1) return;
+    // csúcs és mélypont
+    ctx.font = `500 11px ${fam}`; ctx.fillStyle = muted; ctx.textBaseline = 'alphabetic';
+    const tag = (i, above) => { const x = X(i), yy = Y(ys[i]) + (above ? -9 : 17); ctx.textAlign = x < 56 ? 'left' : x > W - 56 ? 'right' : 'center'; ctx.fillText(fmtY(ys[i]), Math.max(TP, Math.min(W - TP, x)), Math.max(12, Math.min(H - B + 2, yy))); };
+    if (pts.length > 2) { tag(hiI, true); if (loI !== hiI) tag(loI, false); }
+    ctx.textAlign = 'left'; ctx.fillText(dShort(pts[0].d), L + TP, H - 6); ctx.textAlign = 'right'; ctx.fillText(dShort(pts[pts.length - 1].d), L + w - TP, H - 6);
   }
-  ctx.setLineDash([]);
-  ctx.textBaseline = 'alphabetic';
-  [[0, 'left'], [Math.floor((pts.length - 1) / 2), 'center'], [pts.length - 1, 'right']].forEach(([i, al]) => { if (pts[i]) { ctx.textAlign = al; ctx.fillText(dShort(pts[i].d), al === 'right' ? L + w : al === 'left' ? L : X(i), H - 6); } });
-  const path = (vals, dash, color, width) => { ctx.beginPath(); let st = false; vals.forEach((v, i) => { if (v == null) return; st ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)); st = true; }); ctx.setLineDash(dash); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = 'round'; ctx.stroke(); ctx.setLineDash([]); };
-  if (is.some(v => v != null)) path(is, [4, 4], muted, 1.5);
-  if (bs.some(v => v != null)) path(bs, [], bench, 1.5);
-  // terület
-  const grad = ctx.createLinearGradient(0, T, 0, T + h); grad.addColorStop(0, col + '38'); grad.addColorStop(1, col + '00');
-  ctx.beginPath(); ys.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))); ctx.lineTo(X(ys.length - 1), T + h); ctx.lineTo(X(0), T + h); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-  path(ys, [], col, 2.2);
-  const base = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const dot = (i, c) => { ctx.beginPath(); ctx.arc(X(i), Y(ys[i]), 4.5, 0, 7); ctx.fillStyle = c; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = surf; ctx.stroke(); };
-  dot(ys.length - 1, col);
+  const dot = (i, c, r = 4) => { const x = X(i), yy = Y(ys[i]); ctx.beginPath(); ctx.arc(x, yy, r + 5, 0, 7); ctx.fillStyle = c + '26'; ctx.fill(); ctx.beginPath(); ctx.arc(x, yy, r, 0, 7); ctx.fillStyle = c; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = surf; ctx.stroke(); };
+  const rest = () => { frame(1); dot(ys.length - 1, col); };
+  if (opt.animate && !REDUCED && pts.length > 2) { const t0 = performance.now(); const step = t => { const k = Math.min(1, (t - t0) / 700); frame(1 - Math.pow(1 - k, 3)); if (k < 1) requestAnimationFrame(step); else rest(); }; requestAnimationFrame(step); }
+  else rest();
   const scrubTo = i => {
-    ctx.putImageData(base, 0, 0);
-    if (i == null) { dot(ys.length - 1, col); onScrub(null); return; }
-    ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.strokeStyle = muted; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X(i), T); ctx.lineTo(X(i), T + h); ctx.stroke();
-    if (bs[i] != null) { ctx.beginPath(); ctx.arc(X(i), Y(bs[i]), 3.5, 0, 7); ctx.fillStyle = bench; ctx.fill(); }
-    dot(i, col); ctx.restore(); onScrub(i);
+    if (i == null) { rest(); onScrub(null); return; }
+    frame(1);
+    const x = X(i); ctx.strokeStyle = muted; ctx.globalAlpha = .5; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, T - 8); ctx.lineTo(x, T + h); ctx.stroke(); ctx.globalAlpha = 1;
+    if (bs[i] != null) { ctx.beginPath(); ctx.arc(x, Y(bs[i]), 3.5, 0, 7); ctx.fillStyle = bench; ctx.fill(); }
+    dot(i, col); onScrub(i);
   };
-  const pick = e => { const r = canvas.getBoundingClientRect(); const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left; return Math.max(0, Math.min(pts.length - 1, Math.round((x - L) / w * (pts.length - 1)))); };
+  const pick = e => { const r = canvas.getBoundingClientRect(); const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left; return Math.max(0, Math.min(pts.length - 1, Math.round((cx - L) / w * (pts.length - 1)))); };
   canvas.onpointermove = e => scrubTo(pick(e));
   canvas.onpointerdown = e => scrubTo(pick(e));
   canvas.onpointerleave = () => scrubTo(null);
   canvas.onpointerup = e => { if (e.pointerType !== 'mouse') scrubTo(null); };
-  canvas.ontouchmove = e => { if (Math.abs(e.touches[0].clientX) >= 0) scrubTo(pick(e)); };
+  canvas.ontouchmove = e => scrubTo(pick(e));
   canvas.ontouchend = () => scrubTo(null);
   canvas.tabIndex = 0; let ki = null;
   canvas.onkeydown = e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { ki = ki == null ? pts.length - 1 : Math.max(0, Math.min(pts.length - 1, ki + (e.key === 'ArrowLeft' ? -1 : 1))); scrubTo(ki); e.preventDefault(); } if (e.key === 'Escape') { ki = null; scrubTo(null); } };
@@ -235,19 +260,17 @@ V.attekintes = m => {
   const movers = top.length > 6 ? [...top.slice(0, 3), ...top.slice(-3).reverse()] : top;
   const daily = m.positions.some(p => p.dayAbs != null);
   return `
-  <section class="card stock">
+  <section class="stock">
     <div class="lbl-s" id="hl">Portfólió értéke</div>
     <div class="big num" id="hv"></div>
     <div class="chg num" id="hc"></div>
-    <div class="chart"><canvas id="sc" role="img" aria-label="A portfólió értékének alakulása. Húzd végig az ujjad a részletekért."></canvas></div>
-    <div class="ranges">
-      <div class="seg" role="group" aria-label="Időszak">${RANGES.map(r => `<button data-r="${r[0]}" aria-pressed="${S.range === r[0]}">${r[1]}</button>`).join('')}</div>
-      <div class="toggles">
-        <div class="seg" role="group" aria-label="Nézet"><button data-mo="idx" aria-pressed="${S.mode === 'idx'}">Árfolyam</button><button data-mo="val" aria-pressed="${S.mode === 'val'}">Érték</button></div>
-        <button class="chip" id="benchBtn" aria-pressed="${S.bench}"><i></i>S&P 500</button>
-      </div>
+    <div class="chart bleed"><canvas id="sc" role="img" aria-label="A portfólió értékének alakulása. Húzd végig az ujjad a részletekért."></canvas></div>
+    <div class="ranges2" role="group" aria-label="Időszak">${RANGES.map(r => `<button data-r="${r[0]}" aria-pressed="${S.range === r[0]}">${r[1]}</button>`).join('')}</div>
+    <div class="opts">
+      <div class="seg" role="group" aria-label="Nézet"><button data-mo="idx" aria-pressed="${S.mode === 'idx'}">Árfolyam</button><button data-mo="val" aria-pressed="${S.mode === 'val'}">Érték</button></div>
+      <button class="chip" id="benchBtn" aria-pressed="${S.bench}"><i></i>S&P 500</button>
     </div>
-    <div class="keys">${S.mode === 'idx' ? '<span>A portfólió mint egy részvény: a befizetések nem emelik meg a vonalat.</span>' : '<span><i style="border-top-style:dashed;border-color:var(--muted)"></i>Befizetett összeg</span>'}${S.bench ? `<span><i style="border-color:var(--bench)"></i>${S.mode === 'idx' ? 'S&P 500 (SPY)' : 'Ha mindent S&P 500-ba tettél volna'}</span>` : ''}${S.bench && !market.history.SPY ? '<span>Az S&P vonalhoz élő árfolyam kell.</span>' : ''}</div>
+    <div class="keys">${S.mode === 'idx' ? '<span>A portfólió mint egy részvény: a befizetések nem mozdítják a vonalat.</span>' : '<span><i style="border-top-style:dashed;border-color:var(--muted)"></i>Befizetett összeg</span>'}${S.bench ? `<span><i style="border-color:var(--bench)"></i>${S.mode === 'idx' ? 'S&P 500 (SPY)' : 'Ha mindent S&P 500-ba tettél volna'}${!market.history.SPY ? ' · élő árfolyammal' : ''}</span>` : ''}</div>
   </section>
   ${!apiKey ? `<div class="tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><p><b>Kapcsold be az élő árfolyamokat.</b> Most a kivonat árai és a vételi árak alapján rajzolok. Egy ingyenes Twelve Data kulccsal a grafikon napi záróárakból készül, és az app 15 percenként magától frissít. <a href="#" id="tipKey">Beállítás</a></p></div>` : ''}
   <section class="stats">
@@ -268,13 +291,13 @@ V.attekintes.after = m => {
     const p = i == null ? z : pts[i];
     const res = (p.value - p.invested) - (a.value - a.invested), pc = (p.nav / a.nav - 1) * 100;
     const rl = RANGES.find(r => r[0] === S.range);
-    $('hv').textContent = money(i == null ? m.value : p.value);
+    $('hv').innerHTML = moneyHTML(i == null ? m.value : p.value);
     $('hc').innerHTML = `<span class="${cls(res)}">${arr(res)} ${money(res, { sign: true })} (${pct(pc)})</span><small>${i == null ? (S.range === 'all' ? 'kezdés óta' : 'az elmúlt ' + rl[1]) : dShort(p.d) + (p.spyIdx && a.spyIdx && S.bench ? ` · S&P ${pct((p.spyIdx / a.spyIdx - 1) * 100)}` : '')}</small>`;
   };
   head(null);
-  stockChart($('sc'), pts, head);
-  document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.range = b.dataset.r; store.set('bf-range', S.range); render(true); });
-  document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); render(true); });
+  stockChart($('sc'), pts, head, { animate: animNext }); animNext = false;
+  document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.range = b.dataset.r; store.set('bf-range', S.range); animNext = true; render(true); });
+  document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); animNext = true; render(true); });
   $('benchBtn').onclick = () => { S.bench = !S.bench; store.set('bf-bench', S.bench); render(true); };
   const tk = $('tipKey'); if (tk) tk.onclick = e => { e.preventDefault(); openSettings(); };
   // vízesés
@@ -503,8 +526,7 @@ function openTicker(t) {
   if (c) { // mini árfolyamgrafikon a vételi/eladási pontokkal
     const first = tx.length ? tx[tx.length - 1].date : hd[0]; const ds = hd.filter(d => d >= Engine.addDays(first, -7));
     const pts = ds.map(d => ({ d, value: h[d], invested: 0, nav: h[d] }));
-    const save = [S.mode, S.bench]; S.mode = 'idx'; S.bench = false;
-    stockChart(c, pts, () => {}); S.mode = save[0]; S.bench = save[1];
+    stockChart(c, pts, () => {}, { price: true, animate: true });
   }
 }
 let installEvt = null;

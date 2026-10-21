@@ -39,7 +39,7 @@
     const txPrice = {}; tx.filter(r => r.type === 'B' || r.type === 'S').forEach(r => { (txPrice[r.tkr] = txPrice[r.tkr] || {})[r.date] = toUsd(r.price, r.ccy, r.date); });
     const priceFns = {};
     const priceAt = (t, d) => {
-      if (!priceFns[t]) { const h = hist[t] && Object.keys(hist[t]).length ? hist[t] : null; const s = { ...(txPrice[t] || {}) }; if (snap[t]) s[snap[t].date] = snap[t].price; priceFns[t] = { h: h && asOfLookup(h), s: asOfLookup(s) }; }
+      if (!priceFns[t]) { const h = hist[t] && Object.keys(hist[t]).length ? hist[t] : null; const s = { ...(txPrice[t] || {}) }; if (snap[t]) s[snap[t].date] = snap[t].price; priceFns[t] = { h: h && asOfLookup(h), s: interpLookup(s) }; }
       const f = priceFns[t]; return (f.h && f.h(d)) || f.s(d) || 0;
     };
 
@@ -114,6 +114,14 @@
     };
   }
 
-  const api = { build, asOfLookup, addDays };
+  // lineáris átmenet az ismert pontok között (ha nincs napi árfolyam-előzmény)
+  function interpLookup(series) {
+    const ds = Object.keys(series || {}).sort(); const ts = ds.map(d => Date.parse(d + 'T12:00:00Z'));
+    return (d) => { if (!ds.length) return null; const t = Date.parse(d + 'T12:00:00Z');
+      if (t <= ts[0]) return series[ds[0]]; if (t >= ts[ts.length - 1]) return series[ds[ds.length - 1]];
+      let i = 1; while (ts[i] < t) i++; const f = (t - ts[i - 1]) / (ts[i] - ts[i - 1]); return series[ds[i - 1]] * (1 - f) + series[ds[i]] * f; };
+  }
+
+  const api = { build, asOfLookup, interpLookup, addDays };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Engine = api;
 })(typeof self !== 'undefined' ? self : this);
