@@ -17,23 +17,27 @@
     const usdhufAt = (() => { const f = asOfLookup(Object.fromEntries(Object.entries(fxh).map(([d, v]) => [d, v.HUF]))); return d => f(d) || market.usdhuf || 330; })();
     const eurusdAt = (() => { const f = asOfLookup(Object.fromEntries(Object.entries(fxh).map(([d, v]) => [d, v.EUR]))); return d => { const e = f(d); return e ? 1 / e : 1.16; }; })();
     const today = market.today || new Date().toISOString().slice(0, 10);
+    // bármely pénznem: az ECB-árfolyam (egységnyi USD-re jutó deviza) alapján; GBX = penny
+    const fxFns = {};
+    const fxAt = (c, d) => { if (!fxFns[c]) fxFns[c] = asOfLookup(Object.fromEntries(Object.entries(fxh).filter(([, v]) => v[c]).map(([k, v]) => [k, v[c]]))); return fxFns[c](d); };
 
     const tx = [];
     const names = {}, snap = {}; // snapshot árak a kivonatból
     let cashNow = {}, asOf = null, stUsdhuf = null;
     for (const st of statements) {
       st.rows.forEach(r => tx.push({ ...r, acct: st.acct, label: st.label }));
+      if (st.names) Object.assign(names, st.names);
       st.positions.forEach(p => { names[p.tkr] = p.name; if (p.qty && p.value) snap[p.tkr] = { price: p.value / p.qty, date: st.asOf }; });
       for (const [c, v] of Object.entries(st.cash || {})) cashNow[c] = (cashNow[c] || 0) + v;
       if (!asOf || st.asOf > asOf) { asOf = st.asOf; stUsdhuf = st.usdhuf; }
     }
     tx.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.order - b.order);
-    const toUsd = (v, ccy, d) => ccy === 'USD' ? v : ccy === 'EUR' ? v * eurusdAt(d) : ccy === 'HUF' ? v / usdhufAt(d) : v;
+    const toUsd = (v, ccy, d) => { if (!ccy || ccy === 'USD') return v; if (ccy === 'EUR') return v * eurusdAt(d); if (ccy === 'HUF') return v / usdhufAt(d); if (ccy === 'GBX') ccy = 'GBP', v = v / 100; const r = fxAt(ccy, d); return r ? v / r : v; };
     // forintos befizetés tényleges dollárértéke: az aznapi HUF->USD átváltás árfolyamán
     const conv = {};
     tx.filter(r => r.type === 'FX').forEach(r => { const k = r.acct + '|' + r.date; const c = conv[k] = conv[k] || { HUF: 0, USD: 0 }; if (r.ccy in c) c[r.ccy] += r.gross; });
     const flowUsd = r => { if (r.ccy === 'HUF') { const c = conv[r.acct + '|' + r.date]; if (c && c.HUF < 0 && c.USD > 0) return r.gross * c.USD / -c.HUF; } return toUsd(r.gross, r.ccy, r.date); };
-    const usTickers = new Set(tx.filter(r => (r.type === 'B' || r.type === 'S') && r.ccy === 'USD').map(r => r.tkr));
+    const usTickers = new Set(tx.filter(r => (r.type === 'B' || r.type === 'S') && r.tkr && (r.ccy === 'USD' || /^US/.test(r.isin || ''))).map(r => r.tkr));
 
     // tranzakciós árak (ha nincs letöltött előzmény)
     const txPrice = {}; tx.filter(r => r.type === 'B' || r.type === 'S').forEach(r => { (txPrice[r.tkr] = txPrice[r.tkr] || {})[r.date] = toUsd(r.price, r.ccy, r.date); });
@@ -46,6 +50,7 @@
     // realizált eredmény, nyitott pozíciók (számlánként átlagár)
     const books = {}; const closed = [];
     for (const r of tx) {
+      if (r.type === 'SPLIT') { const b = books[r.acct + '|' + r.tkr]; if (b) b.qty += r.qty; continue; }
       if (r.type !== 'B' && r.type !== 'S') continue;
       const k = r.acct + '|' + r.tkr; const b = books[k] = books[k] || { acct: r.acct, tkr: r.tkr, qty: 0, cost: 0 };
       const g = toUsd(r.gross, r.ccy, r.date), n = toUsd(r.net, r.ccy, r.date);
@@ -80,7 +85,9 @@
         const r = tx[ti++];
         if (r.type === 'B') { hold[r.tkr] = (hold[r.tkr] || 0) + r.qty; cash[r.ccy] = (cash[r.ccy] || 0) - r.gross; }
         else if (r.type === 'S') { hold[r.tkr] = (hold[r.tkr] || 0) - r.qty; cash[r.ccy] = (cash[r.ccy] || 0) + r.net; }
-        else if (r.type === 'D') cash[r.ccy] = (cash[r.ccy] || 0) + r.net;
+        else if (r.type === 'D' || r.type === 'INT') cash[r.ccy] = (cash[r.ccy] || 0) + r.net;
+        else if (r.type === 'FEE') cash[r.ccy] = (cash[r.ccy] || 0) - Math.abs(r.gross);
+        else if (r.type === 'SPLIT') hold[r.tkr] = (hold[r.tkr] || 0) + r.qty;
         else if (r.type === 'DEP' || r.type === 'WD') { cash[r.ccy] = (cash[r.ccy] || 0) + r.gross; const u = flowUsd(r); flow += u; invested += u; if (spyF) { const p = spyF(r.date); if (p) spyShares += u / p; } }
         else if (r.type === 'FX') cash[r.ccy] = (cash[r.ccy] || 0) + r.gross;
       }

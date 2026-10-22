@@ -4,6 +4,14 @@
   const RANGE = { '1 hét': 'week', '1 hó': 'month', '3 hó': '3 months', '6 hó': '6 months', '1 év': 'year' };
   const TYPE = { 'vétel': 'buy', 'eladás': 'sale', 'osztalék': 'dividend', 'befizetés': 'deposit' };
   I18N.add({
+    'Oszlopok hozzárendelése': 'Map columns', 'Ezt a formátumot nem ismerem fel magától. Mondd meg, melyik oszlop mit jelent. A beállítást megjegyzem, legközelebb ugyanettől a brókertől magától megy.': 'I don’t recognise this format automatically. Tell me what each column means. I’ll remember it, so the next file from this broker imports on its own.',
+    'Típus': 'Type', 'Ticker': 'Ticker', 'Összeg': 'Amount', 'Dátumformátum': 'Date format', 'Automatikus': 'Automatic', 'nap/hó/év': 'day/month/year', 'hó/nap/év': 'month/day/year',
+    'Pénznem, ha nincs oszlop': 'Currency if there is no column', 'Mit jelentenek a típusok?': 'What do the types mean?', 'Előbb válaszd ki a Típus oszlopot.': 'Choose the Type column first.',
+    'Tovább': 'Next', 'Kamat': 'Interest', 'Időszak': 'Period', 'Számla neve': 'Account name', 'Hozzárendelés módosítása': 'Change mapping',
+    'Ha egy meglévő számla nevét adod meg, az új fájl az általa lefedett időszakot frissíti, duplikáció nélkül.': 'If you enter an existing account name, the new file updates the period it covers, without duplicates.',
+    'Kivonat vagy CSV hozzáadása': 'Add statement or CSV', 'Fájlok kiválasztása': 'Choose files', 'Lightyear PDF, vagy CSV: Trading 212, Revolut, Lightyear, Interactive Brokers és mások': 'Lightyear PDF, or CSV: Trading 212, Revolut, Lightyear, Interactive Brokers and others',
+    'Töltsd be a Lightyear PDF-et vagy bármelyik bróker CSV-exportját. A telefonodon marad, semmit nem küldünk el sehova.': 'Import a Lightyear PDF or any broker’s CSV export. It stays on your phone; nothing is sent anywhere.',
+    'Felismert sor': 'Recognised rows', 'Portfolio Wrapped': 'Portfolio Wrapped',
     // fejléc, navigáció
     'Jó reggelt': 'Good morning', 'Szép napot': 'Good afternoon', 'Jó estét': 'Good evening', 'Jó éjszakát': 'Good night', 'Szia': 'Hi',
     'Építsd a jövőd, lépésről lépésre': 'Build your future, step by step',
@@ -128,6 +136,7 @@
     [/^(.+) db · (.+) · azóta$/, '$1 sh · $2 · since'],
     [/^(.+) db · (.+)$/, '$1 sh · $2'],
     [/^(.+) db @ (.+)$/, '$1 sh @ $2'],
+    [/^(.+) \*$/, (x) => (I18N.exact[x] || x) + ' *'],
     [/^(.+) db$/, '$1 shares'],
     [/^(.+)% a portfólióból$/, '$1% of portfolio'],
     [/^(.+) százalékponttal az S&P 500 felett vagy$/, 'You are $1 percentage points ahead of the S&P 500'],

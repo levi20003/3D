@@ -404,6 +404,7 @@ V.attekintes = m => {
        ['Befizetve', m.dep, 0], ['Osztalék', m.divNet, 1], ['Díjak', -m.feeUsd, 1]]
       .map(([l, v, sg]) => `<div class="fcard"><div class="lbl-s">${l}</div><div class="v num ${sg ? cls(v) : ''}">${money(v, { sign: !!sg })}</div></div>`).join('')}
   </section>
+  <button class="wcta" id="wrapBtn"><span><small>Portfolio Wrapped</small><b>${t(`A te ${M.today.slice(0, 4)}-od`, `Your ${M.today.slice(0, 4)}`)}</b></span><i>${ic('chev')}</i></button>
   ${tbszCard()}
   <section>
     <div class="sec-h"><h2>Eszközeid</h2><span class="sub">${esc(rangeLabel(S.range))}</span></div>
@@ -446,7 +447,7 @@ V.attekintes.after = m => {
   document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.range = b.dataset.r; store.set('bf-range', S.range); animNext = true; render(true); });
   document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); animNext = true; render(true); });
   $('benchBtn').onclick = () => { if (!market.history.SPY) { explainNoData('spy'); return; } S.bench = !S.bench; store.set('bf-bench', S.bench); render(true); };
-  $('shareBtn').onclick = openShare;
+  $('shareBtn').onclick = openShare; $('wrapBtn').onclick = openWrapped;
   $('eyeBtn').onclick = () => { S.hide = !S.hide; store.set('bf-hide', S.hide); render(true); };
   $('qaImport').onclick = () => $('fileIn').click(); $('qaRefresh').onclick = () => refresh({}); $('qaAdd').onclick = () => openManual(); $('qaMore').onclick = openActions;
   const tk = $('tipKey'); if (tk) tk.onclick = () => openSettings(); const tb = $('tipBk'); if (tb) tb.onclick = () => openSettings('backup');
@@ -537,6 +538,7 @@ V.elemzes.after = m => {
 function openActions() {
   const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Gyorsműveletek</div><h2 style="font-size:1.3rem">Mit szeretnél?</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
     <div class="acts">
+      <button data-act="wrapped"><span>${ic('trend')}</span><b>Portfolio Wrapped</b><small>${t('Az éved történetként', 'Your year as a story')}</small></button>
       <button data-act="share"><span>${ic('share')}</span><b>Eredmény megosztása</b><small>Kép Instagramra, X-re</small></button>
       <button data-act="add"><span>${ic('add')}</span><b>Tranzakció rögzítése</b><small>Vétel, eladás, osztalék</small></button>
       <button data-act="import"><span>${ic('file')}</span><b>Kivonat betöltése</b><small>Új Lightyear PDF</small></button>
@@ -547,7 +549,7 @@ function openActions() {
       <button data-act="settings"><span>${ic('more', 3)}</span><b>Beállítások</b><small>Kulcsok, adatok</small></button>
     </div>`);
   s.root.querySelectorAll('[data-act]').forEach(b => b.onclick = () => { const a = b.dataset.act; s.close();
-    if (a === 'share') openShare(); if (a === 'add') openManual(); if (a === 'import') $('fileIn').click(); if (a === 'refresh') refresh({}); if (a === 'alert') openAlerts(); if (a === 'settings') openSettings();
+    if (a === 'wrapped') openWrapped(); if (a === 'share') openShare(); if (a === 'add') openManual(); if (a === 'import') $('fileIn').click(); if (a === 'refresh') refresh({}); if (a === 'alert') openAlerts(); if (a === 'settings') openSettings();
     if (a === 'cur') { S.cur = S.cur === 'USD' ? S.alt : 'USD'; store.set('bf-cur2', S.cur); drawCur(); render(true); }
     if (a === 'theme') { S.theme = { auto: 'light', light: 'dark', dark: 'auto' }[S.theme]; store.set('bf-theme', S.theme); applyTheme(); } });
 }
@@ -743,7 +745,7 @@ function onboarding(step = 0) {
   const slides = [
     ['A befektetéseid,', 'egy helyen.', 'Lightyear számláid összesítve, élő árfolyamokkal és az S&P 500-hoz mérve.'],
     ['Lásd, mi hozza', 'a hozamot.', 'Nyertesek, vesztesek, díjak, osztalékok és TBSZ-határidők egy pillantással.'],
-    ['Kezdjük', 'a kivonattal.', 'Töltsd be a PDF-kivonataidat. A telefonodon maradnak, semmit nem küldünk el sehova.']];
+    ['Kezdjük', 'a kivonattal.', 'Töltsd be a Lightyear PDF-et vagy bármelyik bróker CSV-exportját. A telefonodon marad, semmit nem küldünk el sehova.']];
   const [a, b, c] = slides[step];
   $('main').innerHTML = `
   <section class="onb2">
@@ -755,7 +757,7 @@ function onboarding(step = 0) {
       <div class="oa-card oa-front"><span>Portfólió</span><b class="num">$12 480,50</b><svg viewBox="0 0 200 60" preserveAspectRatio="none"><path d="M0 48 C20 44 30 30 50 34 S80 50 100 36 S140 12 160 20 S190 8 200 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><small>▲ 3,2% · S&P 500 +2,1%</small></div>
       <div class="oa-pod"></div>
     </div>
-    ${step < 2 ? `<button class="ob-btn" id="obNext">Tovább →</button>` : `<div class="drop" id="drop" role="button" tabindex="0"><b>Kivonatok kiválasztása</b><div class="sub">PDF, akár több egyszerre (pl. TBSZ 2025 és TBSZ 2026)</div></div>`}
+    ${step < 2 ? `<button class="ob-btn" id="obNext">Tovább →</button>` : `<div class="drop" id="drop" role="button" tabindex="0"><b>Fájlok kiválasztása</b><div class="sub">Lightyear PDF, vagy CSV: Trading 212, Revolut, Lightyear, Interactive Brokers és mások</div></div>`}
   </section>`;
   const n = $('obNext'); if (n) n.onclick = () => onboarding(step + 1);
   const sk = $('obSkip'); if (sk) sk.onclick = () => onboarding(2);
@@ -767,6 +769,7 @@ function onboarding(step = 0) {
 
 /* ---------- import ---------- */
 async function importFiles(files) {
+  const csvs = files.filter(f => /\.(csv|txt)$/i.test(f.name) || /csv/i.test(f.type)); for (const c of csvs) await importCsv(c);
   files = files.filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)); if (!files.length) return;
   toast('Kivonat feldolgozása…', 1500);
   try {
@@ -835,7 +838,7 @@ function openSettings(focus) {
   const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Beállítások</div><h2 style="font-size:1.3rem">Adatok és frissítés</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
     <div class="field"><label>Kivonatok</label>
       <div class="list">${statements.map((st, i) => `<div class="li" style="cursor:default"><span class="tk">${esc((st.label || '').slice(-2) || 'LY')}</span><span><div class="n">${esc(st.label || st.acct)}</div><div class="s">${esc(st.acct)} · ${dhu(st.from)}–${dhu(st.to)} · ${st.rows.length} tétel</div></span><button class="ibtn" data-del="${i}" aria-label="Törlés">✕</button></div>`).join('')}</div>
-      <button class="btn ghost" id="addSt">Kivonat hozzáadása vagy frissítése (PDF)</button>
+      <button class="btn ghost" id="addSt">Kivonat vagy CSV hozzáadása</button>
       <p class="sub">Ugyanannak a számlának az újabb kivonata felülírja az érintett időszak tételeit, így nem lesz duplikáció.</p></div>
     <div class="field"><label for="key">Twelve Data API-kulcs (élő árfolyamok)</label>
       <input type="password" id="key" value="${esc(apiKey)}" placeholder="pl. 1a2b3c…" autocomplete="off" spellcheck="false">
@@ -1313,6 +1316,114 @@ function openShare() {
   const name = () => `portfolio-lens-${SH.tpl}-${M.today}.png`;
   const go = $('shGo'); if (go) go.onclick = async () => { const f = new File([await blob()], name(), { type: 'image/png' }); try { if (navigator.canShare({ files: [f] })) await navigator.share({ files: [f], text: t('A portfólióm a Portfolio Lens-ben', 'My portfolio on Portfolio Lens') }); else throw new Error('nosupport'); } catch (e) { if (e.name !== 'AbortError') $('shDl').click(); } };
   $('shDl').onclick = async () => { const a = document.createElement('a'); a.href = URL.createObjectURL(await blob()); a.download = name(); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); toast(t('Kép elmentve.', 'Image saved.')); };
+}
+
+/* ---------- CSV-import felület ---------- */
+const CSV_FIELDS = [['date', 'Dátum', 1, /^(date|datum|dátum|time|trade date|transaction date|settle date|zeit|fecha|data)/i], ['type', 'Típus', 1, /(type|typ|típus|action|transaction|art|tipo|operation)/i],
+  ['tkr', 'Ticker', 0, /(ticker|symbol|wertpapier|instrument|stock|security|részvény|isin)/i], ['qty', 'Mennyiség', 0, /(quantity|shares|qty|stück|anzahl|mennyiség|units|amount of shares|no\. of shares)/i],
+  ['price', 'Árfolyam', 0, /(price|kurs|árfolyam|ár$|rate per share|unit price)/i], ['total', 'Összeg', 1, /(total|amount|betrag|összeg|value|net|gross|wert)/i],
+  ['fee', 'Díj', 0, /(fee|gebühr|commission|díj|charge|kosten)/i], ['tax', 'Adó', 0, /(tax|steuer|adó|withholding)/i], ['ccy', 'Pénznem', 0, /(currency|währung|ccy|pénznem|devise)/i]];
+const TYPE_GUESS = [[/(buy|kauf|vétel|purchase|achat|compra|acquisto)/i, 'B'], [/(sell|verkauf|eladás|sale|vente|venta|vendita)/i, 'S'], [/(div|ausschüttung|osztalék|distribution)/i, 'D'],
+  [/(deposit|einzahlung|befizetés|top.?up|einlage|transfer in)/i, 'DEP'], [/(withdraw|auszahlung|kivét|kifizetés|transfer out)/i, 'WD'], [/(fee|gebühr|díj|custody)/i, 'FEE'], [/(interest|zins|kamat)/i, 'INT']];
+const TYPE_LBL = { B: 'Vétel', S: 'Eladás', D: 'Osztalék', DEP: 'Befizetés', WD: 'Kifizetés', FEE: 'Díj', INT: 'Kamat', skip: 'Kihagyás' };
+const csvSig = hdr => hdr.map(h => h.toLowerCase()).join('|');
+function csvReadText(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsText(f); }); }
+async function importCsv(f) {
+  let parsed; try { parsed = CSVImport.parseCSV(await csvReadText(f)); } catch (e) { toast(t('A CSV nem olvasható.', 'The CSV could not be read.')); return; }
+  const rows = parsed.rows; if (rows.length < 2) { toast(t('A CSV üres.', 'The CSV is empty.')); return; }
+  const id = CSVImport.detect(rows);
+  if (id) { csvConfirm(f.name, CSVImport.PRESETS[id].read(rows), CSVImport.PRESETS[id].name); return; }
+  const maps = store.get('bf-csvmaps', {}); const saved = maps[csvSig(rows[0])];
+  csvMapper(f.name, rows, saved);
+}
+function csvMapper(fname, rows, saved) {
+  const hdr = rows[0], body = rows.slice(1);
+  const guess = {}; CSV_FIELDS.forEach(([k, , , re]) => { const h = hdr.find(x => re.test(x) && !Object.values(guess).includes(x)); if (h) guess[k] = h; });
+  const map = saved ? JSON.parse(JSON.stringify(saved)) : { ...guess, dateOrder: 'auto', ccyFixed: '', types: {} };
+  const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">CSV · ${esc(fname)}</div><h2 style="font-size:1.25rem">Oszlopok hozzárendelése</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+    <p class="sub">Ezt a formátumot nem ismerem fel magától. Mondd meg, melyik oszlop mit jelent. A beállítást megjegyzem, legközelebb ugyanettől a brókertől magától megy.</p>
+    <div class="mgrid" id="cmF">${CSV_FIELDS.map(([k, l, req]) => `<label class="mf">${l}${req ? ' *' : ''}<select data-cf="${k}"><option value="">—</option>${hdr.map(h => `<option ${map[k] === h ? 'selected' : ''}>${esc(h)}</option>`).join('')}</select></label>`).join('')}
+      <label class="mf">Dátumformátum<select id="cmDo"><option value="auto">Automatikus</option><option value="dmy" ${map.dateOrder === 'dmy' ? 'selected' : ''}>nap/hó/év</option><option value="mdy" ${map.dateOrder === 'mdy' ? 'selected' : ''}>hó/nap/év</option></select></label>
+      <label class="mf">Pénznem, ha nincs oszlop<select id="cmCcy"><option value="">—</option>${['USD', 'EUR', 'GBP', 'HUF', 'CHF', 'PLN', 'CZK', 'SEK', 'NOK', 'DKK', 'RON'].map(c => `<option ${map.ccyFixed === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label></div>
+    <div class="field"><label>Mit jelentenek a típusok?</label><div id="cmTypes" class="cmtypes"></div></div>
+    <div class="msum" id="cmSum"></div><p class="merr" id="cmErr" role="alert"></p>
+    <button class="btn" id="cmGo">Tovább</button>`);
+  const typeCol = () => hdr.indexOf(map.type);
+  const drawTypes = () => { const i = typeCol(); const el = $('cmTypes'); if (i < 0) { el.innerHTML = '<p class="sub">Előbb válaszd ki a Típus oszlopot.</p>'; return; }
+    const vals = [...new Set(body.map(r => r[i]).filter(Boolean))].slice(0, 24);
+    vals.forEach(v => { if (!map.types[v]) { const g = TYPE_GUESS.find(([re]) => re.test(v)); map.types[v] = g ? g[1] : 'skip'; } });
+    el.innerHTML = vals.map(v => `<label class="cmt"><span title="${esc(v)}">${esc(v)}</span><select data-tv="${esc(v)}">${Object.entries(TYPE_LBL).map(([k, l]) => `<option value="${k}" ${map.types[v] === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`).join('');
+    el.querySelectorAll('[data-tv]').forEach(sel => sel.onchange = () => { map.types[sel.dataset.tv] = sel.value; preview(); }); };
+  const preview = () => { try { const r = CSVImport.readMapped(rows, map); const c = {}; r.rows.forEach(x => c[x.type] = (c[x.type] || 0) + 1);
+    $('cmSum').innerHTML = `<span>${t('Felismert sor', 'Recognised rows')} <b class="num">${r.rows.length}/${body.length}</b></span>` + Object.entries(c).map(([k, n]) => `<span>${TYPE_LBL[k]} <b class="num">${n}</b></span>`).join(''); return r; } catch (e) { $('cmSum').innerHTML = ''; return { rows: [] }; } };
+  s.root.querySelectorAll('[data-cf]').forEach(sel => sel.onchange = () => { map[sel.dataset.cf] = sel.value; if (sel.dataset.cf === 'type') { map.types = {}; drawTypes(); } preview(); });
+  $('cmDo').onchange = e => { map.dateOrder = e.target.value === 'auto' ? '' : e.target.value; preview(); };
+  $('cmCcy').onchange = e => { map.ccyFixed = e.target.value; preview(); };
+  drawTypes(); preview();
+  $('cmGo').onclick = () => { if (!map.date || !map.type || !map.total) { $('cmErr').textContent = t('A Dátum, a Típus és az Összeg oszlop kötelező.', 'Date, Type and Amount columns are required.'); return; }
+    const r = preview(); if (!r.rows.length) { $('cmErr').textContent = t('Egy sort sem sikerült felismerni. Ellenőrizd a típusokat és a dátumformátumot.', 'No rows were recognised. Check the types and the date format.'); return; }
+    const maps = store.get('bf-csvmaps', {}); maps[csvSig(hdr)] = map; store.set('bf-csvmaps', maps); s.close(); setTimeout(() => csvConfirm(fname, r, ''), 60); };
+}
+function csvConfirm(fname, res, preset) {
+  const rows = res.rows.filter(r => r.date); if (!rows.length) { toast(t('A fájlban nem találtam tranzakciót.', 'No transactions found in the file.')); return; }
+  const c = {}; rows.forEach(x => c[x.type] = (c[x.type] || 0) + 1); const ds = rows.map(r => r.date).sort();
+  const existing = statements.filter(st => st.source === 'csv');
+  const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">CSV · ${esc(fname)}</div><h2 style="font-size:1.25rem">${preset ? esc(preset) + ' ' + t('felismerve', 'recognised') : t('Betöltés előtt', 'Before importing')}</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+    <dl class="kv"><dt>Időszak</dt><dd>${dhu(ds[0])} – ${dhu(ds[ds.length - 1])}</dd><dt>Tranzakciók</dt><dd class="num">${rows.length}</dd>${Object.entries(c).map(([k, n]) => `<dt>${TYPE_LBL[k] || k}</dt><dd class="num">${n}</dd>`).join('')}</dl>
+    <label class="mf">Számla neve<input id="ciName" value="${esc(preset || fname.replace(/\.[^.]+$/, ''))}" list="ciList"><datalist id="ciList">${existing.map(st => `<option value="${esc(st.label)}">`).join('')}</datalist></label>
+    <p class="sub">Ha egy meglévő számla nevét adod meg, az új fájl az általa lefedett időszakot frissíti, duplikáció nélkül.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="ciGo">Betöltés</button>${preset ? '' : '<button class="btn ghost" id="ciBack">Hozzárendelés módosítása</button>'}</div>`);
+  $('ciGo').onclick = () => { const name = $('ciName').value.trim() || preset || 'CSV'; const acct = 'CSV:' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const st = CSVImport.toStatement(res, acct, name); mergeStatement(st); statements.sort((a, b) => (a.label || '').localeCompare(b.label || '')); store.set('bf-st', statements);
+    s.close(); compute(); boot(); toast(t(`Betöltve: ${name} · ${rows.length} tétel`, `Imported: ${name} · ${rows.length} transactions`)); refresh({}); };
+  const b = $('ciBack'); if (b) b.onclick = () => toast(t('Töltsd be újra a fájlt, és a hozzárendelés megnyílik.', 'Import the file again to reopen the mapping.'));
+}
+
+/* ---------- Portfolio Wrapped: az év történetként ---------- */
+const PERSONA = { 'Technológia': ['A Tech-hívő', 'The Tech Believer'], 'Alapvető fogyasztás': ['A Stabilitás híve', 'The Steady Hand'], 'Pénzügy': ['A Bankár', 'The Banker'],
+  'Egészségügy': ['Az Egészség-befektető', 'The Health Investor'], 'Ciklikus fogyasztás': ['A Trendvadász', 'The Trend Hunter'], 'Kommunikáció': ['A Médiamogul', 'The Media Mogul'],
+  'Ipar': ['Az Építő', 'The Builder'], 'Ingatlan': ['Az Ingatlanos', 'The Landlord'], 'Energia': ['Az Energiás', 'The Energy Player'], 'Index': ['Az Indexes', 'The Indexer'] };
+function wrappedData() {
+  const y = M.today.slice(0, 4), yf = y + '-01-01', s = M.series; const i0 = Math.max(0, s.findIndex(p => p.d >= yf) - 1); const ys = s.slice(i0);
+  const a = ys[0], z = ys[ys.length - 1]; const ret = (z.nav / a.nav - 1) * 100; const spy = z.spyIdx && a.spyIdx ? (z.spyIdx / a.spyIdx - 1) * 100 : null;
+  const perfs = M.positions.map(p => ({ p, f: perf(p, yf) })).sort((u, v) => v.f.pct - u.f.pct);
+  let best = null, worst = null; for (let i = 1; i < ys.length; i++) { const ch = (ys[i].nav / ys[i - 1].nav - 1) * 100; if (!best || ch > best.ch) best = { d: ys[i].d, ch }; if (!worst || ch < worst.ch) worst = { d: ys[i].d, ch }; }
+  const tx = M.tx.filter(r => r.date >= yf); const trades = tx.filter(r => r.type === 'B' || r.type === 'S'); const cnt = {}; trades.forEach(r => cnt[r.tkr] = (cnt[r.tkr] || 0) + 1);
+  const most = Object.entries(cnt).sort((u, v) => v[1] - u[1])[0];
+  const divs = M.divs.filter(d => d.date >= yf); const deps = M.flows.filter(f => f.date >= yf);
+  const months = {}; ys.forEach(p => months[p.d.slice(0, 7)] = p); const mk = Object.keys(months).sort(); let up = 0; for (let i = 1; i < mk.length; i++) if (months[mk[i]].nav >= months[mk[i - 1]].nav) up++;
+  const sec = {}; M.positions.forEach(p => { const k = SECTOR[p.tkr] || 'Egyéb'; sec[k] = (sec[k] || 0) + p.value; }); const tot = sum(M.positions, p => p.value);
+  const secs = Object.entries(sec).sort((u, v) => v[1] - u[1]).map(([k, v]) => ({ k, w: v / tot * 100 }));
+  const persona = secs.length && secs[0].w >= 30 ? (PERSONA[secs[0].k] || ['A Diverzifikáló', 'The Diversifier']) : ['A Diverzifikáló', 'The Diversifier'];
+  return { y, ret, spy, top: perfs[0], low: perfs[perfs.length - 1], best, worst, trades: trades.length, buys: trades.filter(r => r.type === 'B').length, sells: trades.filter(r => r.type === 'S').length, most,
+    divN: divs.length, divNet: sum(divs, d => d.netUsd), depN: deps.length, dep: sum(deps, f => f.usd), up, months: mk.length - 1, secs, persona, res: (z.value - z.invested) - (a.value - a.invested) };
+}
+function openWrapped() {
+  if (!M) return; const w = wrappedData(); const P = v => (v >= 0 ? '+' : '−') + nf(Math.abs(v), 1) + '%';
+  const beat = w.spy != null ? w.ret - w.spy : null;
+  const slides = [
+    { bg: 'w1', html: `<small>Portfolio Wrapped</small><h1 class="wbig">${t('A te', 'Your')}<br>${w.y}${t('-od', '')}</h1><p>${t('Nézzük, hogy ment az éved a tőzsdén.', 'Let’s look at your year in the markets.')}</p>` },
+    { bg: w.ret >= 0 ? 'w2' : 'w5', html: `<small>${t('Az év eleje óta', 'Year to date')}</small><h1 class="wnum">${P(w.ret)}</h1>${w.spy != null ? `<p>S&P 500: <b>${P(w.spy)}</b></p><div class="wbadge">${beat >= 0 ? t(`Megverted az indexet ${nf(beat, 1)} ponttal!`, `You beat the index by ${nf(beat, 1)} points!`) : t(`Az index most ${nf(-beat, 1)} ponttal jobb volt.`, `The index won this time by ${nf(-beat, 1)} points.`)}</div>` : ''}${!S.hide ? `<p class="wsub">${money(w.res, { sign: true })}</p>` : ''}` },
+    w.top && { bg: 'w3', html: `<small>${t('Az év sztárja', 'Star of the year')}</small>${logo(w.top.p.tkr, 96)}<h1 class="wmid">${esc(w.top.p.tkr)}</h1><p>${esc(nm(w.top.p.tkr))}</p><h2 class="wnum2 up">${P(w.top.f.pct)}</h2>` },
+    w.low && w.low.f.pct < 0 && w.low !== w.top && { bg: 'w5', html: `<small>${t('Ő most nem jött be', 'This one didn’t work out')}</small>${logo(w.low.p.tkr, 96)}<h1 class="wmid">${esc(w.low.p.tkr)}</h1><p>${esc(nm(w.low.p.tkr))}</p><h2 class="wnum2 down">${P(w.low.f.pct)}</h2>` },
+    w.best && { bg: 'w4', html: `<small>${t('A legjobb napod', 'Your best day')}</small><h1 class="wmid">${dShort(w.best.d)}</h1><h2 class="wnum2 up">${P(w.best.ch)}</h2><small style="margin-top:28px">${t('És a legnehezebb', 'And the toughest')}</small><p><b>${dShort(w.worst.d)}</b> · <span class="down">${P(w.worst.ch)}</span></p>` },
+    { bg: 'w1', html: `<small>${t('Aktivitás', 'Activity')}</small><h1 class="wnum">${w.trades}</h1><p>${t(`ügylet: ${w.buys} vétel, ${w.sells} eladás`, `trades: ${w.buys} buys, ${w.sells} sells`)}</p>${w.most ? `<div class="wbadge">${t(`Kedvenced: ${w.most[0]} (${w.most[1]}×)`, `Your favourite: ${w.most[0]} (${w.most[1]}×)`)}</div>` : ''}<p class="wsub">${t(`${w.months} hónapból ${w.up} volt pozitív · ${w.depN} befizetés`, `${w.up} of ${w.months} months were positive · ${w.depN} deposits`)}</p>` },
+    w.divN && { bg: 'w3', html: `<small>${t('Passzív jövedelem', 'Passive income')}</small><h1 class="wnum">${w.divN}</h1><p>${t('osztalék-kifizetés érkezett', 'dividend payments arrived')}</p>${!S.hide ? `<div class="wbadge">${money(w.divNet)} ${t('nettó', 'net')}</div>` : ''}` },
+    { bg: 'w2', html: `<small>${t('A befektetői személyiséged', 'Your investor persona')}</small><h1 class="wmid">${t(w.persona[0], w.persona[1])}</h1><div class="wsecs">${w.secs.slice(0, 5).map((x, i) => `<div><span>${esc(I18N.tr(x.k))}</span><i style="width:${x.w.toFixed(1)}%;background:${['#b4e3c4', '#f0bc5e', '#86a9d8', '#f08c70', '#b99ae0'][i % 5]}"></i><b>${nf(x.w, 0)}%</b></div>`).join('')}</div>` },
+    { bg: 'w4', html: `<small>Portfolio Wrapped ${w.y}</small><h1 class="wmid">${t('Ez volt az éved.', 'That was your year.')}</h1><p>${t('Oszd meg, és nézd meg, a barátaid megverték-e az S&P 500-at.', 'Share it and see if your friends beat the S&P 500.')}</p><button class="ob-btn" id="wShare">${t('Megosztás', 'Share')}</button>` }
+  ].filter(Boolean);
+  let i = 0, timer = null; const root = document.createElement('div'); root.className = 'wrap-ov'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Portfolio Wrapped');
+  root.innerHTML = `<div class="wprog">${slides.map(() => '<i><b></b></i>').join('')}</div><button class="wx" aria-label="${t('Bezárás', 'Close')}">✕</button><div class="wslide" id="wSlide"></div><button class="wnav wl" aria-label="${t('Előző', 'Previous')}"></button><button class="wnav wr" aria-label="${t('Következő', 'Next')}"></button>`;
+  document.body.appendChild(root); document.body.style.overflow = 'hidden';
+  const close = () => { clearTimeout(timer); root.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', key); };
+  const show = n => { i = Math.max(0, Math.min(slides.length - 1, n)); const sl = slides[i]; const el = $('wSlide'); el.className = 'wslide ' + sl.bg; el.innerHTML = sl.html; void el.offsetWidth; el.classList.add('in');
+    root.querySelectorAll('.wprog i').forEach((x, k) => { x.className = k < i ? 'done' : k === i ? 'run' : ''; });
+    const sh = $('wShare'); if (sh) sh.onclick = e => { e.stopPropagation(); close(); SH.tpl = 'year'; SH.fmt = 'story'; openShare(); };
+    clearTimeout(timer); if (i < slides.length - 1 && !REDUCED) timer = setTimeout(() => show(i + 1), 6000); };
+  const key = e => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') show(i + 1); if (e.key === 'ArrowLeft') show(i - 1); };
+  document.addEventListener('keydown', key);
+  root.querySelector('.wx').onclick = close; root.querySelector('.wl').onclick = () => show(i - 1); root.querySelector('.wr').onclick = () => show(i + 1);
+  show(0);
 }
 
 /* ---------- chrome ---------- */
