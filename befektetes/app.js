@@ -49,13 +49,13 @@ const NAMES_FALLBACK = { AAPL: 'Apple', MSFT: 'Microsoft', AMZN: 'Amazon', GOOGL
 let animNext = true;
 const moneyHTML = v => S.hide ? '••••••' : S.cur === 'HUF' ? `${(v < -0.0049 ? '−' : '') + nf(Math.abs(v * R()))}<span class="cur">Ft</span>` : `<span class="cur pre">$</span>${(v < -0.0049 ? '−' : '') + nf(Math.abs(v), 2)}`;
 const nm = t => (M && M.names[t]) || NAMES_FALLBACK[t] || t;
-function toast(msg, ms = 3200) { const el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), ms); }
+function toast(msg, ms = 3200) { document.querySelectorAll('.toast').forEach(t => t.remove()); const el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), ms); }
 const loaded = {};
 function loadScript(src) { return loaded[src] = loaded[src] || new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => { delete loaded[src]; rej(new Error('Nem tölthető be: ' + src)); }; document.head.appendChild(s); }); }
 
 /* ---------- compute ---------- */
 function compute() {
-  M = statements.length ? Engine.build(statements, { history: market.history, fx: market.fx, usdhuf: market.usdhuf, today: todayIso() }) : null;
+  M = statements.length ? Engine.build([...statements, ...manualStatements()], { history: market.history, fx: market.fx, usdhuf: market.usdhuf, today: todayIso() }) : null;
 }
 
 /* ---------- market data ---------- */
@@ -354,7 +354,7 @@ function txRow(r) {
   const neg = r.type === 'B' || r.type === 'WD' || (r.type === 'FX' && r.gross < 0);
   const title = r.type === 'DEP' ? 'Befizetés' : r.type === 'FX' ? `Átváltás · ${r.ccy}` : nm(r.tkr);
   const sub = r.type === 'B' ? 'Vétel' : r.type === 'S' ? 'Eladás' : r.type === 'D' ? 'Osztalék' : r.type === 'DEP' ? (r.label || '') : 'Devizaváltás';
-  return `<button class="txr" ${r.type === 'B' || r.type === 'S' || r.type === 'D' ? `data-t="${esc(r.tkr)}"` : ''}>${txIcon(r)}<span class="txm"><b>${esc(title)}</b><small>${esc(sub)}</small></span><span class="ta"><b class="num ${neg ? '' : 'pos'}">${neg ? '−' : '+'}${f(amt)}</b><small>${dShort(r.date)}</small></span></button>`;
+  return `<button class="txr" ${r.manual ? `data-mid="${esc(r.id)}"` : r.type === 'B' || r.type === 'S' || r.type === 'D' ? `data-t="${esc(r.tkr)}"` : ''}>${txIcon(r)}<span class="txm"><b>${esc(title)}</b><small>${esc(sub)}${r.manual ? ' <span class="mtag">kézi</span>' : ''}</small></span><span class="ta"><b class="num ${neg ? '' : 'pos'}">${neg ? '−' : '+'}${f(amt)}</b><small>${dShort(r.date)}</small></span></button>`;
 }
 
 V.attekintes = m => {
@@ -377,9 +377,10 @@ V.attekintes = m => {
   <nav class="qa" aria-label="Gyorsműveletek">
     <button id="qaImport"><span>${ic('file')}</span>Kivonat</button>
     <button id="qaRefresh"><span>${ic('refresh')}</span>Frissítés</button>
-    <button id="qaAlert"><span>${ic('bell')}</span>Riasztás</button>
+    <button id="qaAdd"><span>${ic('add')}</span>Rögzítés</button>
     <button id="qaMore"><span>${ic('more', 3)}</span>Több</button>
   </nav>
+  ${Date.now() - store.get('bf-lastbackup', 0) > 30 * 864e5 ? `<button class="insight" id="tipBk"><span class="in-ic">${ic('file')}</span><span><b>${store.get('bf-lastbackup', 0) ? 'Régen mentettél' : 'Készíts biztonsági mentést'}</b><small>Az adataid csak ezen a telefonon vannak. Egy fájlba mentve bármikor visszatöltheted.</small></span>${ic('chev')}</button>` : ''}
   ${!apiKey ? `<button class="insight" id="tipKey"><span class="in-ic">${ic('trend')}</span><span><b>Kapcsold be az élő árfolyamokat</b><small>Ingyenes Twelve Data kulccsal napi árak, S&P összehasonlítás és riasztások.</small></span>${ic('chev')}</button>` : ''}
   <section class="fstats">
     ${[[m.positions.some(p => p.dayAbs != null) ? 'Ma' : 'Nyitott eredmény', m.positions.some(p => p.dayAbs != null) ? m.dayChange : m.unreal, 1],
@@ -429,8 +430,8 @@ V.attekintes.after = m => {
   document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); animNext = true; render(true); });
   $('benchBtn').onclick = () => { if (!market.history.SPY) { explainNoData('spy'); return; } S.bench = !S.bench; store.set('bf-bench', S.bench); render(true); };
   $('eyeBtn').onclick = () => { S.hide = !S.hide; store.set('bf-hide', S.hide); render(true); };
-  $('qaImport').onclick = () => $('fileIn').click(); $('qaRefresh').onclick = () => refresh({}); $('qaAlert').onclick = openAlerts; $('qaMore').onclick = openActions;
-  const tk = $('tipKey'); if (tk) tk.onclick = openSettings;
+  $('qaImport').onclick = () => $('fileIn').click(); $('qaRefresh').onclick = () => refresh({}); $('qaAdd').onclick = () => openManual(); $('qaMore').onclick = openActions;
+  const tk = $('tipKey'); if (tk) tk.onclick = () => openSettings(); const tb = $('tipBk'); if (tb) tb.onclick = () => openSettings('backup');
   bindGo();
   const steps = [['Befizetve', m.dep, 1], ['Realizált', m.realized], ['Nem realizált', m.unreal], ['Osztalék', m.divNet], ['Egyéb', m.other], ['Mai érték', m.value, 1]];
   let run = 0; const data = steps.map(([l, v, b]) => { if (b) { run = v; return [0, v * K()]; } const s = run; run += v; return [s * K(), run * K()]; });
@@ -518,6 +519,7 @@ V.elemzes.after = m => {
 function openActions() {
   const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Gyorsműveletek</div><h2 style="font-size:1.3rem">Mit szeretnél?</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
     <div class="acts">
+      <button data-act="add"><span>${ic('add')}</span><b>Tranzakció rögzítése</b><small>Vétel, eladás, osztalék</small></button>
       <button data-act="import"><span>${ic('file')}</span><b>Kivonat betöltése</b><small>Új Lightyear PDF</small></button>
       <button data-act="refresh"><span>${ic('refresh')}</span><b>Frissítés</b><small>Árak, naptár, hírek</small></button>
       <button data-act="alert"><span>${ic('bell')}</span><b>Riasztás</b><small>Árszint, napi mozgás</small></button>
@@ -526,7 +528,7 @@ function openActions() {
       <button data-act="settings"><span>${ic('more', 3)}</span><b>Beállítások</b><small>Kulcsok, adatok</small></button>
     </div>`);
   s.root.querySelectorAll('[data-act]').forEach(b => b.onclick = () => { const a = b.dataset.act; s.close();
-    if (a === 'import') $('fileIn').click(); if (a === 'refresh') refresh({}); if (a === 'alert') openAlerts(); if (a === 'settings') openSettings();
+    if (a === 'add') openManual(); if (a === 'import') $('fileIn').click(); if (a === 'refresh') refresh({}); if (a === 'alert') openAlerts(); if (a === 'settings') openSettings();
     if (a === 'cur') { S.cur = S.cur === 'USD' ? 'HUF' : 'USD'; store.set('bf-cur2', S.cur); drawCur(); render(true); }
     if (a === 'theme') { S.theme = { auto: 'light', light: 'dark', dark: 'auto' }[S.theme]; store.set('bf-theme', S.theme); applyTheme(); } });
 }
@@ -706,7 +708,7 @@ V.naplo.after = m => {
       const sign = r.type === 'B' || (r.type === 'FX' && r.gross < 0) || r.type === 'WD' ? 'neg' : r.type === 'FX' ? '' : 'pos';
       const sub = r.type === 'B' || r.type === 'S' ? `${nf(r.qty, 4)} db · ${f(r, r.price)}` : r.type === 'D' ? `bruttó ${f(r, r.gross)} · adó ${f(r, r.tax)}` : r.fee ? `díj ${f(r, r.fee)}` : 'díjmentes';
       const tk = r.type === 'FX' ? r.ccy : !r.tkr ? (r.ccy === 'HUF' ? 'Ft' : '$') : r.tkr;
-      html += `<button class="li" ${trade ? `data-t="${esc(r.tkr)}"` : ''}><span class="tk">${esc(tk)}</span><span><div class="n">${TY[r.type]}${trade ? ' · ' + esc(nm(r.tkr)) : ''}</div><div class="s">${dhu(r.date)} · ${sub} <span class="tag">${esc(r.label || r.acct)}</span></div></span><span class="r num ${sign}">${sign === 'neg' ? '−' : sign === 'pos' ? '+' : ''}${amt}</span></button>`;
+      html += `<button class="li" ${r.manual ? `data-mid="${esc(r.id)}"` : trade ? `data-t="${esc(r.tkr)}"` : ''}><span class="tk">${esc(tk)}</span><span><div class="n">${TY[r.type]}${trade ? ' · ' + esc(nm(r.tkr)) : ''}</div><div class="s">${dhu(r.date)} · ${sub} <span class="tag">${esc(r.label || r.acct)}</span>${r.manual ? ' <span class="mtag">kézi</span>' : ''}</div></span><span class="r num ${sign}">${sign === 'neg' ? '−' : sign === 'pos' ? '+' : ''}${amt}</span></button>`;
     });
     const el = $('log'); el.innerHTML = html ? `<div class="list">${html}</div>` : '<div class="empty">Nincs találat.</div>';
     bindTickers(el);
@@ -760,10 +762,12 @@ async function importFiles(files) {
     } catch (e) { msgs.push(`${f.name}: nem sikerült beolvasni.`); }
   }
   statements.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
-  store.set('bf-st', statements); compute(); boot(); toast('Betöltve: ' + msgs.join(' · '), 4500);
+  store.set('bf-st', statements); compute(); boot(); toast('Betöltve: ' + msgs.join(' · ') + (prunedManual ? ` · ${prunedManual} kézi tétel lecserélve a hivatalos adatra` : ''), 5000); prunedManual = 0;
   refresh();
 }
+let prunedManual = 0;
 function mergeStatement(st) {
+  const before = manual.length; manual = manual.filter(r => !(r.acct === st.acct && r.date <= st.to)); prunedManual += before - manual.length; if (before !== manual.length) saveManual();
   const i = statements.findIndex(s => s.acct === st.acct);
   if (i < 0) { statements.push(st); return; }
   const old = statements[i];
@@ -789,7 +793,7 @@ function sheet(html) {
   root.querySelector('.sheet').focus();
   return { root, close };
 }
-function bindTickers(scope) { (scope || document).querySelectorAll('[data-t]').forEach(b => b.onclick = () => openTicker(b.dataset.t)); }
+function bindTickers(scope) { (scope || document).querySelectorAll('[data-t]').forEach(b => b.onclick = () => openTicker(b.dataset.t)); (scope || document).querySelectorAll('[data-mid]').forEach(b => b.onclick = () => openManualRow(b.dataset.mid)); }
 function openTicker(t) {
   const m = M; const p = m.positions.find(x => x.tkr === t); const tk = m.T.find(x => x.tkr === t) || { real: 0, unreal: 0, div: 0, total: 0 };
   const tx = m.tx.filter(r => r.tkr === t).reverse();
@@ -825,9 +829,11 @@ function openSettings(focus) {
     <div class="field" id="diagField"><label>Adatforrások állapota</label>${diagHtml()}</div>
     <div class="field"><label>Megjelenés</label><div class="seg" role="group" aria-label="Téma">${[['auto', 'Rendszer'], ['light', 'Világos'], ['dark', 'Sötét']].map(([k, l]) => `<button data-th="${k}" aria-pressed="${S.theme === k}">${l}</button>`).join('')}</div></div>
     <div class="field"><label>Telepítés</label>${installEvt ? '<button class="btn ghost" id="install">App telepítése a kezdőképernyőre</button>' : ''}<p class="sub">Androidon a Chrome menüjében (⋮) válaszd a „Hozzáadás a kezdőképernyőhöz” vagy „App telepítése” lehetőséget. iPhone-on a Safari Megosztás gombja → „Főképernyőhöz adás”.</p></div>
+    ${backupField()}
     <div class="field"><label>Adatok törlése</label><button class="btn danger" id="wipe">Minden adat törlése erről a készülékről</button></div>`);
   $('addSt').onclick = () => { s.close(); $('fileIn').click(); };
-  $('dgTest').onclick = diagTest;
+  $('dgTest').onclick = diagTest; bindBackup();
+  if (focus === 'backup') setTimeout(() => $('bkField').scrollIntoView({ block: 'start', behavior: 'smooth' }), 120);
   if (focus === 'diag') setTimeout(() => $('diagField').scrollIntoView({ block: 'start', behavior: 'smooth' }), 120);
   $('saveF').onclick = () => { fhKey = $('fkey').value.trim(); store.set('bf-fhkey', fhKey); if (market.cal) market.cal.at = 0; s.close(); refresh(); };
   s.root.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const i = +b.dataset.del; if (b.dataset.sure) { statements.splice(i, 1); store.set('bf-st', statements); s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztos?'; } });
@@ -835,7 +841,7 @@ function openSettings(focus) {
   $('reload').onclick = () => { market.history = {}; store.set('bf-mkt', market); s.close(); refresh({ force: true }); };
   s.root.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { S.theme = b.dataset.th; store.set('bf-theme', S.theme); applyTheme(); s.root.querySelectorAll('[data-th]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
   const ib = $('install'); if (ib) ib.onclick = async () => { installEvt.prompt(); installEvt = null; s.close(); };
-  $('wipe').onclick = e => { const b = e.currentTarget; if (b.dataset.sure) { ['bf-st', 'bf-mkt', 'bf-key', 'bf-fhkey', 'bf-alertlog', 'bf-alerted', 'bf-alertcfg'].forEach(store.del); fhKey = ''; alertLog = []; statements = []; market = { history: {}, fx: {}, usdhuf: null, updatedAt: 0 }; apiKey = ''; s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztosan törlöd? Koppints újra.'; } };
+  $('wipe').onclick = e => { const b = e.currentTarget; if (b.dataset.sure) { ['bf-st', 'bf-mkt', 'bf-key', 'bf-fhkey', 'bf-alertlog', 'bf-alerted', 'bf-alertcfg', 'bf-manual', 'bf-lastbackup'].forEach(store.del); manual = []; fhKey = ''; alertLog = []; statements = []; market = { history: {}, fx: {}, usdhuf: null, updatedAt: 0 }; apiKey = ''; s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztosan törlöd? Koppints újra.'; } };
 }
 
 /* ---------- TBSZ ---------- */
@@ -847,7 +853,8 @@ function tbszAccounts() {
     const posVal = sum(st.positions, p => p.qty * (M.priceAt(p.tkr, M.today) || 0));
     const cash = sum(Object.entries(st.cash || {}), ([c, v]) => c === 'USD' ? v : c === 'HUF' ? v / R() : c === 'EUR' ? v * 1.16 : v);
     const dep = sum(M.flows.filter(f => f.acct === st.acct), f => f.usd);
-    const value = posVal + cash, gain = value - dep;
+    const mv = sum(manual.filter(r => r.acct === st.acct), r => r.type === 'B' ? r.qty * (M.priceAt(r.tkr, M.today) || r.price) - r.gross : r.type === 'S' ? r.net - r.qty * (M.priceAt(r.tkr, M.today) || r.price) : r.type === 'D' || r.type === 'DEP' ? r.net : 0);
+    const value = posVal + cash + mv, gain = value - dep;
     const start = `${y}-01-01`, gy = `${y}-12-31`, t3 = `${y + 3}-12-31`, t5 = `${y + 5}-12-31`;
     const days = d => Math.ceil((Date.parse(d + 'T23:59:59') - Date.parse(M.today + 'T12:00:00')) / 864e5);
     let phase, next, nextLbl, rate;
@@ -1077,6 +1084,128 @@ async function diagTest() {
     try { const r = await fetch(u, { cache: 'no-store' }); const t = await r.text(); out.push(`${l}: HTTP ${r.status}${/"code":429/.test(t) ? ' (nem hiba: elfogyott a perces ingyenes keret, mert közben letöltés futott; egy perc múlva rendben lesz)' : r.ok && !/"status":"error"/.test(t) ? ' · rendben' : ''}\n${t.slice(0, 380)}`); if (/twelvedata/.test(u)) for (let k = 0; k < 2; k++) credits.push(Date.now()); } catch (e) { out.push(`${l}: HIBA ${e.message || e}`); }
   }
   o.textContent = out.join('\n\n');
+}
+
+/* ---------- kézi tranzakciók ---------- */
+let manual = store.get('bf-manual', []);
+const saveManual = () => store.set('bf-manual', manual);
+// a kézi tételek számlánként egy kiegészítő "kivonatként" mennek a számításba
+function manualStatements() {
+  const by = {};
+  manual.forEach((r, i) => { const st = statements.find(s => s.acct === r.acct) || statements[0]; if (!st) return;
+    const g = by[st.acct] = by[st.acct] || { acct: st.acct, label: st.label, rows: [], positions: [], cash: { USD: 0 }, manual: true };
+    g.rows.push({ ...r, acct: st.acct, label: st.label, order: 1e6 + i });
+    g.cash.USD += r.type === 'DEP' ? r.gross : r.type === 'B' ? -r.gross : r.type === 'S' ? r.net : r.type === 'D' ? r.net : 0; });
+  return Object.values(by);
+}
+const lyFee = v => Math.max(0.10, Math.round(v * 0.001 * 100) / 100);
+function heldQty(acct, t) { let q = 0; for (const r of M.tx) { if (r.acct !== acct || r.tkr !== t) continue; if (r.type === 'B') q += r.qty; if (r.type === 'S') q -= r.qty; } return Math.max(0, q); }
+function openManual(edit) {
+  const accts = statements.filter(st => !st.manual);
+  const r0 = edit || { type: 'B', acct: (accts[accts.length - 1] || {}).acct, date: todayIso(), tkr: '', qty: '', price: '', fee: '', gross: '', tax: '' };
+  const known = [...new Set(M.tx.filter(r => r.tkr && r.type !== 'FX').map(r => r.tkr))].sort();
+  const T = [['B', 'Vétel'], ['S', 'Eladás'], ['D', 'Osztalék'], ['DEP', 'Befizetés']];
+  const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">${edit ? 'Szerkesztés' : 'Kézi rögzítés'}</div><h2 style="font-size:1.3rem">Tranzakció</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+    <form id="mf" class="mform" novalidate>
+      <div class="ptabs" role="tablist">${T.map(([k, l]) => `<button type="button" role="tab" data-mt="${k}" aria-selected="${r0.type === k}">${l}</button>`).join('')}</div>
+      <div class="mgrid">
+        <label class="mf">Számla<select id="mAcct">${accts.map(st => `<option value="${esc(st.acct)}" ${st.acct === r0.acct ? 'selected' : ''}>${esc(st.label || st.acct)}</option>`).join('')}</select></label>
+        <label class="mf">Dátum<input type="date" id="mDate" value="${r0.date}" max="${todayIso()}" required></label>
+        <label class="mf mt-t">Részvény (ticker)<input id="mTkr" list="mTkrs" value="${esc(r0.tkr)}" placeholder="pl. NVDA" autocapitalize="characters" autocomplete="off" spellcheck="false"><datalist id="mTkrs">${known.map(t => `<option value="${t}">${esc(nm(t))}</option>`).join('')}</datalist></label>
+        <label class="mf mt-q">Mennyiség (db)<input type="number" id="mQty" step="any" min="0" inputmode="decimal" value="${r0.qty}"></label>
+        <label class="mf mt-q">Árfolyam ($)<input type="number" id="mPrice" step="any" min="0" inputmode="decimal" value="${r0.price}"></label>
+        <label class="mf mt-q">Díj ($)<input type="number" id="mFee" step="0.01" min="0" inputmode="decimal" value="${r0.fee}" placeholder="automatikus"></label>
+        <label class="mf mt-a">Összeg ($)<input type="number" id="mGross" step="0.01" min="0" inputmode="decimal" value="${r0.gross}"></label>
+        <label class="mf mt-d">Levont adó ($)<input type="number" id="mTax" step="0.01" min="0" inputmode="decimal" value="${r0.tax}" placeholder="30% ha üres"></label>
+      </div>
+      <div class="msum" id="mSum"></div>
+      <p class="merr" id="mErr" role="alert"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">${edit ? 'Mentés' : 'Rögzítés'}</button>${edit ? '<button class="btn danger" type="button" id="mDel">Törlés</button>' : ''}</div>
+      <p class="sub">A kézi tételek „kézi” címkét kapnak. Ha később betöltesz egy kivonatot, ami már tartalmazza ezt a napot, a kézi tétel magától törlődik, és a hivatalos adat lép a helyére.</p>
+    </form>`);
+  let type = r0.type;
+  const show = () => { s.root.querySelectorAll('[data-mt]').forEach(b => b.setAttribute('aria-selected', b.dataset.mt === type));
+    s.root.querySelectorAll('.mt-t').forEach(e => e.hidden = type === 'DEP'); s.root.querySelectorAll('.mt-q').forEach(e => e.hidden = !(type === 'B' || type === 'S'));
+    s.root.querySelectorAll('.mt-a').forEach(e => e.hidden = !(type === 'D' || type === 'DEP')); s.root.querySelectorAll('.mt-d').forEach(e => e.hidden = type !== 'D'); calc(); };
+  const calc = () => { const q = +$('mQty').value, p = +$('mPrice').value; const out = $('mSum');
+    if (type === 'B' || type === 'S') { if (!(q > 0 && p > 0)) { out.innerHTML = ''; return; } const v = q * p, fee = $('mFee').value === '' ? lyFee(v) : +$('mFee').value;
+      out.innerHTML = `<span>Forgalom <b class="num">${usd(v)}</b></span><span>Díj <b class="num">${usd(fee)}</b></span><span>${type === 'B' ? 'Fizetendő' : 'Jóváírás'} <b class="num">${usd(type === 'B' ? v + fee : v - fee)}</b></span>${type === 'B' && v + fee > M.cashUsd + 0.01 ? `<span class="mwarn">A számlán ${usd(Math.max(0, M.cashUsd))} készpénz van. Ha befizetésből vetted, azt is rögzítsd, különben a készpénz mínuszba megy.</span>` : ''}`; }
+    else if (type === 'D') { const g = +$('mGross').value; if (!(g > 0)) { out.innerHTML = ''; return; } const tax = $('mTax').value === '' ? Math.round(g * 30) / 100 : +$('mTax').value; out.innerHTML = `<span>Nettó <b class="num">${usd(g - tax)}</b></span><span>Adó <b class="num">${usd(tax)}</b></span>`; }
+    else out.innerHTML = ''; };
+  s.root.querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { type = b.dataset.mt; show(); });
+  ['mQty', 'mPrice', 'mFee', 'mGross', 'mTax'].forEach(id => $(id).oninput = calc);
+  $('mTkr').oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9.]/g, ''); };
+  show();
+  const del = $('mDel'); if (del) del.onclick = () => { if (!del.dataset.sure) { del.dataset.sure = 1; del.textContent = 'Biztosan törlöd?'; return; } manual = manual.filter(x => x.id !== edit.id); saveManual(); s.close(); compute(); render(true); toast('Kézi tétel törölve.'); };
+  $('mf').onsubmit = e => { e.preventDefault(); const err = m => { $('mErr').textContent = m; };
+    const acct = $('mAcct').value, date = $('mDate').value, tkr = $('mTkr').value.trim().toUpperCase();
+    if (!acct) return err('Nincs számla. Előbb tölts be egy kivonatot.'); if (!date || date > todayIso()) return err('Adj meg egy mai vagy korábbi dátumot.');
+    const r = { id: edit ? edit.id : 'm' + Date.now().toString(36), manual: true, type, acct, date, tkr: type === 'DEP' ? '' : tkr, isin: '', ccy: 'USD', qty: 0, price: 0, gross: 0, fee: 0, net: 0, tax: 0, rate: 0 };
+    const iso = M.tx.find(x => x.tkr === tkr && x.isin); if (iso) r.isin = iso.isin;
+    if (type !== 'DEP' && !/^[A-Z][A-Z0-9.]{0,9}$/.test(tkr)) return err('Add meg a részvény tickerét, például NVDA.');
+    if (type === 'B' || type === 'S') { const q = +$('mQty').value, p = +$('mPrice').value; if (!(q > 0)) return err('A mennyiség legyen nagyobb nullánál.'); if (!(p > 0)) return err('Add meg az árfolyamot dollárban.');
+      const v = q * p, fee = $('mFee').value === '' ? lyFee(v) : +$('mFee').value; Object.assign(r, { qty: q, price: p, fee });
+      if (type === 'B') { r.gross = v + fee; r.net = v; } else { const have = heldQty(acct, tkr) + (edit && edit.type === 'S' && edit.tkr === tkr && edit.acct === acct ? edit.qty : 0); if (q > have + 1e-9) return err(`Ezen a számlán csak ${nf(have, 4)} db ${tkr} van.`); r.gross = v; r.net = v - fee; } }
+    else { const g = +$('mGross').value; if (!(g > 0)) return err('Add meg az összeget dollárban.'); r.gross = g;
+      if (type === 'D') { r.tax = $('mTax').value === '' ? Math.round(g * 30) / 100 : +$('mTax').value; r.net = g - r.tax; } else r.net = g; }
+    manual = edit ? manual.map(x => x.id === edit.id ? r : x) : [...manual, r]; manual.sort((a, b) => a.date < b.date ? -1 : 1); saveManual();
+    s.close(); compute(); render(true); toast(edit ? 'Kézi tétel frissítve.' : `Rögzítve: ${{ B: 'vétel', S: 'eladás', D: 'osztalék', DEP: 'befizetés' }[type]}${tkr && type !== 'DEP' ? ' · ' + tkr : ''}.`);
+    if ((type === 'B' || type === 'S') && apiKey && !market.history[tkr]) refresh({}); };
+}
+function openManualRow(id) { const r = manual.find(x => x.id === id); if (r) openManual(r); }
+
+/* ---------- biztonsági mentés ---------- */
+const BK_KEYS = ['bf-alertcfg', 'bf-alertlog', 'bf-cur2', 'bf-theme', 'bf-range', 'bf-mode', 'bf-bench', 'bf-hm', 'bf-bd', 'bf-ps', 'bf-an'];
+function backupData(withKeys, withHist) {
+  const o = { app: 'befektetes', v: 1, at: new Date().toISOString(), statements, manual, prefs: Object.fromEntries(BK_KEYS.map(k => [k, store.get(k, null)]).filter(([, v]) => v != null)) };
+  if (withKeys) o.keys = { td: apiKey, fh: fhKey };
+  if (withHist) o.market = { history: market.history, fx: market.fx, usdhuf: market.usdhuf, benchSym: market.benchSym };
+  return o;
+}
+async function doBackup(share) {
+  const o = backupData($('bkKeys').checked, $('bkHist').checked); const txt = JSON.stringify(o);
+  const name = `befektetes-mentes-${todayIso()}.json`; const file = new File([txt], name, { type: 'application/json' });
+  try {
+    if (share && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Befektetés mentés' }); }
+    else { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
+    store.set('bf-lastbackup', Date.now()); toast(`Mentés kész: ${name} (${nf(txt.length / 1024)} KB)`); const l = $('bkLast'); if (l) l.textContent = backupAgo();
+  } catch (e) { if (e && e.name !== 'AbortError') toast('A mentés nem sikerült: ' + (e.message || e)); }
+}
+const backupAgo = () => { const t = store.get('bf-lastbackup', 0); if (!t) return 'Még nem mentettél.'; const d = Math.floor((Date.now() - t) / 864e5); return `Utolsó mentés: ${d === 0 ? 'ma' : d + ' napja'} (${new Date(t).toLocaleDateString('hu-HU')}).`; };
+function restoreFile(f) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    let o; try { o = JSON.parse(rd.result); } catch (e) { toast('Ez nem érvényes mentésfájl.'); return; }
+    if (!o || o.app !== 'befektetes' || !Array.isArray(o.statements)) { toast('Ez nem a Befektetés app mentése.'); return; }
+    const nTx = sum(o.statements, st => (st.rows || []).length);
+    const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Visszaállítás</div><h2 style="font-size:1.3rem">Mentés betöltése</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+      <dl class="kv"><dt>Készült</dt><dd>${esc(new Date(o.at).toLocaleString('hu-HU'))}</dd><dt>Számlák</dt><dd>${o.statements.map(st => esc(st.label || st.acct)).join(', ')}</dd><dt>Tranzakciók</dt><dd class="num">${nTx} + ${(o.manual || []).length} kézi</dd>
+      <dt>API-kulcsok</dt><dd>${o.keys ? 'benne vannak' : 'nincsenek benne'}</dd><dt>Árfolyam-előzmények</dt><dd>${o.market ? 'benne vannak' : 'nincsenek benne'}</dd></dl>
+      <p class="sub">A betöltés felülírja az ezen a készüléken lévő kivonatokat és kézi tételeket.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="rsGo">Betöltés</button><button class="btn ghost" data-close>Mégse</button></div>`);
+    $('rsGo').onclick = () => {
+      statements = o.statements; store.set('bf-st', statements); manual = o.manual || []; saveManual();
+      Object.entries(o.prefs || {}).forEach(([k, v]) => store.set(k, v));
+      if (o.keys) { if (o.keys.td) { apiKey = o.keys.td; store.set('bf-key', apiKey); } if (o.keys.fh) { fhKey = o.keys.fh; store.set('bf-fhkey', fhKey); } }
+      if (o.market) { market = { ...market, ...o.market, updatedAt: 0 }; store.set('bf-mkt', market); }
+      alertCfg = store.get('bf-alertcfg', alertCfg); alertLog = store.get('bf-alertlog', []);
+      s.close(); compute(); boot(); toast('Mentés visszaállítva.'); refresh({});
+    };
+  };
+  rd.readAsText(f);
+}
+function backupField() {
+  return `<div class="field" id="bkField"><label>Biztonsági mentés</label>
+    <p class="sub" id="bkLast">${backupAgo()}</p>
+    <label class="ck"><input type="checkbox" id="bkHist" checked> Árfolyam-előzményekkel (gyorsabb visszaállítás)</label>
+    <label class="ck"><input type="checkbox" id="bkKeys"> API-kulcsokkal együtt (csak ha a fájlt biztonságos helyre teszed)</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${navigator.canShare ? '<button class="btn" id="bkShare">Mentés és megosztás</button><button class="btn ghost" id="bkSave">Letöltés</button>' : '<button class="btn" id="bkSave">Mentés fájlba</button>'}<button class="btn ghost" id="bkLoad">Visszaállítás fájlból</button></div>
+    <input type="file" id="bkFile" accept="application/json,.json" hidden></div>`;
+}
+function bindBackup() {
+  const sh = $('bkShare'); if (sh) sh.onclick = () => doBackup(true);
+  $('bkSave').onclick = () => doBackup(false); $('bkLoad').onclick = () => $('bkFile').click();
+  $('bkFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) { if (sheetClose) sheetClose(); setTimeout(() => restoreFile(f), 60); } };
 }
 
 /* ---------- chrome ---------- */
