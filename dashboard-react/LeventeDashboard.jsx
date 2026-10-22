@@ -14,7 +14,7 @@
  *
  * Tailwind: darkMode: "class". Betű: Inter (Google Fonts), tartalék: system-ui.
  */
-import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // A Three.js-t csak akkor tölti be, ha a menüpontot megnyitják.
 const WatchStandGenerator = lazy(() => import("./WatchStandGenerator.jsx"));
@@ -41,6 +41,7 @@ const PILL = {
   javasolt: "bg-violet-500/15 text-violet-800 dark:bg-violet-400/15 dark:text-violet-300",
   elvetve: "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600",
   bounced: "bg-rose-500/15 text-rose-800 dark:bg-rose-400/15 dark:text-rose-300",
+  cold: "bg-orange-500/15 text-orange-800 dark:bg-orange-400/15 dark:text-orange-300",
 };
 const HU_MON = ["jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."];
 const HU_MONL = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
@@ -81,7 +82,134 @@ function fuDue(c, s) {
 }
 const lastActivity = (c) => [c.sentAt, c.followupAt, c.followup2At].filter(Boolean).sort().pop() || "";
 
-function useDerived({ contacts, orders, ledger, settings }) {
+/* ---------- címutánpótlás: import, szektorok, újrakörözés ---------- */
+const RECYCLE_DAYS = 14;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+const slugify = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const norm = (s) => " " + slugify(s).replace(/-/g, " ") + " ";
+const domOf = (e) => (String(e || "").includes("@") ? String(e).split("@")[1].toLowerCase() : "");
+const catName = (c) => c.catLabel || CATS[c.cat] || c.cat || "–";
+const isBlocked = (c, bl) => !!bl && ((bl.emails || []).some((x) => String(x).toLowerCase() === String(c.email).toLowerCase()) || (bl.domains || []).some((x) => String(x).toLowerCase() === domOf(c.email)));
+// Hideg cím: kiment a levél, nem jött válasz, és 14 napja nem történt vele semmi.
+function coldDays(c) {
+  if (c.status !== "elkuldve" || c.bounced || isDM(c)) return null;
+  const la = lastActivity(c);
+  return la && daysSince(la) >= RECYCLE_DAYS ? daysSince(la) : null;
+}
+// Visszateszi a kiküldendők közé; az előző kör dátumát megőrzi a jegyzetben.
+const recycleDoc = (c) => ({
+  ...c, status: "uj", prevSentAt: c.sentAt || "", sentAt: "", followupAt: "", followup2At: "", recycledAt: today(), recycleCount: (+c.recycleCount || 0) + 1,
+  note: [c.note, `Újrakörözve ${huDate(today())} (előző levél: ${huDate(c.sentAt) || "?"})`].filter(Boolean).join(" · "),
+});
+const mapsUrl = (q) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q + " Szeged")}`;
+const SECTORS = [
+  { id: "kavezo", label: "Kávézók", icon: "coffee", cat: "vendeglato", keywords: ["kávé", "kávéz", "cafe", "coffee", "espresso", "bistro", "cukrász"], queries: ["kávézó", "kávéház", "specialty coffee"], pitch: "QR-kódos asztali tábla, menütartó, pultdísz logóval." },
+  { id: "ora", label: "Óra, ékszer", icon: "gem", cat: "x-ora-ekszer", catLabel: "Óra, ékszer", strictCat: true, keywords: ["óra", "órás", "ékszer", "watch", "jewel", "arany", "ezüst", "zálog"], queries: ["órás", "ékszerüzlet", "óraszalon"], pitch: "Óratartó, ékszertartó, kirakati display saját logóval." },
+  { id: "gym", label: "Edzőtermek", icon: "dumbbell", cat: "sport", keywords: ["fitness", "fitnesz", "gym", "edzőterem", "crossfit", "jóga", "yoga", "box", "pilates"], queries: ["edzőterem", "fitness", "crossfit"], pitch: "Tárcsatartó, kulacstartó, éremtartó, falitábla." },
+  { id: "ajandek", label: "Ajándékboltok", icon: "gift", cat: "kisker", keywords: ["ajándék", "gift", "kézműves", "szuvenír", "souvenir", "design shop"], queries: ["ajándékbolt", "kézműves bolt", "szuvenír"], pitch: "Saját tervezésű kis szériás termékek, bizományba is." },
+];
+function sectorMatch(c, s) {
+  if (c.sector === s.id || (s.strictCat && c.cat === s.cat)) return true;
+  const hay = norm([c.name, c.email, c.hook, c.catLabel].join(" "));
+  return s.keywords.some((k) => hay.includes(" " + norm(k).trim()));
+}
+
+// CSV (pontosvessző, tabulátor vagy vessző; idézőjeles mezők) → sorok tömbje.
+function parseCSV(text) {
+  const first = text.split(/\r?\n/).find((l) => l.trim()) || "";
+  const delim = [";", "\t", ","].map((d) => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"' && !f.trim()) { q = true; f = ""; }
+    else if (ch === delim) { row.push(f); f = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += ch;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows.map((r) => r.map((x) => x.trim())).filter((r) => r.some(Boolean));
+}
+const COLS = {
+  email: ["email", "e-mail", "mail", "emailcim", "e-mail cim"], name: ["name", "nev", "cegnev", "ceg", "company", "uzlet"], cat: ["cat", "kategoria", "category", "szektor"],
+  city: ["city", "varos", "telepules"], hook: ["hook", "horog"], note: ["note", "megjegyzes", "jegyzet"], fb: ["fb", "facebook"], ig: ["ig", "instagram"], web: ["web", "weboldal", "website", "url", "honlap"],
+};
+const colKey = (h) => { const n = slugify(h).replace(/-/g, ""); return Object.keys(COLS).find((k) => COLS[k].some((a) => a.replace(/[^a-z]/g, "") === n)); };
+function rowsToObjects(rows) {
+  if (!rows.length) return [];
+  const head = rows[0].map(colKey), hasHead = head.filter(Boolean).length >= 1 && !rows[0].some((x) => x.includes("@"));
+  const keys = hasHead ? head : ["email", "name", "cat", "city"];
+  return (hasHead ? rows.slice(1) : rows).map((r) => {
+    const o = {}; r.forEach((v, i) => { if (keys[i] && v) o[keys[i]] = v; });
+    if (!String(o.email || "").includes("@")) { const hit = r.find((v) => /\S+@\S+\.\S+/.test(v)); if (hit) o.email = hit; }
+    return o;
+  });
+}
+function parseJSONLeads(text) {
+  const j = JSON.parse(text), arr = Array.isArray(j) ? j : j.contacts || j.leads || [];
+  return arr.map((x) => {
+    if (typeof x === "string") return { email: x };
+    const o = {}; Object.entries(x || {}).forEach(([k, v]) => { const ck = colKey(k); if (ck && v != null && v !== "") o[ck] = String(v); });
+    return o;
+  });
+}
+function parseLeads(text) {
+  const t = text.trim();
+  if (!t) return { rows: [], err: "" };
+  try { return { rows: /^[[{]/.test(t) ? parseJSONLeads(t) : rowsToObjects(parseCSV(t)), err: "" }; } catch (e) { return { rows: [], err: "A JSON nem olvasható: " + e.message }; }
+}
+function resolveCat(raw, r, def) {
+  const v = String(raw || "").trim();
+  if (v) {
+    if (CATS[v]) return { cat: v };
+    const n = norm(v), hitS = SECTORS.find((s) => norm(s.label) === n || s.id === v);
+    if (hitS) return { cat: hitS.cat, catLabel: hitS.catLabel, sector: hitS.id };
+    const hitC = Object.entries(CATS).find(([, l]) => norm(l).includes(n) || n.includes(norm(l.split(",")[0])));
+    if (hitC) return { cat: hitC[0] };
+    return { cat: "x-" + slugify(v), catLabel: v };
+  }
+  const s = SECTORS.find((x) => sectorMatch(r, x));
+  if (s && !def.sector) return { cat: s.cat, catLabel: s.catLabel, sector: s.id };
+  return { cat: def.cat, catLabel: def.catLabel, sector: def.sector };
+}
+const IMPORT_STATE = {
+  ok: ["uj", "Új"], van: ["lezarva", "Már szerepel"], ceg: ["elkuldve", "Azonos cég"], tiltott: ["bounced", "Tiltólistán"], hibas: ["bounced", "Hibás"], fajlban: ["lezarva", "Ismétlődik"],
+};
+// Minden sorhoz eldönti, felvehető-e: meglévő cím, azonos cégdomain, tiltólista, hibás, fájlon belüli ismétlődés.
+function prepareImport(rows, { contacts, blocklist, def, city, status, source }) {
+  const have = new Set(contacts.map((c) => String(c.email).toLowerCase()));
+  const doms = new Map();
+  contacts.forEach((c) => { const dm = domOf(c.email); if (dm && !FREEMAIL.has(dm) && !doms.has(dm)) doms.set(dm, displayName(c)); });
+  const seen = new Set(), seenDom = new Map();
+  return rows.map((r) => {
+    let email = String(r.email || "").trim().toLowerCase().replace(/^mailto:/, "").replace(/[<>,;]/g, ""), dm = false;
+    if (!email) {
+      if (!(r.fb || r.ig) || !r.name) return { r, state: "hibas", why: r.name ? "Nincs e-mail, FB vagy IG" : "Üres sor" };
+      email = `dm-${slugify(r.name)}-${slugify(r.city || city || "szeged")}`; dm = true;
+    } else if (!EMAIL_RE.test(email)) return { r, state: "hibas", why: "Hibás e-mail" };
+    const dom = domOf(email), corp = dom && !FREEMAIL.has(dom);
+    let state = "ok", why = "";
+    if (have.has(email)) { state = "van"; why = "Már a címlistán"; }
+    else if (seen.has(email)) { state = "fajlban"; why = "Kétszer szerepel"; }
+    else if (!dm && isBlocked({ email }, blocklist)) { state = "tiltott"; why = "Leiratkozott vagy tiltott"; }
+    else if (corp && doms.has(dom)) { state = "ceg"; why = `Ugyanaz a cég: ${doms.get(dom)}`; }
+    else if (corp && seenDom.has(dom)) { state = "fajlban"; why = `Ugyanaz a cég: ${seenDom.get(dom)}`; }
+    seen.add(email);
+    if (state === "ok" && corp) seenDom.set(dom, email);
+    const k = resolveCat(r.cat, r, def);
+    const doc = {
+      email, name: r.name || "", cat: k.cat, city: r.city || city || "Szeged", hook: r.hook || "", status, sentAt: "", source, addedAt: today(),
+      note: [r.note, r.web && "Web: " + r.web].filter(Boolean).join(" · "),
+    };
+    if (k.catLabel) doc.catLabel = k.catLabel;
+    if (k.sector) doc.sector = k.sector;
+    if (dm) { doc.channel = "dm"; if (r.fb) doc.fb = r.fb; if (r.ig) doc.ig = r.ig; }
+    return { r, state, why, doc };
+  });
+}
+const SAMPLE_CSV = "email;név;kategória;város;megjegyzés\ninfo@pelda-kavezo.hu;Példa Kávézó;Kávézók;Szeged;Kárász utca\nhello@pelda-oras.hu;Példa Órás;Óra, ékszer;Szeged;\n;Példa Fitness;Edzőtermek;Szeged;fb: facebook.com/peldafitness";
+
+function useDerived({ contacts, orders, ledger, settings, blocklist }) {
   return useMemo(() => {
     const td = today();
     const st = {}; let ma = 0;
@@ -94,6 +222,10 @@ function useDerived({ contacts, orders, ledger, settings }) {
     const sent = sentList.length, rep = sentList.filter(didReply).length, cust = sentList.filter((c) => c.status === "ugyfel").length;
     const active = contacts.filter((c) => !["javasolt", "elvetve"].includes(c.status));
     const f2 = contacts.filter((c) => fuStage(c, settings) === 2).length;
+
+    const cold = contacts.filter((c) => coldDays(c) != null && !isBlocked(c, blocklist)).sort((a, b) => lastActivity(a).localeCompare(lastActivity(b)));
+    const catLabels = {};
+    for (const c of contacts) if (c.catLabel) catLabels[c.cat] = c.catLabel;
 
     const cat = {};
     for (const c of contacts) {
@@ -121,6 +253,8 @@ function useDerived({ contacts, orders, ledger, settings }) {
     if (nJ) todo.push({ k: "Új címek", tone: "javasolt", title: `${nJ} új cím vár jóváhagyásra`, detail: "A napi keresés találta őket. Nézd át a forrást, és hagyd jóvá, amit érdemes megkeresni." });
     if (fu) todo.push({ k: "Follow-up", tone: "fu", title: `${fu} follow-up esedékes${fu > fuToday ? ` · ma ${fuToday} belőle` : ""}`, detail: "Kategóriára szabott emlékeztető a levél szálában (6 nap után), majd egy rövid utolsó levél (+8 nap)." });
     if (uj && sentToday < goal) todo.push({ k: "Kiküldés", tone: "uj", title: `Mai kiküldés: ${sentToday} / ${Math.min(goal, uj + sentToday)}${fu && ujToday < uj ? (ujToday ? ` · ma ${ujToday} jut rá` : " · holnap jön") : ""}`, detail: `${uj} cím vár kiküldésre. Egyenként, csatolmány nélkül.` });
+    if (cold.length) todo.push({ k: "Utánkövetés", tone: "cold", title: `${cold.length} hideg cím újrakörözhető`, detail: `${RECYCLE_DAYS} napja nem jött rájuk válasz. A Címlistában egy kattintással visszakerülnek a kiküldendők közé.` });
+    if (uj < goal) todo.push({ k: "Utánpótlás", tone: "fu", title: uj ? `Fogy a cím: ${uj} kiküldendő maradt (napi cél ${goal})` : "Elfogyott a kiküldendő cím", detail: "Importálj új címeket, vagy indíts szektorkeresést a Címlistában (kávézók, órások, edzőtermek, ajándékboltok)." });
     if (st.dmq) todo.push({ k: "DM", tone: "valaszolt", title: `${st.dmq} cég vár DM-re`, detail: "Facebookon vagy Instagramon érhetők el. A pult kimásolja a cégre szabott üzenetet." });
     for (const o of orders) {
       if (o.status === "keres") todo.push({ k: "Ajánlat", tone: "fu", title: `Ajánlatkérés érkezett: ${o.company}`, detail: `${o.item || ""}${o.qty ? " · " + o.qty + " db" : ""}` });
@@ -131,12 +265,12 @@ function useDerived({ contacts, orders, ledger, settings }) {
     }
 
     return {
-      st, ma, goal, sent, rep, cust, rate: sent ? rep / sent : 0, active, f2, nJ, cat, months, inc, exp, tI, tE, ev, todo,
+      st, ma, goal, sent, rep, cust, rate: sent ? rep / sent : 0, active, f2, nJ, cat, catLabels, cold, months, inc, exp, tI, tE, ev, todo,
       openOrders: orders.filter((o) => ["keres", "ajanlat", "elfogadva", "gyartas"].includes(o.status)).length,
       paid: orders.filter((o) => o.status === "fizetve").length,
       recent: [...contacts].filter(lastActivity).sort((a, b) => lastActivity(b).localeCompare(lastActivity(a))),
     };
-  }, [contacts, orders, ledger, settings]);
+  }, [contacts, orders, ledger, settings, blocklist]);
 }
 
 /* ---------- adatforrás: a pult adatbázisa, különben jelölt mintaadat ---------- */
@@ -144,10 +278,14 @@ function sampleData() {
   const t = today(), c = [];
   const add = (i, o) => c.push({ email: `info@minta${i}.hu`, name: `Minta cég ${i}`, city: "Szeged", status: "uj", sentAt: "", ...o });
   for (let i = 0; i < 24; i++) add(i, { cat: "nyomda", status: i < 4 ? "valaszolt" : "elkuldve", sentAt: addDays(t, -9) });
+  for (let i = 4; i < 10; i++) Object.assign(c[i], { sentAt: addDays(t, -30 - i), followupAt: addDays(t, -24 - i), followup2At: addDays(t, -16 - i) });
   for (let i = 24; i < 60; i++) add(i, { cat: "kisker", status: i < 26 ? "valaszolt" : "elkuldve", sentAt: addDays(t, -3), city: i % 3 ? "Szeged" : "Makó" });
   for (let i = 60; i < 72; i++) add(i, { cat: "vendeglato" });
   add(72, { cat: "dekor", status: "javasolt" }); add(73, { cat: "szolg", status: "ugyfel", sentAt: addDays(t, -20) });
   add(74, { cat: "szolg", status: "lezarva", bounced: true, sentAt: addDays(t, -2) });
+  add(75, { cat: "vendeglato", name: "Minta Kávéház", status: "elkuldve", sentAt: addDays(t, -4) });
+  add(76, { cat: "x-ora-ekszer", catLabel: "Óra, ékszer", name: "Minta Órás", status: "valaszolt", sentAt: addDays(t, -6) });
+  add(77, { cat: "sport", name: "Minta Fitness", status: "uj" });
   return {
     contacts: c,
     orders: [{ id: "o1", company: "Minta Pizzéria", item: "QR-állvány", qty: 12, total: 42000, status: "elfogadva", deadline: addDays(t, 3), date: addDays(t, -1) }],
@@ -159,23 +297,38 @@ function sampleData() {
 }
 
 function useDashboardData() {
-  const [state, setState] = useState(() => ({ ...sampleData(), settings: { goal: 30, fuDays: 6 }, live: false }));
+  const [state, setState] = useState(() => ({ ...sampleData(), settings: { goal: 30, fuDays: 6 }, blocklist: { emails: [], domains: [] }, live: false }));
+  const dbRef = useRef(null);
   useEffect(() => {
     let alive = true; const off = [];
     (async () => {
       let db = null;
       try { db = await window.claude?.use?.("db"); } catch (e) { db = null; }
       if (!db || !alive) return;
+      dbRef.current = db;
       setState((s) => ({ ...s, contacts: [], orders: [], ledger: [], live: true }));
       const docs = (snap, idKey) => snap.docs.map((d) => ({ ...d.data(), [idKey]: d.data()[idKey] || d.id }));
       off.push(db.collection("contacts").onSnapshot((s) => setState((x) => ({ ...x, contacts: docs(s, "email") })), () => {}));
       off.push(db.collection("orders").onSnapshot((s) => setState((x) => ({ ...x, orders: docs(s, "id") })), () => {}));
       off.push(db.collection("ledger").onSnapshot((s) => setState((x) => ({ ...x, ledger: docs(s, "id") })), () => {}));
       off.push(db.doc("settings/main").onSnapshot((s) => { if (s.exists) setState((x) => ({ ...x, settings: { ...x.settings, ...s.data() } })); }, () => {}));
+      off.push(db.doc("settings/blocklist").onSnapshot((s) => { if (s.exists) setState((x) => ({ ...x, blocklist: { emails: [], domains: [], ...s.data() } })); }, () => {}));
     })();
     return () => { alive = false; off.forEach((f) => typeof f === "function" && f()); };
   }, []);
-  return state;
+  // Teljes névjegyeket ír (új vagy módosított); élő módban a pult adatbázisába, egyébként helyben.
+  const saveContacts = useCallback(async (docs) => {
+    const db = dbRef.current, failed = [];
+    if (db) {
+      for (let i = 0; i < docs.length; i += 8) {
+        await Promise.all(docs.slice(i, i + 8).map(async (d) => { try { await db.collection("contacts").doc(d.email).set(d); } catch (e) { failed.push(d.email); } }));
+      }
+    } else {
+      setState((x) => { const m = new Map(x.contacts.map((c) => [c.email, c])); docs.forEach((d) => m.set(d.email, d)); return { ...x, contacts: [...m.values()] }; });
+    }
+    return { ok: docs.length - failed.length, failed };
+  }, []);
+  return { ...state, saveContacts };
 }
 
 /* ---------- ikonok ---------- */
@@ -186,7 +339,11 @@ const PATHS = {
   user: "M10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM3 20c0-3.3 3.1-6 7-6s7 2.7 7 6M19 8v6M16 11h6", gear: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1",
   send: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z", check: "M20 6L9 17l-5-5", clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2", chat: "M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z",
   search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5", sun: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
-  moon: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", left: "M15 18l-6-6 6-6", right: "M9 18l6-6-6-6",
+  moon: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", upload: "M12 16V4M7 9l5-5 5 5M4 20h16", x: "M6 6l12 12M18 6L6 18",
+  refresh: "M20 11a8 8 0 0 0-14.9-3.9L4 9M4 4v5h5M4 13a8 8 0 0 0 14.9 3.9L20 15M20 20v-5h-5", map: "M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14",
+  alert: "M12 3l9.5 17h-19L12 3zM12 10v4M12 17h.01", coffee: "M4 8h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8zM17 9h2a2 2 0 0 1 0 4h-2M8 3v2M12 3v2",
+  gem: "M6 3h12l3 6-9 12L3 9l3-6zM3 9h18M12 21L9 9l3-6 3 6-3 12", dumbbell: "M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10",
+  gift: "M3 9h18v4H3zM5 13v8h14v-8M12 9v12M12 9c-1.5-4-5-4-5-2s3 2 5 2c2 0 5 0 5-2s-3.5-2-5 2", left: "M15 18l-6-6 6-6", right: "M9 18l6-6-6-6",
   watch: "M9 3h6l1 4H8l1-4zM9 21h6l1-4H8l1 4zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 9.5V12l1.6 1.2",
 };
 const Icon = ({ name, className = "h-[18px] w-[18px]" }) => (
@@ -381,7 +538,7 @@ function CategoryCard({ d }) {
             return (
               <li key={k}>
                 <div className="mb-1 flex items-center justify-between gap-2 text-[13px]">
-                  <span className="min-w-0 truncate text-zinc-700 dark:text-zinc-300">{CATS[k] || k}</span>
+                  <span className="min-w-0 truncate text-zinc-700 dark:text-zinc-300">{CATS[k] || d.catLabels[k] || k}</span>
                   <Pill tone={r >= 0.1 ? "ugyfel" : r > 0 ? "fu" : "lezarva"}>{Math.round(r * 100)}% · {x.rep}/{x.sent}</Pill>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"><div className="h-full rounded-full bg-[#5f6239] dark:bg-[#c3c78f]" style={{ width: `${(r / top) * 100}%` }} /></div>
@@ -431,7 +588,7 @@ function OutreachTable({ d, settings, query }) {
               return (
                 <tr key={c.email} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/70">
                   <td className="py-2.5 pr-3"><div className="font-semibold text-zinc-900 dark:text-zinc-100">{displayName(c)}</div><div className="text-xs text-zinc-500">{isDM(c) ? "DM" : c.email}</div></td>
-                  <td className="pr-3"><Pill tone="elkuldve">{CATS[c.cat] || c.cat || "–"}</Pill></td>
+                  <td className="pr-3"><Pill tone="elkuldve">{catName(c)}</Pill></td>
                   <td className="pr-3 text-zinc-600 dark:text-zinc-400">{c.city}</td>
                   <td className="pr-3"><Pill tone={c.bounced ? "bounced" : s}>{c.bounced ? "Visszapattant" : s === "fu" ? `${stage}. follow-up` : STATUS[s]}</Pill></td>
                   <td className="pr-3 tabular-nums text-zinc-600 dark:text-zinc-400">{huDate(lastActivity(c))}</td>
@@ -444,6 +601,341 @@ function OutreachTable({ d, settings, query }) {
         </table>
       </div>
     </Card>
+  );
+}
+
+/* ---------- Címlista: utánpótlás, import, szektorok, újrakörözés ---------- */
+const BTN = "inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#c3c78f] disabled:cursor-not-allowed disabled:opacity-50";
+const BTN_MAIN = `${BTN} bg-[#5f6239] text-white hover:brightness-110 dark:bg-[#c3c78f] dark:text-zinc-950`;
+const BTN_GHOST = `${BTN} border border-zinc-200 text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500`;
+const FIELD = "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-[#5f6239] dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-[#c3c78f]";
+
+function catOptionsOf(contacts) {
+  const m = new Map(Object.entries(CATS));
+  SECTORS.forEach((s) => s.catLabel && m.set(s.cat, s.catLabel));
+  contacts.forEach((c) => c.catLabel && !m.has(c.cat) && m.set(c.cat, c.catLabel));
+  return [...m.entries()];
+}
+
+function ImportModal({ preset, contacts, blocklist, saveContacts, onClose, onDone }) {
+  const opts = useMemo(() => catOptionsOf(contacts), [contacts]);
+  const [text, setText] = useState("");
+  const [file, setFile] = useState("");
+  const [defCat, setDefCat] = useState(preset ? preset.cat : "egyeb");
+  const [city, setCity] = useState("Szeged");
+  const [status, setStatus] = useState("uj");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const box = useRef(null);
+  useEffect(() => {
+    const k = (e) => { if (e.key === "Escape" && !busy) onClose(); };
+    window.addEventListener("keydown", k); box.current?.focus();
+    return () => window.removeEventListener("keydown", k);
+  }, [busy, onClose]);
+
+  const parsed = useMemo(() => parseLeads(text), [text]);
+  const items = useMemo(() => {
+    const lbl = opts.find(([k]) => k === defCat)?.[1];
+    const def = { cat: defCat, catLabel: CATS[defCat] ? undefined : lbl, sector: preset && preset.cat === defCat ? preset.id : undefined };
+    const source = `Import (${file || "beillesztés"}), ${huDate(today())}`;
+    return prepareImport(parsed.rows, { contacts, blocklist, def, city: city.trim(), status, source });
+  }, [parsed, contacts, blocklist, defCat, city, status, file, opts, preset]);
+  const counts = items.reduce((m, x) => ((m[x.state] = (m[x.state] || 0) + 1), m), {});
+  const ok = items.filter((x) => x.state === "ok");
+
+  const readFile = (f) => {
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { setText(String(r.result || "")); setFile(f.name); setErr(""); };
+    r.onerror = () => setErr("A fájl nem olvasható.");
+    r.readAsText(f, "utf-8");
+  };
+  const submit = async () => {
+    setBusy(true); setErr("");
+    try {
+      const res = await saveContacts(ok.map((x) => x.doc));
+      if (res.failed.length) setErr(`${res.failed.length} cím mentése nem sikerült: ${res.failed.slice(0, 3).join(", ")}${res.failed.length > 3 ? "…" : ""}`);
+      else { onDone(`${res.ok} új cím felvéve${status === "javasolt" ? " jóváhagyásra" : " a kiküldendők közé"}.`); onClose(); }
+    } catch (e) { setErr("Mentési hiba: " + e.message); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
+      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="l3d-imp-title" className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl outline-none dark:border-zinc-800 dark:bg-zinc-900 sm:rounded-2xl">
+        <div className="flex items-center gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
+          <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#5f6239]/10 text-[#5f6239] dark:bg-[#c3c78f]/10 dark:text-[#c3c78f]"><Icon name={preset ? preset.icon : "upload"} className="h-4 w-4" /></span>
+          <div className="min-w-0 flex-1">
+            <h2 id="l3d-imp-title" className="text-base font-bold text-zinc-900 dark:text-white">Címek importálása{preset ? ` · ${preset.label}` : ""}</h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">CSV vagy JSON. A meglévő címek, az azonos cégdomain és a tiltólista kimarad.</p>
+          </div>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Bezárás" className="grid h-9 w-9 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"><Icon name="x" className="h-4 w-4" /></button>
+        </div>
+
+        <div className="grid gap-4 overflow-y-auto px-5 py-4">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-3 text-sm text-zinc-600 hover:border-[#5f6239] dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-[#c3c78f]"
+              onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); readFile(e.dataTransfer.files?.[0]); }}>
+              <Icon name="upload" className="h-5 w-5 shrink-0" />
+              <span className="min-w-0 truncate">{file ? <b className="text-zinc-900 dark:text-zinc-100">{file}</b> : "Fájl kiválasztása vagy ide húzása (.csv, .json, .txt)"}</span>
+              <input type="file" accept=".csv,.json,.txt,text/csv,application/json,text/plain" className="sr-only" onChange={(e) => readFile(e.target.files?.[0])} />
+            </label>
+            <button type="button" className={BTN_GHOST} onClick={() => { setText(SAMPLE_CSV); setFile(""); }}>Minta beillesztése</button>
+          </div>
+          <label className="grid gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+            Vagy illeszd be ide (fejléccel vagy anélkül: email; név; kategória; város)
+            <textarea value={text} onChange={(e) => { setText(e.target.value); setFile(""); }} rows={5} spellCheck={false} placeholder={"email;név;kategória;város\ninfo@kavezo.hu;Kávézó Kft.;Kávézók;Szeged"} className={`${FIELD} font-mono text-[12.5px]`} />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400">Kategória, ha a sorban nincs
+              <select value={defCat} onChange={(e) => setDefCat(e.target.value)} className={FIELD}>{opts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400">Város, ha a sorban nincs
+              <input value={city} onChange={(e) => setCity(e.target.value)} className={FIELD} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400">Felvétel mint
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className={FIELD}><option value="uj">Kiküldendő</option><option value="javasolt">Javasolt (jóváhagyásra vár)</option></select>
+            </label>
+          </div>
+          {parsed.err && <p className="text-sm text-rose-600 dark:text-rose-400">{parsed.err}</p>}
+
+          {items.length > 0 && (
+            <div>
+              <div className="mb-2 flex flex-wrap gap-1.5">{Object.entries(IMPORT_STATE).filter(([k]) => counts[k]).map(([k, [tone, l]]) => <Pill key={k} tone={tone}>{l}: {counts[k]}</Pill>)}</div>
+              <div className="max-h-64 overflow-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+                <table className="w-full text-left text-[12.5px]">
+                  <thead className="sticky top-0 bg-zinc-50 text-[11px] uppercase tracking-wider text-zinc-400 dark:bg-zinc-950">
+                    <tr>{["Cím", "Név", "Kategória", "Város", "Állapot"].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {items.slice(0, 200).map((x, i) => (
+                      <tr key={i} className={`border-t border-zinc-100 dark:border-zinc-800/70 ${x.state === "ok" ? "" : "opacity-60"}`}>
+                        <td className="max-w-[200px] truncate px-3 py-1.5 font-medium text-zinc-900 dark:text-zinc-100">{x.doc ? (x.doc.channel === "dm" ? `DM · ${x.doc.fb || x.doc.ig}` : x.doc.email) : x.r.email || "–"}</td>
+                        <td className="max-w-[160px] truncate px-3 text-zinc-600 dark:text-zinc-400">{x.r.name || "–"}</td>
+                        <td className="px-3">{x.doc ? <span className="whitespace-nowrap text-zinc-600 dark:text-zinc-400">{catName(x.doc)}</span> : "–"}</td>
+                        <td className="px-3 text-zinc-600 dark:text-zinc-400">{x.doc?.city || "–"}</td>
+                        <td className="px-3"><span title={x.why}><Pill tone={IMPORT_STATE[x.state][0]}>{x.why || IMPORT_STATE[x.state][1]}</Pill></span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {items.length > 200 && <p className="mt-1 text-xs text-zinc-500">Az előnézet az első 200 sort mutatja, a felvétel mindet érinti.</p>}
+            </div>
+          )}
+          {err && <p className="text-sm text-rose-600 dark:text-rose-400">{err}</p>}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
+          <span className="mr-auto text-xs text-zinc-500 dark:text-zinc-400">{items.length ? `${items.length} sorból ${ok.length} vehető fel` : "Még nincs beolvasott sor"}</span>
+          <button type="button" className={BTN_GHOST} onClick={onClose} disabled={busy}>Mégse</button>
+          <button type="button" className={BTN_MAIN} onClick={submit} disabled={busy || !ok.length}>{busy ? "Mentés…" : `${ok.length} cím felvétele`}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const LEAD_FILTERS = [
+  ["all", "Mind"], ["uj", "Kiküldendő"], ["fu", "Follow-up"], ["cold", "Utánkövetés"], ["javasolt", "Javasolt"], ["valaszolt", "Válaszolt"], ["ugyfel", "Ügyfél"], ["lezarva", "Lezárva"],
+];
+
+function MiniStat({ label, value, tone, onClick, active }) {
+  return (
+    <button type="button" onClick={onClick} className={`rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#c3c78f] ${active ? "border-[#5f6239] dark:border-[#c3c78f]" : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700"}`}>
+      <Pill tone={tone}>{label}</Pill>
+      <div className="mt-1.5 text-2xl font-extrabold tabular-nums text-zinc-900 dark:text-white">{value}</div>
+    </button>
+  );
+}
+
+function LeadsView({ data, d, query, autoRecycle, setAutoRecycle }) {
+  const { contacts, settings, blocklist, saveContacts } = data;
+  const [filter, setFilter] = useState("all");
+  const [sector, setSector] = useState("");
+  const [catF, setCatF] = useState("");
+  const [cityF, setCityF] = useState("");
+  const [limit, setLimit] = useState(50);
+  const [modal, setModal] = useState(null);
+  const [confirmAll, setConfirmAll] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const tableRef = useRef(null);
+  useEffect(() => setLimit(50), [filter, sector, catF, cityF, query]);
+  useEffect(() => { if (!msg) return; const t = setTimeout(() => setMsg(""), 6000); return () => clearTimeout(t); }, [msg]);
+
+  const uj = d.st.uj || 0, runway = d.goal ? uj / d.goal : 0, coldSet = useMemo(() => new Set(d.cold.map((c) => c.email)), [d.cold]);
+  const pool = useMemo(() => contacts.filter((c) => c.status !== "elvetve"), [contacts]);
+  const sectorStats = useMemo(() => SECTORS.map((s) => {
+    const list = pool.filter((c) => sectorMatch(c, s)), sent = list.filter((c) => c.sentAt && !c.bounced);
+    return { s, n: list.length, uj: list.filter((c) => effStatus(c, settings) === "uj").length, sent: sent.length, rep: sent.filter(didReply).length };
+  }), [pool, settings]);
+  const cats = useMemo(() => catOptionsOf(contacts).filter(([k]) => pool.some((c) => c.cat === k)), [contacts, pool]);
+  const cities = useMemo(() => [...new Set(pool.map((c) => c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, "hu")), [pool]);
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase(), sec = SECTORS.find((s) => s.id === sector);
+    const match = (c) => {
+      const s = effStatus(c, settings);
+      if (filter === "cold") return coldSet.has(c.email);
+      if (filter === "valaszolt") return s === "valaszolt";
+      if (filter !== "all" && s !== filter) return false;
+      return true;
+    };
+    return pool
+      .filter((c) => match(c) && (!sec || sectorMatch(c, sec)) && (!catF || c.cat === catF) && (!cityF || c.city === cityF)
+        && (!q || [c.name, c.email, c.city, catName(c), c.fb, c.ig].join(" ").toLowerCase().includes(q)))
+      .sort((a, b) => (filter === "cold" ? lastActivity(a).localeCompare(lastActivity(b)) : lastActivity(b).localeCompare(lastActivity(a)) || displayName(a).localeCompare(displayName(b), "hu")));
+  }, [pool, filter, sector, catF, cityF, query, settings, coldSet]);
+
+  const save = async (docs, done) => {
+    if (!docs.length) return;
+    setBusy(true);
+    try {
+      const res = await saveContacts(docs);
+      setMsg(res.failed.length ? `${res.failed.length} cím mentése nem sikerült.` : done(res.ok));
+    } catch (e) { setMsg("Mentési hiba: " + e.message); }
+    setBusy(false);
+  };
+  const recycle = (list) => save(list.filter((c) => !isBlocked(c, blocklist)).map(recycleDoc), (n) => `${n} cím visszakerült a kiküldendők közé.`);
+  const focusTable = (f, sec = "") => { setFilter(f); setSector(sec); setCatF(""); setCityF(""); tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); };
+
+  return (
+    <div className="grid grid-cols-1 gap-4">
+      {msg && <div role="status" className="rounded-xl border border-[#5f6239]/30 bg-[#5f6239]/10 px-4 py-2.5 text-[13px] font-medium text-[#3f4126] dark:border-[#c3c78f]/25 dark:bg-[#c3c78f]/10 dark:text-[#d9dcae]">{msg}</div>}
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className={runway < 1 ? "border-amber-300 dark:border-amber-400/30" : ""}>
+          <CardHead title="Címkészlet" action={<Pill tone={runway >= 3 ? "ugyfel" : runway >= 1 ? "fu" : "bounced"}>{runway >= 10 ? "10+ nap" : `${runway.toLocaleString("hu-HU", { maximumFractionDigits: 1 })} nap`}</Pill>} />
+          <div className="grid grid-cols-2 gap-2">
+            <MiniStat label="Kiküldendő" value={uj} tone="uj" onClick={() => focusTable("uj")} active={filter === "uj"} />
+            <MiniStat label="Javasolt" value={d.nJ} tone="javasolt" onClick={() => focusTable("javasolt")} active={filter === "javasolt"} />
+            <MiniStat label="Follow-up" value={d.st.fu || 0} tone="fu" onClick={() => focusTable("fu")} active={filter === "fu"} />
+            <MiniStat label="Utánkövetés" value={d.cold.length} tone="cold" onClick={() => focusTable("cold")} active={filter === "cold"} />
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"><div className={`h-full rounded-full ${runway >= 3 ? "bg-[#5f6239] dark:bg-[#c3c78f]" : "bg-amber-500 dark:bg-amber-400"}`} style={{ width: `${Math.min(100, (runway / 5) * 100)}%` }} /></div>
+          <p className="mt-2 text-[12.5px] text-zinc-500 dark:text-zinc-400">
+            {runway >= 3 ? `A napi ${d.goal} levéllel ${Math.floor(runway)} napra elég a kiküldendő cím.` : (
+              <span className="inline-flex items-start gap-1.5 text-amber-700 dark:text-amber-300"><Icon name="alert" className="mt-px h-4 w-4 shrink-0" />{uj ? `Napi ${d.goal} levélhez kevés: importálj, vagy köröztesd újra a hideg címeket.` : "Elfogyott a kiküldendő cím: importálj, vagy köröztesd újra a hideg címeket."}</span>
+            )}
+          </p>
+        </Card>
+
+        <Card>
+          <CardHead title="Utánkövetés" action={<span className="text-xs text-zinc-500 dark:text-zinc-400">{RECYCLE_DAYS}+ napja csend</span>} />
+          {d.cold.length ? (
+            <ul className="grid gap-1.5">
+              {d.cold.slice(0, 4).map((c) => (
+                <li key={c.email} className="flex items-center gap-2 rounded-lg bg-zinc-50 px-3 py-1.5 text-[13px] dark:bg-zinc-950/60">
+                  <div className="min-w-0 flex-1"><div className="truncate font-semibold text-zinc-900 dark:text-zinc-100">{displayName(c)}</div><div className="truncate text-xs text-zinc-500">{catName(c)} · {coldDays(c)} napja</div></div>
+                  <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => recycle([c])} aria-label={`${displayName(c)} újrakörözése`}><Icon name="refresh" className="h-3.5 w-3.5" /></button>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Nincs hideg cím. Ami {RECYCLE_DAYS} napja válasz nélkül áll, itt jelenik meg.</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {d.cold.length > 0 && (confirmAll ? (
+              <>
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{d.cold.length} cím vissza a sorba?</span>
+                <button type="button" className={BTN_MAIN} disabled={busy} onClick={() => { setConfirmAll(false); recycle(d.cold); }}>Igen</button>
+                <button type="button" className={BTN_GHOST} onClick={() => setConfirmAll(false)}>Mégse</button>
+              </>
+            ) : <button type="button" className={BTN_MAIN} disabled={busy} onClick={() => setConfirmAll(true)}><Icon name="refresh" className="h-3.5 w-3.5" />Mind újrakörözése ({d.cold.length})</button>)}
+            {d.cold.length > 4 && !confirmAll && <button type="button" className={BTN_GHOST} onClick={() => focusTable("cold")}>Lista</button>}
+          </div>
+          <label className="mt-3 flex cursor-pointer items-start gap-2.5 border-t border-zinc-100 pt-3 text-[12.5px] text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+            <input type="checkbox" checked={autoRecycle} onChange={(e) => setAutoRecycle(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#5f6239] dark:accent-[#c3c78f]" />
+            <span><b className="text-zinc-800 dark:text-zinc-200">Automatikus feltöltés:</b> ha a kiküldendő a napi cél alá esik, naponta egyszer a legrégebbi hideg címek visszakerülnek a sorba.</span>
+          </label>
+        </Card>
+
+        <Card glow>
+          <CardHead title="Új címek importálása" />
+          <p className="text-[13px] text-zinc-600 dark:text-zinc-400">Szegedi boltok, kávézók, órások listája CSV-ből vagy JSON-ból. Felvétel előtt látod, mi kerül be.</p>
+          <ul className="mt-3 grid gap-1 text-[12.5px] text-zinc-500 dark:text-zinc-400">
+            {["Meglévő cím és azonos cégdomain kimarad", "Tiltólistás cím nem kerül be", "E-mail nélkül, FB/IG-vel DM-címként jön"].map((t) => <li key={t} className="flex items-center gap-2"><Icon name="check" className="h-3.5 w-3.5 text-[#5f6239] dark:text-[#c3c78f]" />{t}</li>)}
+          </ul>
+          <button type="button" className={`${BTN_MAIN} mt-4 w-full py-2 text-sm`} onClick={() => setModal({})}><Icon name="upload" className="h-4 w-4" />Importálás (CSV / JSON)</button>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {sectorStats.map(({ s, n, uj: su, sent, rep }) => (
+          <Card key={s.id} className={sector === s.id ? "ring-2 ring-[#5f6239] dark:ring-[#c3c78f]" : ""}>
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#5f6239]/10 text-[#5f6239] dark:bg-[#c3c78f]/10 dark:text-[#c3c78f]"><Icon name={s.icon} className="h-4 w-4" /></span>
+              <div className="min-w-0 flex-1"><h3 className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">{s.label}</h3><div className="text-xs text-zinc-500">Szeged · {n} cím</div></div>
+              {n === 0 && <Pill tone="javasolt">Új szektor</Pill>}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <Pill tone="uj">{su} kiküldendő</Pill>
+              <Pill tone={sent ? (rep ? "valaszolt" : "elkuldve") : "lezarva"}>{sent ? `${Math.round((rep / sent) * 100)}% válasz · ${rep}/${sent}` : "még nincs levél"}</Pill>
+            </div>
+            <p className="mt-2.5 min-h-[2.5rem] text-[12.5px] text-zinc-500 dark:text-zinc-400">{s.pitch}</p>
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+              {s.queries.map((q) => <a key={q} href={mapsUrl(q)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#5f6239] hover:underline dark:text-[#c3c78f]"><Icon name="map" className="h-3.5 w-3.5" />{q}</a>)}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button type="button" className={`${BTN_GHOST} flex-1`} onClick={() => (sector === s.id ? setSector("") : focusTable("all", s.id))}>{sector === s.id ? "Szűrő ki" : "Szűrés"}</button>
+              <button type="button" className={`${BTN_MAIN} flex-1`} onClick={() => setModal({ preset: s })}><Icon name="upload" className="h-3.5 w-3.5" />Import ide</button>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div ref={tableRef} className="scroll-mt-4">
+        <Card>
+          <CardHead title={query.trim() ? `Címlista · „${query.trim()}”` : "Címlista"} action={<span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{rows.length} cím</span>} />
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {LEAD_FILTERS.map(([k, l]) => (
+              <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#c3c78f] ${filter === k ? "bg-[#5f6239] text-white dark:bg-[#c3c78f] dark:text-zinc-950" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"}`}>
+                {l}{k === "cold" && d.cold.length ? ` · ${d.cold.length}` : ""}
+              </button>
+            ))}
+          </div>
+          <div className="mb-3 grid gap-2 sm:grid-cols-3">
+            <select value={sector} onChange={(e) => setSector(e.target.value)} aria-label="Szektor" className={FIELD}><option value="">Minden szektor</option>{SECTORS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
+            <select value={catF} onChange={(e) => setCatF(e.target.value)} aria-label="Kategória" className={FIELD}><option value="">Minden kategória</option>{cats.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+            <select value={cityF} onChange={(e) => setCityF(e.target.value)} aria-label="Város" className={FIELD}><option value="">Minden város</option>{cities.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+          </div>
+          <div className="-mx-5 overflow-x-auto px-5">
+            <table className="w-full min-w-[760px] text-left text-[13.5px]">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wider text-zinc-400">
+                  {["Cég", "Kategória", "Város", "Állapot", "Utolsó levél", ""].map((h, i) => <th key={i} className="border-b border-zinc-200 pb-2 font-semibold dark:border-zinc-800">{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.slice(0, limit).map((c) => {
+                  const s = effStatus(c, settings), cd = coldSet.has(c.email) ? coldDays(c) : null;
+                  return (
+                    <tr key={c.email} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/70">
+                      <td className="py-2.5 pr-3"><div className="font-semibold text-zinc-900 dark:text-zinc-100">{displayName(c)}</div><div className="text-xs text-zinc-500">{isDM(c) ? `DM${c.fb ? " · FB" : ""}${c.ig ? " · IG" : ""}` : c.email}{c.recycleCount ? ` · ${c.recycleCount}. kör` : ""}</div></td>
+                      <td className="pr-3"><Pill tone="elkuldve">{catName(c)}</Pill></td>
+                      <td className="pr-3 text-zinc-600 dark:text-zinc-400">{c.city}</td>
+                      <td className="pr-3">
+                        <Pill tone={c.bounced ? "bounced" : cd != null ? "cold" : s}>{c.bounced ? "Visszapattant" : cd != null ? `Utánkövetés · ${cd} napja` : s === "fu" ? `${fuStage(c, settings)}. follow-up` : STATUS[s]}</Pill>
+                      </td>
+                      <td className="pr-3 tabular-nums text-zinc-600 dark:text-zinc-400">{huDate(lastActivity(c)) || "–"}</td>
+                      <td className="text-right">
+                        {cd != null ? <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => recycle([c])}><Icon name="refresh" className="h-3.5 w-3.5" />Újrakörözés</button>
+                          : s === "javasolt" ? <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => save([{ ...c, status: "uj" }], () => `${displayName(c)} a kiküldendők közé került.`)}><Icon name="check" className="h-3.5 w-3.5" />Jóváhagyás</button>
+                          : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!rows.length && <tr><td colSpan={6} className="py-4 text-zinc-500">Nincs a szűrésnek megfelelő cím.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          {rows.length > limit && <div className="mt-3 text-center"><GhostBtn onClick={() => setLimit(limit + 100)}>Továbbiak ({rows.length - limit})</GhostBtn></div>}
+        </Card>
+      </div>
+
+      {modal && <ImportModal preset={modal.preset} contacts={contacts} blocklist={blocklist} saveContacts={saveContacts} onClose={() => setModal(null)} onDone={setMsg} />}
+    </div>
   );
 }
 
@@ -514,6 +1006,22 @@ export default function LeventeDashboard() {
   const [query, setQuery] = useState("");
   const [dark, setDark] = useState(() => { try { return localStorage.getItem("l3d-theme") !== "light"; } catch (e) { return true; } });
   useEffect(() => { try { localStorage.setItem("l3d-theme", dark ? "dark" : "light"); } catch (e) { /* tárolás nélkül is működik */ } }, [dark]);
+  const [autoRecycle, setAutoRecycle] = useState(() => { try { return localStorage.getItem("l3d-autorecycle") === "1"; } catch (e) { return false; } });
+  useEffect(() => { try { localStorage.setItem("l3d-autorecycle", autoRecycle ? "1" : "0"); } catch (e) { /* tárolás nélkül is működik */ } }, [autoRecycle]);
+
+  // Automatikus feltöltés: ha a kiküldendő a napi cél alá esik, naponta egyszer a legrégebbi hideg címek visszakerülnek a sorba.
+  const autoDay = useRef("");
+  const { saveContacts, live } = data;
+  useEffect(() => {
+    const need = d.goal - (d.st.uj || 0), td = today();
+    if (!autoRecycle || need <= 0 || !d.cold.length) return;
+    let last = autoDay.current;
+    if (live) { try { last = localStorage.getItem("l3d-autorecycle-day") || last; } catch (e) { /* csak a munkamenetre */ } }
+    if (last === td) return;
+    autoDay.current = td;
+    if (live) { try { localStorage.setItem("l3d-autorecycle-day", td); } catch (e) { /* csak a munkamenetre */ } }
+    saveContacts(d.cold.slice(0, need).map(recycleDoc));
+  }, [autoRecycle, live, d.cold, d.goal, d.st.uj, saveContacts]);
 
   const badges = { todo: d.todo.length, queue: (d.st.uj || 0) + (d.st.fu || 0), orders: d.openOrders };
   const label = NAV.flatMap(([, i]) => i).find(([k]) => k === tab)?.[1];
@@ -531,7 +1039,7 @@ export default function LeventeDashboard() {
               <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Szia, Levente!</h1>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">{dateLine} · {d.st.uj || 0} kiküldendő cím, {d.st.fu || 0} esedékes follow-up{d.nJ ? `, ${d.nJ} javaslat` : ""}</p>
             </div>
-            <form role="search" onSubmit={(e) => { e.preventDefault(); setTab("todo"); }} className="flex w-full items-center gap-2 rounded-full border border-zinc-200 bg-white px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-[#c3c78f] dark:border-zinc-800 dark:bg-zinc-900 sm:w-72">
+            <form role="search" onSubmit={(e) => { e.preventDefault(); if (tab !== "queue") setTab("todo"); }} className="flex w-full items-center gap-2 rounded-full border border-zinc-200 bg-white px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-[#c3c78f] dark:border-zinc-800 dark:bg-zinc-900 sm:w-72">
               <Icon name="search" className="h-4 w-4 text-zinc-400" />
               <input type="search" id="l3d-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cég, e-mail vagy város" aria-label="Keresés a megkeresések között" className="w-full bg-transparent py-2 text-sm outline-none placeholder:text-zinc-400" />
             </form>
@@ -554,8 +1062,10 @@ export default function LeventeDashboard() {
             <Suspense fallback={<Card><p className="text-sm text-zinc-500 dark:text-zinc-400">Az óratartó-generátor betöltése…</p></Card>}>
               <WatchStandGenerator className="rounded-2xl" />
             </Suspense>
+          ) : tab === "queue" ? (
+            <LeadsView data={data} d={d} query={query} autoRecycle={autoRecycle} setAutoRecycle={setAutoRecycle} />
           ) : tab !== "todo" ? <ElsewherePanel label={label} /> : (
-            <div className="grid gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
                 <StatCard icon="send" label="Kiküldendő" value={d.st.uj || 0} sub={d.nJ ? `${d.nJ} javaslat vár jóváhagyásra` : d.st.dmq ? `${d.st.dmq} cég DM-re vár` : ""} onClick={sel("queue")} />
                 <StatCard icon="check" label="Ma elküldve" value={`${d.ma} / ${d.goal}`} progress={d.ma / d.goal} onClick={sel("queue")} />
@@ -563,7 +1073,7 @@ export default function LeventeDashboard() {
                 <StatCard icon="chat" label="Válaszok" value={(d.st.valaszolt || 0) + (d.st.ugyfel || 0)} sub={d.sent ? `${(d.rate * 100).toLocaleString("hu-HU", { maximumFractionDigits: 1 })}% válaszarány` : ""} onClick={sel("queue")} />
                 <StatCard icon="user" label="Összes cím" value={d.active.length} sub={`${new Set(d.active.map((c) => c.cat)).size} kategória`} onClick={sel("cov")} />
               </div>
-              <div className="grid gap-4 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <RevenueCard d={d} />
                 <GaugeCard d={d} />
                 <DonutCard d={d} onOpen={sel("queue")} />
