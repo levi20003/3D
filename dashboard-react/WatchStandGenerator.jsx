@@ -184,7 +184,7 @@ function zip(files) {
   return new Blob([...parts, ...cd, new Uint8Array(e.buffer)], { type: "application/zip" });
 }
 const stl = (geoms) => { const m = new THREE.Mesh(mergeGeometries(geoms.map((g) => g.index ? g.toNonIndexed() : g), false)); const v = new STLExporter().parse(m, { binary: true }); m.geometry.dispose(); return new Uint8Array(v.buffer, v.byteOffset, v.byteLength); };
-const slug = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24);
+const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24);
 
 /* ---------- formázás ---------- */
 const ft = (n) => Math.round(n).toLocaleString("hu-HU") + " Ft";
@@ -306,7 +306,7 @@ export default function WatchStandGenerator({ rates, materials = DEFAULT_MATERIA
 
   const material = materials.find((m) => m.id === matId) || materials[0];
   const asciiOnly = !!fontNote;
-  const clean = (s) => (asciiOnly ? s.normalize("NFD").replace(/[̀-ͯ]/g, "") : s);
+  const clean = (s) => (asciiOnly ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : s);
   const model = useMemo(() => buildParts({ slots, size, addons, baseText: clean(baseText), plateText: clean(plateText) }, font), [slots, size, addons, baseText, plateText, font, asciiOnly]);
   useEffect(() => () => model.parts.forEach((p) => [...p.body, p.text].forEach((g) => g?.dispose())), [model]);
   const est = useMemo(() => estimate(model.parts, material, rates), [model, material, rates]);
