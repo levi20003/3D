@@ -8,12 +8,16 @@
  *
  * Adat: ugyanazokat a gyűjteményeket olvassa, mint a pult (contacts, orders, ledger, settings/main), ha a
  * komponens a pult artifactjában fut (window.claude.use("db")). Máshol jelölt mintaadatokkal indul.
+ * Az Óratartó-generátor menüpont a WatchStandGenerator komponenst nyitja meg (lusta betöltéssel).
  * A Címlista, Rendelések, 3D-generátor és a többi menüpont a meglévő pultban működik tovább; itt a
  * menüpontjuk egy átirányító panelt mutat, mert azok átírása React-re külön munka.
  *
  * Tailwind: darkMode: "class". Betű: Inter (Google Fonts), tartalék: system-ui.
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
+
+// A Three.js-t csak akkor tölti be, ha a menüpontot megnyitják.
+const WatchStandGenerator = lazy(() => import("./WatchStandGenerator.jsx"));
 
 const PULT_URL = "https://claude.ai/artifact/44semk3pH1ffrYo8XycBoS";
 const BRAND = { olive: "#c3c78f", oliveDeep: "#5f6239", sand: "#c9ab84" };
@@ -183,6 +187,7 @@ const PATHS = {
   send: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z", check: "M20 6L9 17l-5-5", clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2", chat: "M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z",
   search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5", sun: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
   moon: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", left: "M15 18l-6-6 6-6", right: "M9 18l6-6-6-6",
+  watch: "M9 3h6l1 4H8l1-4zM9 21h6l1-4H8l1 4zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 9.5V12l1.6 1.2",
 };
 const Icon = ({ name, className = "h-[18px] w-[18px]" }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={PATHS[name]} /></svg>
@@ -445,7 +450,7 @@ function OutreachTable({ d, settings, query }) {
 /* ---------- váz ---------- */
 const NAV = [
   ["Főmenü", [["todo", "Áttekintés", "grid"], ["queue", "Címlista", "list"], ["cov", "Lefedettség", "bars"], ["orders", "Rendelések", "card"], ["goals", "Célok", "target"]]],
-  ["Eszközök", [["plan", "Tervező", "pen"], ["calc", "Árkalkulátor", "calc"], ["gen", "3D-generátor", "cube"], ["tpl", "Sablonok", "mail"], ["add", "Új címek", "user"]]],
+  ["Eszközök", [["plan", "Tervező", "pen"], ["calc", "Árkalkulátor", "calc"], ["gen", "3D-generátor", "cube"], ["watch", "Óratartó-generátor", "watch"], ["tpl", "Sablonok", "mail"], ["add", "Új címek", "user"]]],
   ["Általános", [["set", "Beállítások", "gear"]]],
 ];
 
@@ -545,7 +550,11 @@ export default function LeventeDashboard() {
             </div>
           )}
 
-          {tab !== "todo" ? <ElsewherePanel label={label} /> : (
+          {tab === "watch" ? (
+            <Suspense fallback={<Card><p className="text-sm text-zinc-500 dark:text-zinc-400">Az óratartó-generátor betöltése…</p></Card>}>
+              <WatchStandGenerator className="rounded-2xl" />
+            </Suspense>
+          ) : tab !== "todo" ? <ElsewherePanel label={label} /> : (
             <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
                 <StatCard icon="send" label="Kiküldendő" value={d.st.uj || 0} sub={d.nJ ? `${d.nJ} javaslat vár jóváhagyásra` : d.st.dmq ? `${d.st.dmq} cég DM-re vár` : ""} onClick={sel("queue")} />
