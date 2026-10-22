@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en" data-l="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio Lens · Privacy policy</title>
+<meta name="description" content="How Portfolio Lens handles your data: everything stays on your device.">
+<meta name="theme-color" content="#1e4334">
+<link rel="icon" href="../befektetes/icon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#f2f1eb;--surface:#fbfaf6;--ink:#14231c;--muted:#5d6b63;--line:#e2e0d6;--accent:#1e4636;--hero:#1e4334;--cream:#f5f3ea}
+@media (prefers-color-scheme:dark){:root{--bg:#0b100d;--surface:#131a16;--ink:#eef0ea;--muted:#9aa79f;--line:#223029;--accent:#9fd1b2}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+html[data-l=en] [lang=hu],html[data-l=hu] [lang=en]{display:none!important}
+main{max-width:760px;margin:0 auto;padding:28px 20px 72px}
+.top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:28px}
+.top a{color:var(--ink);font-weight:700;text-decoration:none;display:flex;gap:10px;align-items:center}
+.top img{width:30px;height:30px;border-radius:9px}
+.lang{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:3px}
+.lang button{border:0;background:none;font:inherit;font-size:.8rem;font-weight:700;padding:4px 10px;border-radius:99px;color:var(--muted);cursor:pointer}
+.lang button[aria-pressed=true]{background:var(--hero);color:var(--cream)}
+h1{font-size:2.2rem;line-height:1.1;letter-spacing:-.02em;margin:0 0 6px}
+h2{font-size:1.2rem;margin:34px 0 8px}
+.meta{color:var(--muted);margin:0 0 24px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px 22px}
+table{width:100%;border-collapse:collapse;font-size:.94rem}
+th,td{text-align:left;vertical-align:top;padding:10px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600}
+a{color:var(--accent)}
+li{margin:4px 0}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><a href="./"><img src="../befektetes/icon-192.png" alt="">Portfolio Lens</a><div class="lang" role="group" aria-label="Language"><button data-set="en" aria-pressed="true">EN</button><button data-set="hu" aria-pressed="false">HU</button></div></div>
+
+<div lang="en">
+<h1>Privacy policy</h1>
+<p class="meta">Effective 22 October 2026 · Applies to the Portfolio Lens app (also called “Befektetés” in Hungarian) on the web and on Google Play.</p>
+<div class="box"><b>In short:</b> Portfolio Lens has no server and no user accounts. Your statements, transactions and settings are stored only on your device. We do not collect, sell or share personal data, and the app contains no ads, analytics or tracking.</div>
+
+<h2>1. Data stored on your device</h2>
+<p>When you import a statement or CSV file, or enter a transaction by hand, the app reads it on your device and saves the result in the app’s local storage. This includes your transactions, holdings, account labels, settings and, if you add them, your market-data API keys. This data is never uploaded to us. The original files you import are not kept.</p>
+
+<h2>2. Network requests</h2>
+<p>To show prices and exchange rates, the app connects directly from your device to these third-party services:</p>
+<table>
+<tr><th>Service</th><th>Purpose</th><th>What is sent</th></tr>
+<tr><td>Twelve Data (optional)</td><td>Daily share prices and the S&amp;P 500 benchmark</td><td>Ticker symbols, date range and your own API key</td></tr>
+<tr><td>Finnhub (optional)</td><td>Earnings calendar and company news</td><td>Ticker symbols, date range and your own API key</td></tr>
+<tr><td>Frankfurter (European Central Bank rates)</td><td>Currency exchange rates</td><td>Currency codes and dates</td></tr>
+<tr><td>cdnjs (Cloudflare) and Google Fonts</td><td>Loading the PDF reader, chart library and fonts</td><td>Standard web requests</td></tr>
+<tr><td>GitHub Pages</td><td>Hosting the app files</td><td>Standard web requests</td></tr>
+</table>
+<p>No amounts, quantities, account numbers or personal details are included in these requests. Like any website, these providers can see your IP address and browser details; their own privacy policies apply. Twelve Data and Finnhub are only contacted if you add a key.</p>
+
+<h2>3. Sharing and backups</h2>
+<p>Share cards and backup files are created on your device and only leave it when you choose to share or save them. Share cards show percentages by default, not amounts. Backup files contain your data, and your API keys only if you tick that option; keep them somewhere safe.</p>
+
+<h2>4. Deleting your data</h2>
+<p>Use Settings → “Delete all data from this device”, clear the app’s storage in your browser or phone settings, or uninstall the app. Because we hold no copy, there is nothing else to delete.</p>
+
+<h2>5. Children</h2>
+<p>Portfolio Lens is intended for adults who hold investment accounts and is not directed at children under 16.</p>
+
+<h2>6. Not investment advice</h2>
+<p>The app visualises your own data. Prices may be delayed or incomplete and calculations are for information only.</p>
+
+<h2>7. Changes and contact</h2>
+<p>If this policy changes, the new version will be published on this page with a new effective date. Questions: <a href="https://github.com/levi20003/3D/issues">open an issue on GitHub</a>.</p>
+</div>
+
+<div lang="hu">
+<h1>Adatvédelmi tájékoztató</h1>
+<p class="meta">Hatályos: 2026. október 22. · A Portfolio Lens (magyarul „Befektetés”) alkalmazásra vonatkozik, a weben és a Google Playen.</p>
+<div class="box"><b>Röviden:</b> a Portfolio Lensnek nincs szervere és nincsenek felhasználói fiókjai. A kivonataid, tranzakcióid és beállításaid csak a készülékeden tárolódnak. Személyes adatot nem gyűjtünk, nem adunk el és nem adunk át, az appban nincs reklám, analitika vagy követés.</div>
+
+<h2>1. A készüléken tárolt adatok</h2>
+<p>Amikor kivonatot vagy CSV-fájlt töltesz be, vagy kézzel rögzítesz egy tételt, az app a készülékeden olvassa be, és az eredményt az app helyi tárhelyére menti. Ide tartoznak a tranzakciók, pozíciók, számlanevek, beállítások és, ha megadod, az árfolyam-szolgáltatók API-kulcsai. Ezek hozzánk soha nem kerülnek fel. A betöltött eredeti fájlokat az app nem őrzi meg.</p>
+
+<h2>2. Hálózati kérések</h2>
+<p>Az árfolyamok megjelenítéséhez az app közvetlenül a készülékedről kapcsolódik ezekhez a külső szolgáltatásokhoz:</p>
+<table>
+<tr><th>Szolgáltatás</th><th>Cél</th><th>Mit küld</th></tr>
+<tr><td>Twelve Data (opcionális)</td><td>Napi részvényárak és az S&amp;P 500 összevetés</td><td>Tickerek, időszak és a saját API-kulcsod</td></tr>
+<tr><td>Finnhub (opcionális)</td><td>Gyorsjelentés-naptár és céghírek</td><td>Tickerek, időszak és a saját API-kulcsod</td></tr>
+<tr><td>Frankfurter (Európai Központi Bank)</td><td>Devizaárfolyamok</td><td>Devizakódok és dátumok</td></tr>
+<tr><td>cdnjs (Cloudflare) és Google Fonts</td><td>A PDF-olvasó, a grafikonkönyvtár és a betűtípus betöltése</td><td>Szokásos webes kérések</td></tr>
+<tr><td>GitHub Pages</td><td>Az app fájljainak kiszolgálása</td><td>Szokásos webes kérések</td></tr>
+</table>
+<p>A kérésekben nem szerepel összeg, darabszám, számlaszám vagy személyes adat. Mint bármely weboldalnál, ezek a szolgáltatók látják az IP-címedet és a böngésződ adatait; rájuk a saját adatvédelmi szabályaik vonatkoznak. A Twelve Datához és a Finnhubhoz csak akkor fordul az app, ha megadtál kulcsot.</p>
+
+<h2>3. Megosztás és mentés</h2>
+<p>A megosztható kártyák és a mentési fájlok a készülékeden készülnek, és csak akkor hagyják el, ha te megosztod vagy elmented őket. A kártyák alapból százalékot mutatnak, összeget nem. A mentési fájl tartalmazza az adataidat, az API-kulcsokat pedig csak akkor, ha ezt bejelölöd; tartsd biztonságos helyen.</p>
+
+<h2>4. Az adatok törlése</h2>
+<p>Beállítások → „Minden adat törlése erről a készülékről”, vagy töröld az app tárhelyét a böngésző vagy a telefon beállításaiban, illetve távolítsd el az appot. Mivel nálunk nincs másolat, mást nem kell törölni.</p>
+
+<h2>5. Gyermekek</h2>
+<p>A Portfolio Lens befektetési számlával rendelkező felnőtteknek készült, 16 év alattiaknak nem szól.</p>
+
+<h2>6. Nem befektetési tanácsadás</h2>
+<p>Az app a saját adataidat jeleníti meg. Az árfolyamok késleltetettek vagy hiányosak lehetnek, a számítások tájékoztató jellegűek.</p>
+
+<h2>7. Változások és kapcsolat</h2>
+<p>Ha a tájékoztató változik, az új változat ezen az oldalon jelenik meg, új hatálybalépési dátummal. Kérdés esetén: <a href="https://github.com/levi20003/3D/issues">nyiss egy issue-t a GitHubon</a>.</p>
+</div>
+</main>
+<script>
+(function () {
+  var root = document.documentElement, key = 'pl-site-lang', l;
+  try { l = new URLSearchParams(location.search).get('lang') || localStorage.getItem(key); } catch (e) {}
+  if (l !== 'hu' && l !== 'en') l = /^hu/i.test(navigator.language || '') ? 'hu' : 'en';
+  function set(x) { root.dataset.l = x; root.lang = x; try { localStorage.setItem(key, x); } catch (e) {} document.querySelectorAll('[data-set]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.set === x); }); document.title = x === 'hu' ? 'Portfolio Lens · Adatvédelmi tájékoztató' : 'Portfolio Lens · Privacy policy'; }
+  document.querySelectorAll('[data-set]').forEach(function (b) { b.onclick = function () { set(b.dataset.set); }; });
+  set(l);
+})();
+</script>
+</body>
+</html>

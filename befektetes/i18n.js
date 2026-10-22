@@ -4,6 +4,7 @@
   const store = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   // érvényes nyelvi kód (egyes eszközök pl. 'en-US@posix'-t adnak)
   const nav = (() => { const raw = String(navigator.language || 'en-US').split(/[@.]/)[0].replace('_', '-'); try { return Intl.getCanonicalLocales(raw)[0] || 'en-US'; } catch (e) { return 'en-US'; } })();
+  try { const q = new URLSearchParams(location.search).get('lang'); if (q === 'hu' || q === 'en') localStorage.setItem('bf-lang', JSON.stringify(q)); } catch (e) {}
   const lang = store('bf-lang') || (/^hu/i.test(nav) ? 'hu' : 'en');
   const I = { lang, exact: {}, re: [], ph: [] };
   I.locale = () => I.lang === 'hu' ? 'hu-HU' : (/^hu/i.test(nav) ? 'en-GB' : nav);

@@ -11,11 +11,22 @@ const REFRESH_MS = 15 * 60 * 1000;
 /* ---------- storage ---------- */
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast('Nem sikerült menteni a készülékre (betelt a tárhely?).'); } },
+  set(k, v) { if (DEMO && (k === 'bf-st' || k === 'bf-mkt' || k === 'bf-manual')) return; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast('Nem sikerült menteni a készülékre (betelt a tárhely?).'); } },
   del(k) { try { localStorage.removeItem(k); } catch (e) {} }
 };
+// demó mód: mintaadat csak a memóriában, a valódi adatokat nem írja felül
+let DEMO = false;
+try { const q = new URLSearchParams(location.search).get('demo'); if (q === '1') store.set('bf-demo', true); else if (q === '0') store.del('bf-demo'); } catch (e) {}
 let statements = store.get('bf-st', []);
 let market = store.get('bf-mkt', { history: {}, fx: {}, usdhuf: null, updatedAt: 0, errors: [] });
+function loadDemo() { const d = Demo.build(); DEMO = true; statements = d.statements; market = d.market; }
+if (store.get('bf-demo', false) && window.Demo) loadDemo();
+function startDemo() { store.set('bf-demo', true); loadDemo(); manual = []; compute(); S.tab = 'attekintes'; boot(); toast(t('Mintaportfólió: kitalált adatok, hogy körülnézz.', 'Sample portfolio: made-up data so you can look around.'), 3500); }
+function exitDemo(reboot = true) {
+  if (!DEMO) return; DEMO = false; store.del('bf-demo');
+  statements = store.get('bf-st', []); market = store.get('bf-mkt', { history: {}, fx: {}, usdhuf: null, updatedAt: 0, errors: [] }); manual = store.get('bf-manual', []);
+  compute(); if (reboot) { boot(); if (statements.length) refresh(); }
+}
 let apiKey = store.get('bf-key', '');
 const S = {
   tab: 'attekintes', cur: store.get('bf-cur2', 'USD'), alt: store.get('bf-alt', null) || I18N.defaultAlt(), theme: store.get('bf-theme', 'auto'),
@@ -150,6 +161,7 @@ async function fetchPrices(force) {
 
 async function refresh(opts = {}) {
   if (S.busy || !statements.length) return;
+  if (DEMO) { market.updatedAt = Date.now(); drawStatus(); return; }
   if (!navigator.onLine) { setStatus('Nincs internetkapcsolat, a legutóbbi adatokat látod.', 'off'); return; }
   S.busy = true; setStatus('Frissítés…', 'busy');
   try {
@@ -171,8 +183,10 @@ function drawStatus() {
   if (S.busy) { el.innerHTML = `<i class="busy"></i>${esc(S.statusText)}`; return; }
   const t = market.updatedAt ? new Date(market.updatedAt) : null;
   const when = t ? (t.toDateString() === new Date().toDateString() ? t.toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' }) : t.toLocaleDateString(LOC())) : null;
-  if (!apiKey) el.innerHTML = `<i class="off"></i>Kivonat ára · ${M ? dhu(M.asOf) : '–'} · <a href="#" id="stKey">Élő árak bekapcsolása →</a>`;
+  if (DEMO) el.innerHTML = `<i class="off"></i>Mintaadatok · <a href="#" id="stDemo">Saját adatok betöltése →</a>`;
+  else if (!apiKey) el.innerHTML = `<i class="off"></i>Kivonat ára · ${M ? dhu(M.asOf) : '–'} · <a href="#" id="stKey">Élő árak bekapcsolása →</a>`;
   else el.innerHTML = `<i${navigator.onLine ? '' : ' class="off"'}></i>Élő · ${when || '–'}${rateOf(S.alt) ? ` · 1 $ = ${nf(rateOf(S.alt), 2)} ${curSym(S.alt)}` : ''}`;
+  const dm = $('stDemo'); if (dm) dm.onclick = e => { e.preventDefault(); exitDemo(); };
   const k = $('stKey'); if (k) k.onclick = e => { e.preventDefault(); openSettings(); };
 }
 
@@ -397,8 +411,8 @@ V.attekintes = m => {
     <button id="qaAdd"><span>${ic('add')}</span>Rögzítés</button>
     <button id="qaMore"><span>${ic('more', 3)}</span>Több</button>
   </nav>
-  ${Date.now() - store.get('bf-lastbackup', 0) > 30 * 864e5 ? `<button class="insight" id="tipBk"><span class="in-ic">${ic('file')}</span><span><b>${store.get('bf-lastbackup', 0) ? 'Régen mentettél' : 'Készíts biztonsági mentést'}</b><small>Az adataid csak ezen a telefonon vannak. Egy fájlba mentve bármikor visszatöltheted.</small></span>${ic('chev')}</button>` : ''}
-  ${!apiKey ? `<button class="insight" id="tipKey"><span class="in-ic">${ic('trend')}</span><span><b>Kapcsold be az élő árfolyamokat</b><small>Ingyenes Twelve Data kulccsal napi árak, S&P összehasonlítás és riasztások.</small></span>${ic('chev')}</button>` : ''}
+  ${DEMO ? `<button class="insight" id="tipDemo"><span class="in-ic">${ic('file')}</span><span><b>Ez egy mintaportfólió</b><small>Töltsd be a saját kivonatodat vagy bróker-CSV-det, és ugyanezt látod a valódi számaiddal.</small></span>${ic('chev')}</button>` : Date.now() - store.get('bf-lastbackup', 0) > 30 * 864e5 ? `<button class="insight" id="tipBk"><span class="in-ic">${ic('file')}</span><span><b>${store.get('bf-lastbackup', 0) ? 'Régen mentettél' : 'Készíts biztonsági mentést'}</b><small>Az adataid csak ezen a telefonon vannak. Egy fájlba mentve bármikor visszatöltheted.</small></span>${ic('chev')}</button>` : ''}
+  ${!apiKey && !DEMO ? `<button class="insight" id="tipKey"><span class="in-ic">${ic('trend')}</span><span><b>Kapcsold be az élő árfolyamokat</b><small>Ingyenes Twelve Data kulccsal napi árak, S&P összehasonlítás és riasztások.</small></span>${ic('chev')}</button>` : ''}
   <section class="fstats">
     ${[[m.positions.some(p => p.dayAbs != null) ? 'Ma' : 'Nyitott eredmény', m.positions.some(p => p.dayAbs != null) ? m.dayChange : m.unreal, 1],
        ['Befizetve', m.dep, 0], ['Osztalék', m.divNet, 1], ['Díjak', -m.feeUsd, 1]]
@@ -450,7 +464,7 @@ V.attekintes.after = m => {
   $('shareBtn').onclick = openShare; $('wrapBtn').onclick = openWrapped;
   $('eyeBtn').onclick = () => { S.hide = !S.hide; store.set('bf-hide', S.hide); render(true); };
   $('qaImport').onclick = () => $('fileIn').click(); $('qaRefresh').onclick = () => refresh({}); $('qaAdd').onclick = () => openManual(); $('qaMore').onclick = openActions;
-  const tk = $('tipKey'); if (tk) tk.onclick = () => openSettings(); const tb = $('tipBk'); if (tb) tb.onclick = () => openSettings('backup');
+  const tk = $('tipKey'); if (tk) tk.onclick = () => openSettings(); const tdm = $('tipDemo'); if (tdm) tdm.onclick = () => { exitDemo(); if (!statements.length) onboarding(2); }; const tb = $('tipBk'); if (tb) tb.onclick = () => openSettings('backup');
   bindGo();
   const steps = [['Befizetve', m.dep, 1], ['Realizált', m.realized], ['Nem realizált', m.unreal], ['Osztalék', m.divNet], ['Egyéb', m.other], ['Mai érték', m.value, 1]];
   let run = 0; const data = steps.map(([l, v, b]) => { if (b) { run = v; return [0, v * K()]; } const s = run; run += v; return [s * K(), run * K()]; });
@@ -757,10 +771,11 @@ function onboarding(step = 0) {
       <div class="oa-card oa-front"><span>Portfólió</span><b class="num">$12 480,50</b><svg viewBox="0 0 200 60" preserveAspectRatio="none"><path d="M0 48 C20 44 30 30 50 34 S80 50 100 36 S140 12 160 20 S190 8 200 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><small>▲ 3,2% · S&P 500 +2,1%</small></div>
       <div class="oa-pod"></div>
     </div>
-    ${step < 2 ? `<button class="ob-btn" id="obNext">Tovább →</button>` : `<div class="drop" id="drop" role="button" tabindex="0"><b>Fájlok kiválasztása</b><div class="sub">Lightyear PDF, vagy CSV: Trading 212, Revolut, Lightyear, Interactive Brokers és mások</div></div>`}
+    ${step < 2 ? `<button class="ob-btn" id="obNext">Tovább →</button>` : `<div class="drop" id="drop" role="button" tabindex="0"><b>Fájlok kiválasztása</b><div class="sub">Lightyear PDF, vagy CSV: Trading 212, Revolut, Lightyear, Interactive Brokers és mások</div></div><button class="ob-demo" id="obDemo">Kipróbálom mintaadatokkal</button>`}
   </section>`;
   const n = $('obNext'); if (n) n.onclick = () => onboarding(step + 1);
   const sk = $('obSkip'); if (sk) sk.onclick = () => onboarding(2);
+  const od = $('obDemo'); if (od) od.onclick = startDemo;
   const d = $('drop'); if (!d) return;
   d.onclick = () => $('fileIn').click(); d.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('fileIn').click(); } };
   d.ondragover = e => { e.preventDefault(); d.classList.add('over'); }; d.ondragleave = () => d.classList.remove('over');
@@ -769,6 +784,7 @@ function onboarding(step = 0) {
 
 /* ---------- import ---------- */
 async function importFiles(files) {
+  if (DEMO) exitDemo(false);
   const csvs = files.filter(f => /\.(csv|txt)$/i.test(f.name) || /csv/i.test(f.type)); for (const c of csvs) await importCsv(c);
   files = files.filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)); if (!files.length) return;
   toast('Kivonat feldolgozása…', 1500);
@@ -836,6 +852,7 @@ let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
 function openSettings(focus) {
   const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Beállítások</div><h2 style="font-size:1.3rem">Adatok és frissítés</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+    ${DEMO ? `<div class="field"><label>Demó mód</label><p class="sub">Most kitalált mintaadatokat látsz. A saját adataid érintetlenek.</p><button class="btn" id="exitDemo">Kilépés a demóból, saját adatok</button></div>` : ''}
     <div class="field"><label>Kivonatok</label>
       <div class="list">${statements.map((st, i) => `<div class="li" style="cursor:default"><span class="tk">${esc((st.label || '').slice(-2) || 'LY')}</span><span><div class="n">${esc(st.label || st.acct)}</div><div class="s">${esc(st.acct)} · ${dhu(st.from)}–${dhu(st.to)} · ${st.rows.length} tétel</div></span><button class="ibtn" data-del="${i}" aria-label="Törlés">✕</button></div>`).join('')}</div>
       <button class="btn ghost" id="addSt">Kivonat vagy CSV hozzáadása</button>
@@ -855,8 +872,10 @@ function openSettings(focus) {
     <div class="field"><label>Megjelenés</label><div class="seg" role="group" aria-label="Téma">${[['auto', 'Rendszer'], ['light', 'Világos'], ['dark', 'Sötét']].map(([k, l]) => `<button data-th="${k}" aria-pressed="${S.theme === k}">${l}</button>`).join('')}</div></div>
     <div class="field"><label>Telepítés</label>${installEvt ? '<button class="btn ghost" id="install">App telepítése a kezdőképernyőre</button>' : ''}<p class="sub">Androidon a Chrome menüjében (⋮) válaszd a „Hozzáadás a kezdőképernyőhöz” vagy „App telepítése” lehetőséget. iPhone-on a Safari Megosztás gombja → „Főképernyőhöz adás”.</p></div>
     ${backupField()}
-    <div class="field"><label>Adatok törlése</label><button class="btn danger" id="wipe">Minden adat törlése erről a készülékről</button></div>`);
+    <div class="field"><label>Adatok törlése</label><button class="btn danger" id="wipe">Minden adat törlése erről a készülékről</button></div>
+    <div class="field"><label>Névjegy</label><p class="sub">Portfolio Lens · <a href="../portfolio-lens/?lang=${I18N.lang}" target="_blank" rel="noopener">Weboldal</a> · <a href="../portfolio-lens/privacy.html?lang=${I18N.lang}" target="_blank" rel="noopener">Adatvédelmi tájékoztató</a></p><p class="sub">A Portfolio Lens nem befektetési tanácsadás. Az árfolyamok késleltetettek lehetnek, a számítások tájékoztató jellegűek.</p></div>`);
   $('addSt').onclick = () => { s.close(); $('fileIn').click(); };
+  const xd = $('exitDemo'); if (xd) xd.onclick = () => { s.close(); exitDemo(); };
   $('dgTest').onclick = diagTest; bindBackup();
   s.root.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { if (b.dataset.lang === I18N.lang) return; store.set('bf-lang', b.dataset.lang); location.reload(); });
   $('altSel').onchange = e => { S.alt = e.target.value; store.set('bf-alt', S.alt); if (S.cur !== 'USD') { S.cur = S.alt; store.set('bf-cur2', S.alt); } drawCur(); drawStatus(); render(true); if (!rateOf(S.alt)) refresh({}); };
@@ -868,7 +887,7 @@ function openSettings(focus) {
   $('reload').onclick = () => { market.history = {}; store.set('bf-mkt', market); s.close(); refresh({ force: true }); };
   s.root.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { S.theme = b.dataset.th; store.set('bf-theme', S.theme); applyTheme(); s.root.querySelectorAll('[data-th]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
   const ib = $('install'); if (ib) ib.onclick = async () => { installEvt.prompt(); installEvt = null; s.close(); };
-  $('wipe').onclick = e => { const b = e.currentTarget; if (b.dataset.sure) { ['bf-st', 'bf-mkt', 'bf-key', 'bf-fhkey', 'bf-alertlog', 'bf-alerted', 'bf-alertcfg', 'bf-manual', 'bf-lastbackup'].forEach(store.del); manual = []; fhKey = ''; alertLog = []; statements = []; market = { history: {}, fx: {}, usdhuf: null, updatedAt: 0 }; apiKey = ''; s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztosan törlöd? Koppints újra.'; } };
+  $('wipe').onclick = e => { const b = e.currentTarget; if (b.dataset.sure) { DEMO = false; ['bf-demo', 'bf-st', 'bf-mkt', 'bf-key', 'bf-fhkey', 'bf-alertlog', 'bf-alerted', 'bf-alertcfg', 'bf-manual', 'bf-lastbackup'].forEach(store.del); manual = []; fhKey = ''; alertLog = []; statements = []; market = { history: {}, fx: {}, usdhuf: null, updatedAt: 0 }; apiKey = ''; s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztosan törlöd? Koppints újra.'; } };
 }
 
 /* ---------- TBSZ ---------- */
@@ -1114,7 +1133,7 @@ async function diagTest() {
 }
 
 /* ---------- kézi tranzakciók ---------- */
-let manual = store.get('bf-manual', []);
+let manual = DEMO ? [] : store.get('bf-manual', []);
 const saveManual = () => store.set('bf-manual', manual);
 // a kézi tételek számlánként egy kiegészítő "kivonatként" mennek a számításba
 function manualStatements() {
@@ -1329,6 +1348,7 @@ const TYPE_LBL = { B: 'Vétel', S: 'Eladás', D: 'Osztalék', DEP: 'Befizetés',
 const csvSig = hdr => hdr.map(h => h.toLowerCase()).join('|');
 function csvReadText(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsText(f); }); }
 async function importCsv(f) {
+  if (DEMO) exitDemo(false);
   let parsed; try { parsed = CSVImport.parseCSV(await csvReadText(f)); } catch (e) { toast(t('A CSV nem olvasható.', 'The CSV could not be read.')); return; }
   const rows = parsed.rows; if (rows.length < 2) { toast(t('A CSV üres.', 'The CSV is empty.')); return; }
   const id = CSVImport.detect(rows);

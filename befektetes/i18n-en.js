@@ -4,6 +4,12 @@
   const RANGE = { '1 hét': 'week', '1 hó': 'month', '3 hó': '3 months', '6 hó': '6 months', '1 év': 'year' };
   const TYPE = { 'vétel': 'buy', 'eladás': 'sale', 'osztalék': 'dividend', 'befizetés': 'deposit' };
   I18N.add({
+    'Ez egy mintaportfólió': 'This is a sample portfolio', 'Töltsd be a saját kivonatodat vagy bróker-CSV-det, és ugyanezt látod a valódi számaiddal.': 'Load your own statement or broker CSV to see the same views with your real numbers.',
+    'Kipróbálom mintaadatokkal': 'Try it with sample data', 'Mintaadatok ·': 'Sample data ·', 'Saját adatok betöltése →': 'Load my own data →',
+    'Demó mód': 'Demo mode', 'Most kitalált mintaadatokat látsz. A saját adataid érintetlenek.': 'You are looking at made-up sample data. Your own data is untouched.',
+    'Kilépés a demóból, saját adatok': 'Exit demo, use my data', 'Adatvédelem': 'Privacy', 'Névjegy': 'About',
+    'Adatvédelmi tájékoztató': 'Privacy policy', 'Weboldal': 'Website',
+    'A Portfolio Lens nem befektetési tanácsadás. Az árfolyamok késleltetettek lehetnek, a számítások tájékoztató jellegűek.': 'Portfolio Lens is not investment advice. Prices may be delayed and calculations are for information only.',
     'Oszlopok hozzárendelése': 'Map columns', 'Ezt a formátumot nem ismerem fel magától. Mondd meg, melyik oszlop mit jelent. A beállítást megjegyzem, legközelebb ugyanettől a brókertől magától megy.': 'I don’t recognise this format automatically. Tell me what each column means. I’ll remember it, so the next file from this broker imports on its own.',
     'Típus': 'Type', 'Ticker': 'Ticker', 'Összeg': 'Amount', 'Dátumformátum': 'Date format', 'Automatikus': 'Automatic', 'nap/hó/év': 'day/month/year', 'hó/nap/év': 'month/day/year',
     'Pénznem, ha nincs oszlop': 'Currency if there is no column', 'Mit jelentenek a típusok?': 'What do the types mean?', 'Előbb válaszd ki a Típus oszlopot.': 'Choose the Type column first.',

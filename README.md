@@ -23,3 +23,9 @@ Oliva `#5f6239`, homok `#b8976d`, törtfehér `#f6f5f0`. Betűk: Archivo, Instru
 ## Kapcsolat
 
 levente3d.szeged@gmail.com · +36 70 596 1640 · Szeged
+
+## Portfolio Lens (Befektetés)
+
+- **`befektetes/`**: a portfóliókövető PWA. Élő: https://levi20003.github.io/3D/befektetes/ (demó: `?demo=1`). Minden adat a készüléken marad, a repóban nincs pénzügyi adat.
+- **`befektetes/store/`**: Play Áruház-anyagok mintaadatokból (ikon, kiemelt grafika, képernyőképek) és a lépésről lépésre útmutató: `PLAY-STORE.md`.
+- **`portfolio-lens/`**: egyoldalas weboldal (EN/HU) és adatvédelmi tájékoztató. Élő: https://levi20003.github.io/3D/portfolio-lens/
