@@ -5,6 +5,7 @@
   const TYPE = { 'vétel': 'buy', 'eladás': 'sale', 'osztalék': 'dividend', 'befizetés': 'deposit' };
   I18N.add({
     'Ez egy mintaportfólió': 'This is a sample portfolio', 'Töltsd be a saját kivonatodat vagy bróker-CSV-det, és ugyanezt látod a valódi számaiddal.': 'Load your own statement or broker CSV to see the same views with your real numbers.',
+    'A Twelve Data mai ingyenes kerete (800 lekérés) elfogyott, éjfél (UTC) után folytatja.': 'Today’s free Twelve Data quota (800 requests) is used up; it continues after midnight UTC.', 'Mai ingyenes keret elfogyott': 'Today’s free quota is used up',
     'Kipróbálom mintaadatokkal': 'Try it with sample data', 'Mintaadatok ·': 'Sample data ·', 'Saját adatok betöltése →': 'Load my own data →',
     'Demó mód': 'Demo mode', 'Most kitalált mintaadatokat látsz. A saját adataid érintetlenek.': 'You are looking at made-up sample data. Your own data is untouched.',
     'Kilépés a demóból, saját adatok': 'Exit demo, use my data', 'Adatvédelem': 'Privacy', 'Névjegy': 'About',

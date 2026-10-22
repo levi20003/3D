@@ -83,6 +83,11 @@ function compute() {
 
 /* ---------- market data ---------- */
 const credits = [];
+// amerikai tőzsde: hétköznap kb. 13:30–21:15 UTC (télen-nyáron is lefedve); zárt piacon a záró ár után nincs mit letölteni
+function usOpen(t = Date.now()) { const d = new Date(t), wd = d.getUTCDay(), m = d.getUTCHours() * 60 + d.getUTCMinutes(); return wd > 0 && wd < 6 && m >= 13 * 60 + 30 && m <= 21 * 60 + 15; }
+function lastClose(t = Date.now()) { const d = new Date(t); d.setUTCHours(21, 15, 0, 0); if (d.getTime() > t) d.setUTCDate(d.getUTCDate() - 1); while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() - 1); return d.getTime(); }
+const nextUtcMidnight = () => { const d = new Date(); d.setUTCHours(24, 5, 0, 0); return d.getTime(); };
+let moreTimer = null;
 async function waitCredits(n) {
   for (;;) {
     const now = Date.now(); while (credits.length && now - credits[0] > 61000) credits.shift();
@@ -108,6 +113,7 @@ async function fetchFx() {
 
 async function fetchPrices(force) {
   if (!apiKey || !M) return;
+  if (market.tdBlock && Date.now() < market.tdBlock) { diag('td', { ok: false, msg: 'A Twelve Data mai ingyenes kerete (800 lekérés) elfogyott, éjfél (UTC) után folytatja.' }); market.errors = ['Mai ingyenes keret elfogyott']; return; }
   const open = new Set(M.positions.map(p => p.tkr));
   const firstOf = {}; M.tx.forEach(r => { if (r.tkr && !firstOf[r.tkr]) firstOf[r.tkr] = r.date; });
   const syms = [...M.usTickers, 'SPY'];
@@ -122,7 +128,11 @@ async function fetchPrices(force) {
   if (!force) { // frissítéskor csak a 8 legrégebben frissített, így nincs várakozás a kereten
     const fr = market.fetched = market.fetched || {};
     const fresh = jobs.filter(j => !market.history[j.s]);
-    const inc = jobs.filter(j => market.history[j.s] && Date.now() - (fr[j.s] || 0) > 10 * 60e3).sort((a, b) => (fr[a.s] || 0) - (fr[b.s] || 0)).slice(0, Math.max(0, 8 - fresh.length));
+    const lc = lastClose(), open = usOpen();
+    const stale = jobs.filter(j => market.history[j.s] && (open ? Date.now() - (fr[j.s] || 0) > 15 * 60e3 : (fr[j.s] || 0) < lc)).sort((a, b) => (fr[a.s] || 0) - (fr[b.s] || 0));
+    const inc = stale.slice(0, Math.max(0, 8 - fresh.length));
+    // ami most nem fért bele a percenkénti 8-ba, azt egy perc múlva magától letölti
+    clearTimeout(moreTimer); if (stale.length > inc.length || fresh.length > 8) moreTimer = setTimeout(() => refresh(), 65e3);
     jobs.length = 0; jobs.push(...fresh, ...inc); jobs.sort((a, b) => a.start < b.start ? -1 : 1);
   }
   const errs = [];
@@ -134,6 +144,7 @@ async function fetchPrices(force) {
       await waitCredits(batch.length);
       const url = `https://api.twelvedata.com/time_series?symbol=${batch.map(b => encodeURIComponent(b.s)).join(',')}&interval=1day&start_date=${start}&order=asc&outputsize=5000&apikey=${encodeURIComponent(apiKey)}`;
       j = await getJson(url);
+      if (j && j.status === 'error' && /\bday\b|daily/i.test(j.message || '')) { market.tdBlock = nextUtcMidnight(); diag('td', { ok: false, msg: 'A Twelve Data mai ingyenes kerete (800 lekérés) elfogyott, éjfél (UTC) után folytatja.' }); market.errors = ['Mai ingyenes keret elfogyott']; return; }
       if (j && j.status === 'error' && (j.code === 429 || /credits|minute/i.test(j.message || '')) && tries++ < 3) { credits.length = 0; for (let k = 0; k < 8; k++) credits.push(Date.now()); continue; }
       break;
     }
@@ -883,7 +894,7 @@ function openSettings(focus) {
   if (focus === 'diag') setTimeout(() => $('diagField').scrollIntoView({ block: 'start', behavior: 'smooth' }), 120);
   $('saveF').onclick = () => { fhKey = $('fkey').value.trim(); store.set('bf-fhkey', fhKey); if (market.cal) market.cal.at = 0; s.close(); refresh(); };
   s.root.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const i = +b.dataset.del; if (b.dataset.sure) { statements.splice(i, 1); store.set('bf-st', statements); s.close(); compute(); boot(); } else { b.dataset.sure = 1; b.textContent = 'Biztos?'; } });
-  $('saveKey').onclick = () => { apiKey = $('key').value.trim(); store.set('bf-key', apiKey); s.close(); drawStatus(); refresh(); };
+  $('saveKey').onclick = () => { apiKey = $('key').value.trim(); delete market.tdBlock; store.set('bf-key', apiKey); s.close(); drawStatus(); refresh(); };
   $('reload').onclick = () => { market.history = {}; store.set('bf-mkt', market); s.close(); refresh({ force: true }); };
   s.root.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { S.theme = b.dataset.th; store.set('bf-theme', S.theme); applyTheme(); s.root.querySelectorAll('[data-th]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
   const ib = $('install'); if (ib) ib.onclick = async () => { installEvt.prompt(); installEvt = null; s.close(); };
