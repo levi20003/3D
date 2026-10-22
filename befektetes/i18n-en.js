@@ -14,7 +14,7 @@
     // kezdőlap
     'Portfólió értéke': 'Portfolio value', 'Árfolyam': 'Price', 'Érték': 'Value', 'Mind': 'All', '1 hét': '1W', '1 hó': '1M', '3 hó': '3M', '6 hó': '6M', '1 év': '1Y',
     'A portfólió értékének alakulása. Húzd végig az ujjad a részletekért.': 'Portfolio value over time. Drag your finger across for details.',
-    'Kivonat': 'Statement', 'Frissítés': 'Refresh', 'Rögzítés': 'Add', 'Riasztás': 'Alert', 'Több': 'More',
+    'Kivonat': 'Statement', 'Megosztás': 'Share', 'Eredménykártya': 'Share card', 'Teljesítmény': 'Performance', 'Legjobbak': 'Top', 'Év eddig': 'Year so far', 'Bejegyzés 4:5': 'Post 4:5', 'Story 9:16': 'Story 9:16', 'Összeg is': 'Show amounts', 'Kép mentése': 'Save image', 'Formátum': 'Format', 'A megosztandó kép előnézete': 'Preview of the image to share', 'Eredmény megosztása': 'Share results', 'Kép Instagramra, X-re': 'Image for Instagram, X', 'Alapból csak százalékok látszanak, összegek nem. Az időszak a kezdőlapon kiválasztott időszak.': 'By default only percentages are shown, no amounts. The period is the one selected on Home.', 'Frissítés': 'Refresh', 'Rögzítés': 'Add', 'Riasztás': 'Alert', 'Több': 'More',
     'Ma': 'Today', 'Mai érték': 'Today', 'Befiz.': 'Dep.', 'Real.': 'Real.', 'Nyitott': 'Open', 'Oszt.': 'Div.', 'Levont adó': 'Tax withheld', 'Ma SPY-ban': 'Today in SPY', 'átlagár': 'avg cost', 'Nyitott eredmény': 'Unrealised P/L', 'Befizetve': 'Deposited', 'Osztalék': 'Dividends', 'Díjak': 'Fees',
     'Eszközeid': 'Your holdings', 'kezdés óta': 'since start', 'az év eleje óta': 'year to date',
     'Legutóbbi tranzakciók': 'Recent transactions', 'Összes': 'All',

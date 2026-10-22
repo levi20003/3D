@@ -347,7 +347,7 @@ const ICO = {
   refresh: 'M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5',
   bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0', more: 'M5 12h.01M12 12h.01M19 12h.01',
   swap: 'M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7', leaf: 'M11 20A7 7 0 0 1 4 13c0-5 5-9 16-10-1 11-5 16-9 17zM4 20c3-5 6-8 10-10',
-  chev: 'M9 18l6-6-6-6', wallet: 'M3 7a2 2 0 0 1 2-2h13v4M3 7v10a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14h.01', trend: 'M3 17l6-6 4 4 8-8M15 7h6v6', moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z'
+  chev: 'M9 18l6-6-6-6', share: 'M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13', wallet: 'M3 7a2 2 0 0 1 2-2h13v4M3 7v10a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14h.01', trend: 'M3 17l6-6 4 4 8-8M15 7h6v6', moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z'
 };
 const ic = (k, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICO[k]}"/></svg>`;
 const SHADES = () => [css('--c1'), css('--c2'), css('--c3'), css('--c4'), css('--c5'), css('--c6')];
@@ -381,7 +381,7 @@ V.attekintes = m => {
   return `
   <section class="hero" id="hero">
     <div class="hc-top"><span class="hc-lbl"><i class="hc-dot">${ic('wallet')}</i>Portfólió értéke</span>
-      <button class="hc-eye" id="eyeBtn" aria-label="${S.hide ? 'Összegek mutatása' : 'Összegek elrejtése'}">${ic(S.hide ? 'eyeOff' : 'eye')}</button></div>
+      <span style="display:flex;gap:8px"><button class="hc-eye" id="shareBtn" aria-label="Megosztás">${ic('share')}</button><button class="hc-eye" id="eyeBtn" aria-label="${S.hide ? 'Összegek mutatása' : 'Összegek elrejtése'}">${ic(S.hide ? 'eyeOff' : 'eye')}</button></span></div>
     <div class="hc-val num" id="hv"></div>
     <div class="hc-chg num" id="hc"></div>
     <div class="chart hc-chart"><canvas id="sc" role="img" aria-label="A portfólió értékének alakulása. Húzd végig az ujjad a részletekért."></canvas><div class="ftip" id="ftip" hidden></div></div>
@@ -446,6 +446,7 @@ V.attekintes.after = m => {
   document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.range = b.dataset.r; store.set('bf-range', S.range); animNext = true; render(true); });
   document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); animNext = true; render(true); });
   $('benchBtn').onclick = () => { if (!market.history.SPY) { explainNoData('spy'); return; } S.bench = !S.bench; store.set('bf-bench', S.bench); render(true); };
+  $('shareBtn').onclick = openShare;
   $('eyeBtn').onclick = () => { S.hide = !S.hide; store.set('bf-hide', S.hide); render(true); };
   $('qaImport').onclick = () => $('fileIn').click(); $('qaRefresh').onclick = () => refresh({}); $('qaAdd').onclick = () => openManual(); $('qaMore').onclick = openActions;
   const tk = $('tipKey'); if (tk) tk.onclick = () => openSettings(); const tb = $('tipBk'); if (tb) tb.onclick = () => openSettings('backup');
@@ -536,6 +537,7 @@ V.elemzes.after = m => {
 function openActions() {
   const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Gyorsműveletek</div><h2 style="font-size:1.3rem">Mit szeretnél?</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
     <div class="acts">
+      <button data-act="share"><span>${ic('share')}</span><b>Eredmény megosztása</b><small>Kép Instagramra, X-re</small></button>
       <button data-act="add"><span>${ic('add')}</span><b>Tranzakció rögzítése</b><small>Vétel, eladás, osztalék</small></button>
       <button data-act="import"><span>${ic('file')}</span><b>Kivonat betöltése</b><small>Új Lightyear PDF</small></button>
       <button data-act="refresh"><span>${ic('refresh')}</span><b>Frissítés</b><small>Árak, naptár, hírek</small></button>
@@ -545,7 +547,7 @@ function openActions() {
       <button data-act="settings"><span>${ic('more', 3)}</span><b>Beállítások</b><small>Kulcsok, adatok</small></button>
     </div>`);
   s.root.querySelectorAll('[data-act]').forEach(b => b.onclick = () => { const a = b.dataset.act; s.close();
-    if (a === 'add') openManual(); if (a === 'import') $('fileIn').click(); if (a === 'refresh') refresh({}); if (a === 'alert') openAlerts(); if (a === 'settings') openSettings();
+    if (a === 'share') openShare(); if (a === 'add') openManual(); if (a === 'import') $('fileIn').click(); if (a === 'refresh') refresh({}); if (a === 'alert') openAlerts(); if (a === 'settings') openSettings();
     if (a === 'cur') { S.cur = S.cur === 'USD' ? S.alt : 'USD'; store.set('bf-cur2', S.cur); drawCur(); render(true); }
     if (a === 'theme') { S.theme = { auto: 'light', light: 'dark', dark: 'auto' }[S.theme]; store.set('bf-theme', S.theme); applyTheme(); } });
 }
@@ -1228,6 +1230,89 @@ function bindBackup() {
   const sh = $('bkShare'); if (sh) sh.onclick = () => doBackup(true);
   $('bkSave').onclick = () => doBackup(false); $('bkLoad').onclick = () => $('bkFile').click();
   $('bkFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) { if (sheetClose) sheetClose(); setTimeout(() => restoreFile(f), 60); } };
+}
+
+/* ---------- megosztható eredménykártya ---------- */
+const BRAND = 'Portfolio Lens';
+const SH = { tpl: 'perf', fmt: 'post', amounts: false };
+function shareData() {
+  const pts = rangePoints(); const a = pts[0], z = pts[pts.length - 1];
+  const pc = (z.nav / a.nav - 1) * 100; const spy = z.spyIdx && a.spyIdx ? (z.spyIdx / a.spyIdx - 1) * 100 : null;
+  const from = rangeFrom(S.range);
+  const ranked = M.positions.map(p => ({ p, f: perf(p, from) })).sort((x, y) => y.f.pct - x.f.pct);
+  return { pts, a, z, pc, spy, ranked, res: (z.value - z.invested) - (a.value - a.invested) };
+}
+function drawShareCard(cv) {
+  const W = 1080, H = SH.fmt === 'story' ? 1920 : 1350; cv.width = W; cv.height = H; const c = cv.getContext('2d');
+  const d = shareData(); const fam = getComputedStyle(document.body).fontFamily;
+  const cream = '#f5f3ea', mint = '#b4e3c4', coral = '#ffb3a3', dim = 'rgba(245,243,234,.62)', line = 'rgba(245,243,234,.14)';
+  const g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#24543f'); g.addColorStop(.55, '#173a2b'); g.addColorStop(1, '#0d2219'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.strokeStyle = line; c.lineWidth = 2; c.beginPath(); c.arc(W - 40, 80, 300, 0, 7); c.stroke(); c.beginPath(); c.arc(W - 40, 80, 420, 0, 7); c.stroke();
+  const P = 84; let y = SH.fmt === 'story' ? 220 : 120;
+  const txt = (s, x, yy, size, w = 600, col = cream, al = 'left') => { c.font = `${w} ${size}px ${fam}`; c.fillStyle = col; c.textAlign = al; c.fillText(s, x, yy); };
+  const rangeTxt = rangeLabel(S.range);
+  const up = d.pc >= 0, col = up ? mint : coral;
+  if (SH.tpl === 'perf' || SH.tpl === 'year') {
+    const title = SH.tpl === 'year' ? t(`${M.today.slice(0, 4)} eddig`, `${M.today.slice(0, 4)} so far`) : t('Portfólióm', 'My portfolio');
+    txt(title, P, y, 46, 600, dim); y += 30;
+    if (SH.tpl === 'year' && S.range !== 'ytd') { /* az év nézet mindig YTD */ }
+    const pcv = SH.tpl === 'year' ? (() => { const s = M.series, from = M.today.slice(0, 4) + '-01-01'; const i = Math.max(0, s.findIndex(p => p.d >= from) - 1); return (s[s.length - 1].nav / s[i].nav - 1) * 100; })() : d.pc;
+    const cc = pcv >= 0 ? mint : coral;
+    txt((pcv >= 0 ? '+' : '−') + nf(Math.abs(pcv), 1) + '%', P - 6, y + 190, 210, 800, cc); y += 230;
+    txt(SH.tpl === 'year' ? t('az év eleje óta', 'year to date') : rangeTxt, P, y + 20, 40, 500, dim); y += 50;
+    if (SH.amounts && !S.hide) { let r = d.res; if (SH.tpl === 'year') { const ss = M.series, i = Math.max(0, ss.findIndex(p => p.d >= M.today.slice(0, 4) + '-01-01') - 1), zz = ss[ss.length - 1]; r = (zz.value - zz.invested) - (ss[i].value - ss[i].invested); } txt(money(r, { sign: true }), P, y + 40, 44, 700, cream); y += 60; }
+    if (d.spy != null && SH.tpl === 'perf') { const diff = d.pc - d.spy; const s = `S&P 500 ${(d.spy >= 0 ? '+' : '−') + nf(Math.abs(d.spy), 1)}%  ·  ${diff >= 0 ? t('előtte', 'ahead by') : t('mögötte', 'behind by')} ${nf(Math.abs(diff), 1)} pp`;
+      c.font = `600 34px ${fam}`; const tw = c.measureText(s).width + 48; c.fillStyle = 'rgba(245,243,234,.12)'; c.beginPath(); c.roundRect(P, y + 10, tw, 64, 32); c.fill(); txt(s, P + 24, y + 54, 34, 600, cream); y += 100; }
+    // grafikon
+    const cy0 = y + 30, ch = SH.fmt === 'story' ? 620 : 380, cx0 = 40, cw = W - 80;
+    const src = SH.tpl === 'year' ? M.series.filter(p => p.d >= M.today.slice(0, 4) + '-01-01') : d.pts;
+    const ys = src.map(p => p.nav), bs = src.map(p => p.spyIdx && src[0].spyIdx ? src[0].nav * p.spyIdx / src[0].spyIdx : null);
+    const all = [...ys, ...bs].filter(v => v != null); let lo = Math.min(...all), hi = Math.max(...all); const pad = (hi - lo) * .1 || 1; lo -= pad; hi += pad;
+    const X = i => cx0 + i / Math.max(1, ys.length - 1) * cw, Y = v => cy0 + (hi - v) / (hi - lo) * ch;
+    const bseg = bs.map((v, i) => v == null ? null : [X(i), Y(v)]).filter(Boolean);
+    if (bseg.length > 2) { c.beginPath(); monoPath(c, bseg); c.strokeStyle = 'rgba(245,243,234,.45)'; c.lineWidth = 4; c.setLineDash([2, 12]); c.lineCap = 'round'; c.stroke(); c.setLineDash([]); }
+    const seg = ys.map((v, i) => [X(i), Y(v)]); const gr = c.createLinearGradient(0, cy0, 0, cy0 + ch); gr.addColorStop(0, cc + '55'); gr.addColorStop(1, cc + '00');
+    c.beginPath(); monoPath(c, seg); c.lineTo(X(ys.length - 1), cy0 + ch); c.lineTo(X(0), cy0 + ch); c.closePath(); c.fillStyle = gr; c.fill();
+    c.beginPath(); monoPath(c, seg); c.strokeStyle = cc; c.lineWidth = 7; c.lineJoin = 'round'; c.shadowColor = cc; c.shadowBlur = 24; c.stroke(); c.shadowBlur = 0;
+    const lx = X(ys.length - 1), ly = Y(ys[ys.length - 1]); c.beginPath(); c.arc(lx, ly, 14, 0, 7); c.fillStyle = cc; c.fill(); c.lineWidth = 6; c.strokeStyle = '#173a2b'; c.stroke();
+    y = cy0 + ch + 40;
+    if (bseg.length > 2) { c.strokeStyle = 'rgba(245,243,234,.45)'; c.lineWidth = 4; c.setLineDash([2, 12]); c.beginPath(); c.moveTo(P, y + 18); c.lineTo(P + 60, y + 18); c.stroke(); c.setLineDash([]); txt('S&P 500', P + 80, y + 30, 30, 500, dim); c.fillStyle = cc; c.fillRect(P + 260, y + 15, 60, 7); txt(t('Portfólióm', 'My portfolio'), P + 340, y + 30, 30, 500, dim); y += 70; }
+    // legjobbak
+    const yf = M.today.slice(0, 4) + '-01-01'; const top = (SH.tpl === 'year' ? M.positions.map(p => ({ p, f: perf(p, yf) })).sort((x, z) => z.f.pct - x.f.pct) : d.ranked).slice(0, 3); if (top.length && (SH.fmt === 'story' || SH.tpl === 'year')) { y += 30; txt(t('Legjobbak', 'Top performers'), P, y, 34, 600, dim); y += 30;
+      top.forEach(x => { y += 76; c.fillStyle = 'rgba(245,243,234,.08)'; c.beginPath(); c.roundRect(P, y - 52, W - 2 * P, 66, 22); c.fill(); txt(x.p.tkr, P + 28, y - 8, 36, 800, cream); txt(nm(x.p.tkr).slice(0, 22), P + 200, y - 8, 30, 500, dim); txt((x.f.pct >= 0 ? '+' : '−') + nf(Math.abs(x.f.pct), 1) + '%', W - P - 28, y - 8, 36, 800, x.f.pct >= 0 ? mint : coral, 'right'); }); }
+  } else { // top 3
+    txt(t('Legjobb részvényeim', 'My best stocks'), P, y, 46, 600, dim); y += 40; txt(rangeTxt, P, y + 30, 38, 500, dim); y += 80;
+    const top = d.ranked.slice(0, SH.fmt === 'story' ? 5 : 3); const mx = Math.max(...top.map(x => Math.abs(x.f.pct)), 1);
+    top.forEach((x, i) => { y += 10; const bh = SH.fmt === 'story' ? 210 : 230; c.fillStyle = 'rgba(245,243,234,.07)'; c.beginPath(); c.roundRect(P, y, W - 2 * P, bh, 34); c.fill();
+      txt(`${i + 1}`, P + 40, y + 78, 44, 800, dim); txt(x.p.tkr, P + 110, y + 82, 64, 800, cream); txt(nm(x.p.tkr).slice(0, 26), P + 110, y + 132, 32, 500, dim);
+      const cc = x.f.pct >= 0 ? mint : coral; txt((x.f.pct >= 0 ? '+' : '−') + nf(Math.abs(x.f.pct), 1) + '%', W - P - 40, y + 90, 64, 800, cc, 'right');
+      c.fillStyle = 'rgba(245,243,234,.12)'; c.beginPath(); c.roundRect(P + 40, y + bh - 50, W - 2 * P - 80, 14, 7); c.fill(); c.fillStyle = cc; c.beginPath(); c.roundRect(P + 40, y + bh - 50, Math.max(14, (W - 2 * P - 80) * Math.abs(x.f.pct) / mx), 14, 7); c.fill();
+      y += bh + 14; });
+  }
+  // márka
+  const by = H - 90; c.fillStyle = cream; c.beginPath(); c.roundRect(P, by - 46, 64, 64, 18); c.fill();
+  c.strokeStyle = '#1e4636'; c.lineWidth = 6; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(P + 14, by + 2); c.lineTo(P + 27, by - 14); c.lineTo(P + 37, by - 6); c.lineTo(P + 52, by - 26); c.stroke();
+  txt(BRAND, P + 86, by - 2, 40, 800, cream); txt(dShort(M.today), W - P, by - 2, 30, 500, dim, 'right');
+  txt(t('Nem befektetési tanács.', 'Not investment advice.'), W - P, by + 34, 22, 500, 'rgba(245,243,234,.4)', 'right');
+}
+function openShare() {
+  const s = sheet(`<div class="sheet-h"><div><div class="lbl-s">Megosztás</div><h2 style="font-size:1.3rem">Eredménykártya</h2></div><button class="ibtn" data-close aria-label="Bezárás">✕</button></div>
+    <div class="ptabs" role="tablist">${[['perf', 'Teljesítmény'], ['top', 'Legjobbak'], ['year', 'Év eddig']].map(([k, l]) => `<button role="tab" data-stpl="${k}" aria-selected="${SH.tpl === k}">${l}</button>`).join('')}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="seg" role="group" aria-label="Formátum"><button data-sfmt="post" aria-pressed="${SH.fmt === 'post'}">Bejegyzés 4:5</button><button data-sfmt="story" aria-pressed="${SH.fmt === 'story'}">Story 9:16</button></div>
+      <label class="ck" style="margin-left:auto"><input type="checkbox" id="shAmt" ${SH.amounts ? 'checked' : ''}> Összeg is</label></div>
+    <div class="shprev"><canvas id="shCv" aria-label="A megosztandó kép előnézete"></canvas></div>
+    <p class="sub">Alapból csak százalékok látszanak, összegek nem. Az időszak a kezdőlapon kiválasztott időszak.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${navigator.canShare ? '<button class="btn" id="shGo">Megosztás</button>' : ''}<button class="btn ${navigator.canShare ? 'ghost' : ''}" id="shDl">Kép mentése</button></div>`);
+  const draw = () => { drawShareCard($('shCv')); };
+  const redraw = () => { s.root.querySelectorAll('[data-stpl]').forEach(b => b.setAttribute('aria-selected', b.dataset.stpl === SH.tpl)); s.root.querySelectorAll('[data-sfmt]').forEach(b => b.setAttribute('aria-pressed', b.dataset.sfmt === SH.fmt)); draw(); };
+  s.root.querySelectorAll('[data-stpl]').forEach(b => b.onclick = () => { SH.tpl = b.dataset.stpl; redraw(); });
+  s.root.querySelectorAll('[data-sfmt]').forEach(b => b.onclick = () => { SH.fmt = b.dataset.sfmt; redraw(); });
+  $('shAmt').onchange = e => { SH.amounts = e.target.checked; draw(); };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(draw);
+  const blob = () => new Promise(r => $('shCv').toBlob(r, 'image/png'));
+  const name = () => `portfolio-lens-${SH.tpl}-${M.today}.png`;
+  const go = $('shGo'); if (go) go.onclick = async () => { const f = new File([await blob()], name(), { type: 'image/png' }); try { if (navigator.canShare({ files: [f] })) await navigator.share({ files: [f], text: t('A portfólióm a Portfolio Lens-ben', 'My portfolio on Portfolio Lens') }); else throw new Error('nosupport'); } catch (e) { if (e.name !== 'AbortError') $('shDl').click(); } };
+  $('shDl').onclick = async () => { const a = document.createElement('a'); a.href = URL.createObjectURL(await blob()); a.download = name(); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); toast(t('Kép elmentve.', 'Image saved.')); };
 }
 
 /* ---------- chrome ---------- */
