@@ -7,6 +7,7 @@ const CDN = {
   pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 };
 const REFRESH_MS = 15 * 60 * 1000;
+const APP_VERSION = '2026.10.23'; // kiadáskor a version.json-nal együtt emelni
 
 /* ---------- storage ---------- */
 const store = {
@@ -127,7 +128,7 @@ async function fetchPrices(force) {
   jobs.sort((a, b) => a.start < b.start ? -1 : 1);
   if (!force) { // frissítéskor csak a 8 legrégebben frissített, így nincs várakozás a kereten
     const fr = market.fetched = market.fetched || {};
-    const fresh = jobs.filter(j => !market.history[j.s]);
+    const fresh = jobs.filter(j => !market.history[j.s] && Date.now() - ((market.fetched || {})[j.s] || 0) > 6 * 3600e3); // ami nem jön le, 6 óránként próbálja újra
     const lc = lastClose(), open = usOpen();
     const stale = jobs.filter(j => market.history[j.s] && (open ? Date.now() - (fr[j.s] || 0) > 15 * 60e3 : (fr[j.s] || 0) < lc)).sort((a, b) => (fr[a.s] || 0) - (fr[b.s] || 0));
     const inc = stale.slice(0, Math.max(0, 8 - fresh.length));
@@ -152,7 +153,7 @@ async function fetchPrices(force) {
     const per = batch.length === 1 ? { [batch[0].s]: j } : j;
     for (const b of batch) {
       const d = per[b.s];
-      if (!d || d.status === 'error' || !Array.isArray(d.values)) { errs.push(b.s + ': ' + ((d && d.message) || 'nincs adat')); continue; }
+      if (!d || d.status === 'error' || !Array.isArray(d.values)) { (market.fetched = market.fetched || {})[b.s] = Date.now(); errs.push(b.s + ': ' + ((d && d.message) || 'nincs adat')); continue; }
       const h = market.history[b.s] = market.history[b.s] || {}; (market.fetched = market.fetched || {})[b.s] = Date.now();
       d.values.forEach(v => { const c = parseFloat(v.close); if (c > 0) h[v.datetime.slice(0, 10)] = c; });
     }
@@ -1527,5 +1528,25 @@ I18N.observe();
 applyTheme(); compute(); boot();
 if (statements.length && Date.now() - (market.updatedAt || 0) > REFRESH_MS) refresh();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+/* beépített frissítés: ha új verzió jelent meg, felajánlja az újratöltést */
+async function checkUpdate() {
+  if (!location.protocol.startsWith('http') || !navigator.onLine) return;
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
+    const v = (await r.json()).version; if (!v || v === APP_VERSION) return;
+    const bar = $('updBar'); if (!bar || !bar.hidden) return;
+    bar.hidden = false;
+    $('updGo').onclick = async () => {
+      $('updGo').disabled = true; $('updGo').textContent = 'Frissítés…';
+      try { const reg = await navigator.serviceWorker?.getRegistration(); if (reg) await reg.update(); } catch (e) {}
+      try { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } catch (e) {}
+      location.reload();
+    };
+    $('updX').onclick = () => { bar.hidden = true; };
+  } catch (e) {}
+}
+setTimeout(checkUpdate, 3000);
+setInterval(checkUpdate, 30 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 window.__bf = { importFiles, refresh, get M() { return M; } };
 })();
