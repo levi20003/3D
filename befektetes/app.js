@@ -7,7 +7,7 @@ const CDN = {
   pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 };
 const REFRESH_MS = 15 * 60 * 1000;
-const APP_VERSION = '2026.10.23c'; // kiadáskor a version.json-nal együtt emelni
+const APP_VERSION = '2026.10.23d'; // kiadáskor a version.json-nal együtt emelni
 
 /* ---------- storage ---------- */
 const store = {
@@ -125,7 +125,10 @@ async function fetchPrices(force) {
     const start = ds.length && !force ? Engine.addDays(ds[ds.length - 1], -4) : Engine.addDays(s === 'SPY' ? M.tx[0].date : firstOf[s], -7);
     jobs.push({ s, start });
   }
-  jobs.sort((a, b) => a.start < b.start ? -1 : 1);
+  // előbb az S&P és a legnagyobb nyitott pozíciók, hogy a grafikon minél hamarabb pontos legyen
+  const pri = s => s === 'SPY' ? 1e12 : (M.positions.find(p => p.tkr === s) || { value: -1 }).value;
+  jobs.sort((a, b) => pri(b.s) - pri(a.s));
+  if (!market.fixFetched) { const f = market.fetched || {}; Object.keys(f).forEach(k => { if (!market.history[k]) delete f[k]; }); market.fixFetched = 1; }
   if (!force) { // frissítéskor csak a 8 legrégebben frissített, így nincs várakozás a kereten
     const fr = market.fetched = market.fetched || {};
     const fresh = jobs.filter(j => !market.history[j.s] && Date.now() - ((market.fetched || {})[j.s] || 0) > 6 * 3600e3); // ami nem jön le, 6 óránként próbálja újra
@@ -133,12 +136,12 @@ async function fetchPrices(force) {
     const stale = jobs.filter(j => market.history[j.s] && (open ? Date.now() - (fr[j.s] || 0) > 15 * 60e3 : (fr[j.s] || 0) < lc)).sort((a, b) => (fr[a.s] || 0) - (fr[b.s] || 0));
     const inc = stale.slice(0, Math.max(0, 8 - fresh.length));
     // ami most nem fért bele a percenkénti 8-ba, azt egy perc múlva magától letölti
-    clearTimeout(moreTimer); if (stale.length > inc.length || fresh.length > 8) moreTimer = setTimeout(() => refresh(), 65e3);
-    jobs.length = 0; jobs.push(...fresh, ...inc); jobs.sort((a, b) => a.start < b.start ? -1 : 1);
+    clearTimeout(moreTimer); if (stale.length > inc.length) moreTimer = setTimeout(() => refresh(), 65e3);
+    jobs.length = 0; jobs.push(...fresh, ...inc); jobs.sort((a, b) => pri(b.s) - pri(a.s));
   }
   const errs = [];
   for (let i = 0; i < jobs.length; i += 8) {
-    const batch = jobs.slice(i, i + 8); const start = batch[0].start;
+    const batch = jobs.slice(i, i + 8); const start = batch.reduce((m, b) => b.start < m ? b.start : m, batch[0].start);
     setStatus(`Árfolyamok letöltése ${Math.min(i + 8, jobs.length)}/${jobs.length}…`, 'busy');
     let tries = 0, j;
     for (;;) {
@@ -153,11 +156,15 @@ async function fetchPrices(force) {
     const per = batch.length === 1 ? { [batch[0].s]: j } : j;
     for (const b of batch) {
       const d = per[b.s];
+      if (d && d.status === 'error' && /\bday\b|daily/i.test(d.message || '')) { market.tdBlock = nextUtcMidnight(); market.errors = ['Mai ingyenes keret elfogyott']; store.set('bf-mkt', market); diag('td', { ok: false, msg: 'A Twelve Data mai ingyenes kerete (800 lekérés) elfogyott, éjfél (UTC) után folytatja.' }); return; }
+      // percenkénti keret túllépése egy-egy részvénynél: újra sorba áll, nem jelöljük hibásnak
+      if (d && d.status === 'error' && (d.code === 429 || /credits|minute/i.test(d.message || '')) && (b.rq = (b.rq || 0) + 1) <= 3) { jobs.push(b); credits.length = 0; for (let k = 0; k < 8; k++) credits.push(Date.now()); continue; }
       if (!d || d.status === 'error' || !Array.isArray(d.values)) { (market.fetched = market.fetched || {})[b.s] = Date.now(); errs.push(b.s + ': ' + ((d && d.message) || 'nincs adat')); continue; }
       const h = market.history[b.s] = market.history[b.s] || {}; (market.fetched = market.fetched || {})[b.s] = Date.now();
       d.values.forEach(v => { const c = parseFloat(v.close); if (c > 0) h[v.datetime.slice(0, 10)] = c; });
     }
-    if (i + 8 < jobs.length) { compute(); render(true); } // ami már lejött, azonnal látszik
+    // minden kör után mentés: ha közben bezárod az appot, a már letöltött árak megmaradnak
+    store.set('bf-mkt', market); compute(); render(true);
   }
   // S&P 500 tartalék: ha az SPY nem jön le az ingyenes csomagban, VOO / IVV / SPX
   if (!market.history.SPY || Object.keys(market.history.SPY).length < 5) {

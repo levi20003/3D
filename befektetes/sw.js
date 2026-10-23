@@ -1,5 +1,5 @@
 /* Offline működés: az app fájljai gyorsítótárból, az árfolyam-API-k mindig a hálózatról. */
-const CACHE = 'befektetes-v19';
+const CACHE = 'befektetes-v20';
 const SHELL = ['./', 'index.html', 'app.js', 'engine.js', 'parser.js', 'csv.js', 'demo.js', 'i18n.js', 'i18n-en.js', 'manifest.webmanifest', 'manifest-en.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
