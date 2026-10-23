@@ -177,7 +177,7 @@
     [/^Mostani ár: (.+)\.$/, 'Current price: $1.'], [/^(.+): (.+), a pozíciód (.+)\.$/, '$1: $2, your position $3.'],
     [/^A portfóliód árfolyama még sosem volt ilyen magasan \((.+) a kezdés óta\)\.$/, 'Your portfolio price has never been this high ($1 since start).'],
     [/^(.+) ma$/, '$1 today'],
-    [/^Ingyenes keret: várakozás (\d+) mp…$/, 'Free plan limit: waiting $1 s…'], [/^Árfolyamok letöltése (.+)…$/, 'Downloading prices $1…'], [/^Naptár és hírek: (.+)…$/, 'Calendar and news: $1…'],
+    [/^Ingyenes keret: várakozás (\d+) mp…$/, 'Free plan limit: waiting $1 s…'], [/^Árfolyamok: (\d+)\/(\d+) kész · a többi (\d+) mp múlva \(ingyenes keret: 8\/perc\)$/, 'Prices: $1/$2 done · the rest in $3 s (free plan: 8/min)'], [/^Árfolyamok letöltése (.+)…$/, 'Downloading prices $1…'], [/^Naptár és hírek: (.+)…$/, 'Calendar and news: $1…'],
     [/^Betöltve: (.+)$/, (x) => 'Imported: ' + x.replace(/: (\d+) tétel/g, ': $1 transactions').replace(/(\d+) kézi tétel lecserélve a hivatalos adatra/, '$1 manual entries replaced by official data').replace(/nem Lightyear számlakivonat\./g, 'not a Lightyear statement.').replace(/nem sikerült beolvasni\./g, 'could not be read.')],
     [/^Rögzítve: (\S+)(.*)\.$/, (ty, rest) => 'Recorded: ' + (TYPE[ty] || ty) + rest + '.'],
     [/^Mentés kész: (.+)$/, 'Backup saved: $1'], [/^A mentés nem sikerült: (.+)$/, 'Backup failed: $1'], [/^Néhány árfolyam nem jött le: (.+)$/, 'Some prices did not load: $1'],

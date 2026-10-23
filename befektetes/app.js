@@ -7,7 +7,7 @@ const CDN = {
   pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 };
 const REFRESH_MS = 15 * 60 * 1000;
-const APP_VERSION = '2026.10.23'; // kiadáskor a version.json-nal együtt emelni
+const APP_VERSION = '2026.10.23b'; // kiadáskor a version.json-nal együtt emelni
 
 /* ---------- storage ---------- */
 const store = {
@@ -94,7 +94,7 @@ async function waitCredits(n) {
     const now = Date.now(); while (credits.length && now - credits[0] > 61000) credits.shift();
     if (credits.length + n <= 8) { for (let i = 0; i < n; i++) credits.push(Date.now()); return; }
     const wait = 61000 - (now - credits[0]);
-    setStatus(`Ingyenes keret: várakozás ${Math.ceil(wait / 1000)} mp…`, 'busy');
+    setStatus(waitCredits.done != null ? `Árfolyamok: ${waitCredits.done}/${waitCredits.total} kész · a többi ${Math.ceil(wait / 1000)} mp múlva (ingyenes keret: 8/perc)` : `Ingyenes keret: várakozás ${Math.ceil(wait / 1000)} mp…`, 'busy');
     await sleep(Math.min(wait, 5000));
   }
 }
@@ -142,7 +142,7 @@ async function fetchPrices(force) {
     setStatus(`Árfolyamok letöltése ${Math.min(i + 8, jobs.length)}/${jobs.length}…`, 'busy');
     let tries = 0, j;
     for (;;) {
-      await waitCredits(batch.length);
+      waitCredits.done = i; waitCredits.total = jobs.length; await waitCredits(batch.length); waitCredits.done = null;
       const url = `https://api.twelvedata.com/time_series?symbol=${batch.map(b => encodeURIComponent(b.s)).join(',')}&interval=1day&start_date=${start}&order=asc&outputsize=5000&apikey=${encodeURIComponent(apiKey)}`;
       j = await getJson(url);
       if (j && j.status === 'error' && /\bday\b|daily/i.test(j.message || '')) { market.tdBlock = nextUtcMidnight(); diag('td', { ok: false, msg: 'A Twelve Data mai ingyenes kerete (800 lekérés) elfogyott, éjfél (UTC) után folytatja.' }); market.errors = ['Mai ingyenes keret elfogyott']; return; }
@@ -157,6 +157,7 @@ async function fetchPrices(force) {
       const h = market.history[b.s] = market.history[b.s] || {}; (market.fetched = market.fetched || {})[b.s] = Date.now();
       d.values.forEach(v => { const c = parseFloat(v.close); if (c > 0) h[v.datetime.slice(0, 10)] = c; });
     }
+    if (i + 8 < jobs.length) { compute(); render(true); } // ami már lejött, azonnal látszik
   }
   // S&P 500 tartalék: ha az SPY nem jön le az ingyenes csomagban, VOO / IVV / SPX
   if (!market.history.SPY || Object.keys(market.history.SPY).length < 5) {
@@ -833,8 +834,9 @@ let sheetClose = null, skipPop = false;
 function sheet(html) {
   const root = $('sheetRoot'); const prev = sheetClose ? null : document.activeElement;
   if (!sheetClose) { try { history.pushState({ sheet: 1 }, ''); } catch (_) {} }
+  document.documentElement.classList.add('lock');
   root.innerHTML = `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" tabindex="-1">${html}</aside>`;
-  const close = fromPop => { if (sheetClose !== close) return; root.innerHTML = ''; sheetClose = null; document.removeEventListener('keydown', k); if (!fromPop) { skipPop = true; history.back(); } prev && prev.focus && prev.focus(); };
+  const close = fromPop => { if (sheetClose !== close) return; root.innerHTML = ''; sheetClose = null; document.documentElement.classList.remove('lock'); document.removeEventListener('keydown', k); if (!fromPop) { skipPop = true; history.back(); } prev && prev.focus && prev.focus(); };
   if (sheetClose) { const old = sheetClose; sheetClose = null; old.silent = true; }
   sheetClose = close;
   const k = e => { if (e.key === 'Escape') close(); };

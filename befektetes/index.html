@@ -169,7 +169,8 @@ input[type=search],input[type=text],input[type=password]{font:inherit;background
 .steps b{flex:none;width:22px;height:22px;border-radius:50%;background:var(--surface-2);display:inline-flex;align-items:center;justify-content:center;font-size:.75rem}
 
 .scrim{position:fixed;inset:0;background:rgb(0 0 0 / .4);z-index:30}
-.sheet{position:fixed;z-index:31;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--surface);border-left:1px solid var(--line);overflow-y:auto;
+html.lock,html.lock body{overflow:hidden;overscroll-behavior:none}
+.sheet{overscroll-behavior:contain;position:fixed;z-index:31;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--surface);border-left:1px solid var(--line);overflow-y:auto;
   padding:calc(18px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) 20px;display:flex;flex-direction:column;gap:16px}
 .sheet-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .kv{display:grid;grid-template-columns:1fr auto;gap:8px 12px;font-size:.9rem;margin:0}
