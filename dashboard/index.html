@@ -1587,12 +1587,13 @@ function renderList(){
   rows.sort((a,b)=>{const o=["javasolt","fu","uj","valaszolt","ugyfel","elkuldve","lezarva","elvetve"];return o.indexOf(effStatus(a))-o.indexOf(effStatus(b))||catRank(a)-catRank(b)||(b.sentAt||"").localeCompare(a.sentAt||"")||displayName(a).localeCompare(displayName(b),"hu")});
   if(!contacts.size){$("#list").innerHTML=`<div class="empty">${db?"Még nincs cím. Az „Új címek” fülön adhatsz hozzá.":"Az adatbázis ebben a nézetben nem érhető el. Nyisd meg az oldalt a claude.ai-on bejelentkezve."}</div>`;return}
   if(!rows.length){$("#list").innerHTML=`<div class="empty">Ebben a szűrésben nincs cím.</div>`;return}
-  const total=rows.length;const jRows=fStatus==="javasolt"?rows.map(c=>c.email):[];lastJRows=jRows;rows=rows.slice(0,listLimit);
+  const total=rows.length;const jRows=fStatus==="javasolt"?rows.filter(c=>!isBlocked(c)).map(c=>c.email):[];lastJRows=jRows;rows=rows.slice(0,listLimit);
   $("#list").innerHTML=(jRows.length?`<div class="bulkbar"><span><b>${jRows.length} javasolt cím</b> a napi keresésből. Nézd meg a forrást, és hagyd jóvá, amit érdemes megkeresni. Az elvetettek nem jönnek vissza.</span><button class="btn primary" type="button" data-jall="1">Mind jóváhagyása (${jRows.length})</button></div>`:"")+rows.map(c=>{
     const s=effStatus(c);const id=esc(c.email);
     const via=c.channel==="dm"?" · DM":"";const when=(c.followup2At?`2. follow-up: ${huDate(c.followup2At)}`:c.followupAt?`1. follow-up: ${huDate(c.followupAt)}`:c.sentAt?`Küldve: ${huDate(c.sentAt)} (${daysSince(c.sentAt)} napja)`:"")+(c.sentAt?via:"");
     let main="";const canSend=!!mcpNs, pend=pendingSend===c.email, busy=sending.has(c.email);const srcUrl=((c.source||"").match(/https?:\/\/[^\s,]+/)||[])[0];
-    if(s==="javasolt")main=`<button class="btn primary" data-act="approve" data-id="${id}">Jóváhagyás</button><button class="btn" data-act="reject" data-id="${id}">Elvetés</button>${srcUrl?`<a class="btn ghost" href="${esc(srcUrl)}" target="_blank" rel="noopener">Forrás</a>`:""}`;
+    if(isBlocked(c))main=`<span class="pill p-fu">Tiltólistán, nem küldünk neki</span>`;
+    else if(s==="javasolt")main=`<button class="btn primary" data-act="approve" data-id="${id}">Jóváhagyás</button><button class="btn" data-act="reject" data-id="${id}">Elvetés</button>${srcUrl?`<a class="btn ghost" href="${esc(srcUrl)}" target="_blank" rel="noopener">Forrás</a>`:""}`;
     else if(s==="elvetve")main=`<button class="btn" data-act="approve" data-id="${id}">Mégis jóváhagyom</button>`;
     else if(s==="uj"&&isDM(c))main=`<button class="btn primary" data-act="copydm" data-id="${id}">DM szöveg másolása</button>${dmLinks(c)}<button class="btn" data-act="dmsent" data-id="${id}">Elküldtem DM-ben</button>`;
     else if(s==="fu"&&isDM(c))main=`<button class="btn primary" data-act="copydmfu" data-id="${id}">Emlékeztető másolása</button>${dmLinks(c)}<button class="btn" data-act="fusent" data-id="${id}">Emlékeztető elküldve</button>`;
@@ -1651,6 +1652,7 @@ document.addEventListener("click",async e=>{
   if(b.dataset.c){listLimit=LIST_STEP;fCat=b.dataset.c;renderAll();return}
   const c=contacts.get(b.dataset.id);if(!c)return;
   const a=b.dataset.act;
+  if(isBlocked(c)&&["send","sendfu","sent","dmsent","fusent","copydm","copydmfu","copybody","copysubj","approve"].includes(a)){toast("Ez a cég tiltólistán van, neki nem küldünk semmit");return}
   if(a==="copymail")return isDM(c)?copy(c.fb||c.ig||"","Profil link kimásolva"):copy(c.email,"E-mail cím kimásolva");
   if(a==="send"||a==="sendfu"){
     if(pendingSend!==c.email){pendingSend=c.email;clearTimeout(pendT);pendT=setTimeout(()=>{pendingSend=null;renderList()},6000);return renderList()}
@@ -2142,12 +2144,18 @@ $("#tForm").addEventListener("submit",async e=>{e.preventDefault();const title=$
 
 /* ---------- Közvetlen küldés Gmailből ---------- */
 let mcpNs=null, pendingSend=null, pendT, sending=new Set(), sel=new Set(), bulk={running:false,stop:false,done:0,total:0,confirm:false};
-function isBlocked(email){return (blocklist.emails||[]).includes(email)||(blocklist.domains||[]).some(d=>email.endsWith("@"+d)||email.endsWith("."+d))}
+// Tiltólista: pontos cím, domain (aldomainnel együtt), vagy kulcsszó egész szóként a címben, a névben, a profil linkben és a forrásban (ékezet nélkül).
+const blkNorm=s=>" "+deacc(String(s||"")).replace(/[^a-z0-9]+/g," ").trim()+" ";
+function isBlocked(x){const c=typeof x==="string"?{email:x}:x||{},email=String(c.email||"").toLowerCase();
+  if((blocklist.emails||[]).some(e=>String(e).toLowerCase()===email))return true;
+  if((blocklist.domains||[]).some(d=>{d=String(d).toLowerCase();return email.endsWith("@"+d)||email.endsWith("."+d)}))return true;
+  const hay=blkNorm([c.email,c.name,c.fb,c.ig,c.web,c.source].join(" "));
+  return (blocklist.keywords||[]).some(k=>{k=blkNorm(k);return k.trim().length>=4&&hay.includes(k)})}
 function sentTodayCount(){return [...contacts.values()].filter(c=>c.sentAt===today()||c.followupAt===today()||c.followup2At===today()).length}
 async function sendOne(c,kind){
   if(isDM(c)){toast("Ez a cég csak Facebookon vagy Instagramon érhető el");return false}
   if(!mcpNs){toast("A közvetlen küldés itt nem érhető el, használd a Gmailben gombot");return false}
-  if(isBlocked(c.email)){toast("Ez a cím tiltólistán van, nem küldöm el");return false}
+  if(isBlocked(c)){toast("Ez a cím tiltólistán van, nem küldöm el");return false}
   const cur=contacts.get(c.email)||c;
   if(kind!=="fu"&&cur.status!=="uj"){toast("Ennek a címnek már ment levél");return false}
   if(sentTodayCount()>=60){toast("Ma már 60 levél ment el. A Gmail védelme miatt holnap folytasd.");return false}
@@ -2186,7 +2194,7 @@ function renderBulk(){
 }
 document.addEventListener("change",e=>{const id=e.target.dataset?.sel;if(!id)return;e.target.checked?sel.add(id):sel.delete(id);renderBulk()});
 document.addEventListener("click",async e=>{const k=e.target.dataset?.bulk;if(!k)return;
-  if(k==="pick20"){const q=$("#q").value.trim().toLowerCase();[...contacts.values()].sort((a,b)=>catRank(a)-catRank(b)).filter(c=>effStatus(c)===fStatus&&!isDM(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&!isBlocked(c.email)&&(!q||[c.name,c.email,c.city,c.note].join(" ").toLowerCase().includes(q))).slice(0,20).forEach(c=>sel.add(c.email));renderList();renderBulk()}
+  if(k==="pick20"){const q=$("#q").value.trim().toLowerCase();[...contacts.values()].sort((a,b)=>catRank(a)-catRank(b)).filter(c=>effStatus(c)===fStatus&&!isDM(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&!isBlocked(c)&&(!q||[c.name,c.email,c.city,c.note].join(" ").toLowerCase().includes(q))).slice(0,20).forEach(c=>sel.add(c.email));renderList();renderBulk()}
   if(k==="clear"){sel.clear();renderList();renderBulk()}
   if(k==="ask"){bulk.confirm=true;renderBulk()}
   if(k==="cancel"){bulk.confirm=false;renderBulk()}
