@@ -7,7 +7,7 @@ const CDN = {
   pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 };
 const REFRESH_MS = 15 * 60 * 1000;
-const APP_VERSION = '2026.10.23b'; // kiadáskor a version.json-nal együtt emelni
+const APP_VERSION = '2026.10.23c'; // kiadáskor a version.json-nal együtt emelni
 
 /* ---------- storage ---------- */
 const store = {
@@ -31,7 +31,7 @@ function exitDemo(reboot = true) {
 let apiKey = store.get('bf-key', '');
 const S = {
   tab: 'attekintes', cur: store.get('bf-cur2', 'USD'), alt: store.get('bf-alt', null) || I18N.defaultAlt(), theme: store.get('bf-theme', 'auto'),
-  range: store.get('bf-range', 'all'), mode: store.get('bf-mode', 'idx'), bench: store.get('bf-bench', true),
+  range: store.get('bf-range', 'all'), mode: store.get('bf-mode2', 'val'), bench: store.get('bf-bench', true),
   hide: store.get('bf-hide', false), tr: 'all', ps: store.get('bf-ps', 'value'), scroll: {}, an: store.get('bf-an', 'trend'), hm: store.get('bf-hm', 'all'), bd: store.get('bf-bd', 'sector'), thr: 2, rmode: 'all', txType: 'all', q: '', busy: false, statusText: ''
 };
 const OLDTAB = { eredmenyek: 'eredmeny', sp500: 'sp', koltsegek: 'koltseg' };
@@ -244,7 +244,8 @@ function rangePoints() {
 // monoton köbös görbe (Fritsch–Carlson): sima, de nem lő túl a valós értékeken
 function monoPath(ctx, P, move = true) {
   const n = P.length; if (!n) return; if (move) ctx.moveTo(P[0][0], P[0][1]); else ctx.lineTo(P[0][0], P[0][1]);
-  if (n < 3) { for (let i = 1; i < n; i++) ctx.lineTo(P[i][0], P[i][1]); return; }
+  // sok pontnál egyenes szakaszok: a valódi napi mozgás látszik (mint a brókerappokban); kevés pontnál simított görbe
+  if (n < 3 || n > 40) { for (let i = 1; i < n; i++) ctx.lineTo(P[i][0], P[i][1]); return; }
   const d = [], m = [];
   for (let i = 0; i < n - 1; i++) d.push((P[i + 1][1] - P[i][1]) / ((P[i + 1][0] - P[i][0]) || 1e-9));
   m[0] = d[0]; m[n - 1] = d[n - 2];
@@ -295,8 +296,8 @@ function stockChart(canvas, pts, onScrub, opt = {}) {
     if (main.length) {
       const grad = ctx.createLinearGradient(0, T, 0, T + h); grad.addColorStop(0, col + '33'); grad.addColorStop(.7, col + '08'); grad.addColorStop(1, col + '00');
       ctx.beginPath(); monoPath(ctx, main); ctx.lineTo(main[main.length - 1][0], T + h); ctx.lineTo(main[0][0], T + h); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-      ctx.beginPath(); monoPath(ctx, main); ctx.strokeStyle = col; ctx.lineWidth = 2.25; ctx.lineJoin = ctx.lineCap = 'round';
-      ctx.shadowColor = col + '66'; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.beginPath(); monoPath(ctx, main); ctx.strokeStyle = col; ctx.lineWidth = main.length > 40 ? 1.9 : 2.25; ctx.lineJoin = ctx.lineCap = 'round';
+      ctx.shadowColor = col + '66'; ctx.shadowBlur = main.length > 40 ? 4 : 8; ctx.stroke(); ctx.shadowBlur = 0;
     }
     ctx.restore();
     if (prog < 1) return;
@@ -472,7 +473,7 @@ V.attekintes.after = m => {
   const tc = $('tbszCard'); if (tc) { tc.onclick = openTbsz; tc.onkeydown = e => { if (e.key === 'Enter') openTbsz(); }; }
   const rail = $('rail'); if (rail) { rail.onwheel = e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { rail.scrollLeft += e.deltaY; e.preventDefault(); } }; }
   document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.range = b.dataset.r; store.set('bf-range', S.range); animNext = true; render(true); });
-  document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode', S.mode); animNext = true; render(true); });
+  document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { S.mode = b.dataset.mo; store.set('bf-mode2', S.mode); animNext = true; render(true); });
   $('benchBtn').onclick = () => { if (!market.history.SPY) { explainNoData('spy'); return; } S.bench = !S.bench; store.set('bf-bench', S.bench); render(true); };
   $('shareBtn').onclick = openShare; $('wrapBtn').onclick = openWrapped;
   $('eyeBtn').onclick = () => { S.hide = !S.hide; store.set('bf-hide', S.hide); render(true); };
@@ -1215,7 +1216,7 @@ function openManual(edit) {
 function openManualRow(id) { const r = manual.find(x => x.id === id); if (r) openManual(r); }
 
 /* ---------- biztonsági mentés ---------- */
-const BK_KEYS = ['bf-alertcfg', 'bf-alertlog', 'bf-cur2', 'bf-theme', 'bf-range', 'bf-mode', 'bf-bench', 'bf-hm', 'bf-bd', 'bf-ps', 'bf-an'];
+const BK_KEYS = ['bf-alertcfg', 'bf-alertlog', 'bf-cur2', 'bf-theme', 'bf-range', 'bf-mode2', 'bf-bench', 'bf-hm', 'bf-bd', 'bf-ps', 'bf-an'];
 function backupData(withKeys, withHist) {
   const o = { app: 'befektetes', v: 1, at: new Date().toISOString(), statements, manual, prefs: Object.fromEntries(BK_KEYS.map(k => [k, store.get(k, null)]).filter(([, v]) => v != null)) };
   if (withKeys) o.keys = { td: apiKey, fh: fhKey };
