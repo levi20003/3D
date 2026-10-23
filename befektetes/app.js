@@ -7,7 +7,7 @@ const CDN = {
   pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 };
 const REFRESH_MS = 15 * 60 * 1000;
-const APP_VERSION = '2026.10.23d'; // kiadáskor a version.json-nal együtt emelni
+const APP_VERSION = '2026.10.23e'; // kiadáskor a version.json-nal együtt emelni
 
 /* ---------- storage ---------- */
 const store = {
@@ -468,9 +468,11 @@ V.attekintes.after = m => {
     head(i);
     if (i == null) { tip.hidden = true; return; }
     const p = pts[i], pc = (p.nav / a.nav - 1) * 100, res = (p.value - p.invested) - (a.value - a.invested);
-    tip.innerHTML = `<div class="td">${dShort(p.d)}</div><div class="tv num">${money(p.value)}</div><div class="num ${cls(pc)}">${pct(pc)} · ${money(res, { sign: true })}</div>${p.spyIdx && a.spyIdx && S.bench ? `<div class="tb num"><i></i>S&P ${pct((p.spyIdx / a.spyIdx - 1) * 100)}</div>` : ''}${S.mode === 'val' ? `<div class="tb num">Befizetve ${money(p.invested)}</div>` : ''}`;
-    tip.hidden = false; const tw = tip.offsetWidth; const left = x + 14 + tw > W - 8 ? x - 14 - tw : x + 14;
-    tip.style.transform = `translate(${Math.max(8, left)}px, ${Math.max(0, Math.min(y - 40, tip.parentElement.clientHeight - tip.offsetHeight - 30))}px)`;
+    // tömör buborék: ár és változás; a dátum lent, a részletek fent a fejlécben látszanak
+    tip.className = 'ftip mini'; tip.innerHTML = `<b class="num">${money(p.value)}</b><span class="chg ${pc >= 0 ? 'up' : 'down'} num">${arr(pc)} ${pct(Math.abs(pc)).replace(/^[+−-]/, '')}</span>`;
+    tip.hidden = false; const tw = tip.offsetWidth, th = tip.offsetHeight;
+    const left = Math.max(6, Math.min(W - tw - 6, x - tw / 2)); const top = y - th - 16 < 2 ? y + 16 : y - th - 16;
+    tip.style.transform = `translate(${left}px, ${top}px)`;
   };
   head(null);
   if (animNext && !REDUCED && !S.hide) { const t0 = performance.now(), v1 = m.value, v0 = v1 * 0.92; const st = t => { const k = Math.min(1, (t - t0) / 800), e = 1 - Math.pow(1 - k, 3); const el = $('hv'); if (!el || el.dataset.scrub) return; el.innerHTML = moneyHTML(v0 + (v1 - v0) * e); if (k < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); }
