@@ -212,16 +212,19 @@ const SAMPLE_CSV = "email;név;kategória;város;megjegyzés\ninfo@pelda-kavezo.
 function useDerived({ contacts, orders, ledger, settings, blocklist }) {
   return useMemo(() => {
     const td = today();
-    const st = {}; let ma = 0;
+    const st = { ujE: 0, fuE: 0, dmUj: 0, dmFu: 0 }; let ma = 0;
     for (const c of contacts) {
-      const s = effStatus(c, settings); st[s] = (st[s] || 0) + 1;
+      const s = effStatus(c, settings), dm = isDM(c); st[s] = (st[s] || 0) + 1;
+      // A Címlista az e-mailt és a DM-et külön csoportban mutatja, ezért külön is számoljuk
+      if (s === "uj") dm ? st.dmUj++ : st.ujE++;
+      if (s === "fu") dm ? st.dmFu++ : st.fuE++;
       if (isDM(c) && (s === "uj" || s === "fu")) st.dmq = (st.dmq || 0) + 1;
       if (c.sentAt === td || c.followupAt === td || c.followup2At === td) ma++;
     }
     const sentList = contacts.filter((c) => (c.status || "uj") !== "uj" && c.sentAt && !c.bounced && !/^Ugyanaz a cég/i.test(c.note || ""));
     const sent = sentList.length, rep = sentList.filter(didReply).length, cust = sentList.filter((c) => c.status === "ugyfel").length;
     const active = contacts.filter((c) => !["javasolt", "elvetve"].includes(c.status));
-    const f2 = contacts.filter((c) => fuStage(c, settings) === 2).length;
+    const f2 = contacts.filter((c) => !isDM(c) && fuStage(c, settings) === 2).length;
 
     const cold = contacts.filter((c) => coldDays(c) != null && !isBlocked(c, blocklist)).sort((a, b) => lastActivity(a).localeCompare(lastActivity(b)));
     const catLabels = {};
@@ -247,7 +250,7 @@ function useDerived({ contacts, orders, ledger, settings, blocklist }) {
     for (const c of contacts) { const d = fuDue(c, settings); if (d) addEv(d < td ? td : d, "fu"); }
     for (const o of orders) if (o.deadline && !["fizetve", "atadva", "elveszett"].includes(o.status)) addEv(o.deadline, "ord");
 
-    const goal = +settings.goal || 30, uj = st.uj || 0, fu = st.fu || 0, nJ = st.javasolt || 0;
+    const goal = +settings.goal || 30, uj = st.ujE, fu = st.fuE, nJ = st.javasolt || 0;
     const sentToday = ma, left = Math.max(0, goal - sentToday), fuToday = Math.min(fu, left), ujToday = Math.min(uj, left - fuToday);
     const todo = [];
     if (nJ) todo.push({ k: "Új címek", tone: "javasolt", title: `${nJ} új cím vár jóváhagyásra`, detail: "A napi keresés találta őket. Nézd át a forrást, és hagyd jóvá, amit érdemes megkeresni." });
@@ -764,7 +767,7 @@ function LeadsView({ data, d, query, autoRecycle, setAutoRecycle }) {
   useEffect(() => setLimit(50), [filter, sector, catF, cityF, query]);
   useEffect(() => { if (!msg) return; const t = setTimeout(() => setMsg(""), 6000); return () => clearTimeout(t); }, [msg]);
 
-  const uj = d.st.uj || 0, runway = d.goal ? uj / d.goal : 0, coldSet = useMemo(() => new Set(d.cold.map((c) => c.email)), [d.cold]);
+  const uj = d.st.ujE, runway = d.goal ? uj / d.goal : 0, coldSet = useMemo(() => new Set(d.cold.map((c) => c.email)), [d.cold]);
   const pool = useMemo(() => contacts.filter((c) => c.status !== "elvetve"), [contacts]);
   const sectorStats = useMemo(() => SECTORS.map((s) => {
     const list = pool.filter((c) => sectorMatch(c, s)), sent = list.filter((c) => c.sentAt && !c.bounced);
@@ -1013,7 +1016,7 @@ export default function LeventeDashboard() {
   const autoDay = useRef("");
   const { saveContacts, live } = data;
   useEffect(() => {
-    const need = d.goal - (d.st.uj || 0), td = today();
+    const need = d.goal - d.st.ujE, td = today();
     if (!autoRecycle || need <= 0 || !d.cold.length) return;
     let last = autoDay.current;
     if (live) { try { last = localStorage.getItem("l3d-autorecycle-day") || last; } catch (e) { /* csak a munkamenetre */ } }
@@ -1021,7 +1024,7 @@ export default function LeventeDashboard() {
     autoDay.current = td;
     if (live) { try { localStorage.setItem("l3d-autorecycle-day", td); } catch (e) { /* csak a munkamenetre */ } }
     saveContacts(d.cold.slice(0, need).map(recycleDoc));
-  }, [autoRecycle, live, d.cold, d.goal, d.st.uj, saveContacts]);
+  }, [autoRecycle, live, d.cold, d.goal, d.st.ujE, saveContacts]);
 
   const badges = { todo: d.todo.length, queue: (d.st.uj || 0) + (d.st.fu || 0), orders: d.openOrders };
   const label = NAV.flatMap(([, i]) => i).find(([k]) => k === tab)?.[1];
@@ -1037,7 +1040,7 @@ export default function LeventeDashboard() {
           <header className="mb-5 flex flex-wrap items-center gap-4">
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Szia, Levente!</h1>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">{dateLine} · {d.st.uj || 0} kiküldendő cím, {d.st.fu || 0} esedékes follow-up{d.nJ ? `, ${d.nJ} javaslat` : ""}</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">{dateLine} · {d.st.ujE} kiküldendő e-mail, {d.st.fuE} esedékes follow-up{d.st.dmq ? `, ${d.st.dmq} DM` : ""}{d.nJ ? `, ${d.nJ} javaslat` : ""}</p>
             </div>
             <form role="search" onSubmit={(e) => { e.preventDefault(); if (tab !== "queue") setTab("todo"); }} className="flex w-full items-center gap-2 rounded-full border border-zinc-200 bg-white px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-[#c3c78f] dark:border-zinc-800 dark:bg-zinc-900 sm:w-72">
               <Icon name="search" className="h-4 w-4 text-zinc-400" />
@@ -1067,9 +1070,9 @@ export default function LeventeDashboard() {
           ) : tab !== "todo" ? <ElsewherePanel label={label} /> : (
             <div className="grid grid-cols-1 gap-4">
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-                <StatCard icon="send" label="Kiküldendő" value={d.st.uj || 0} sub={d.nJ ? `${d.nJ} javaslat vár jóváhagyásra` : d.st.dmq ? `${d.st.dmq} cég DM-re vár` : ""} onClick={sel("queue")} />
+                <StatCard icon="send" label="Kiküldendő e-mail" value={d.st.ujE} sub={[d.st.dmUj ? `+ ${d.st.dmUj} cég DM-re vár` : "", d.nJ ? `${d.nJ} javaslat` : ""].filter(Boolean).join(" · ")} onClick={sel("queue")} />
                 <StatCard icon="check" label="Ma elküldve" value={`${d.ma} / ${d.goal}`} progress={d.ma / d.goal} onClick={sel("queue")} />
-                <StatCard icon="clock" label="Follow-up" value={d.st.fu || 0} sub={d.st.fu ? (d.f2 ? `${d.st.fu - d.f2} első, ${d.f2} második kör` : "első kör") : "nincs esedékes"} onClick={sel("queue")} />
+                <StatCard icon="clock" label="Follow-up" value={d.st.fuE} sub={[d.st.fuE ? (d.f2 ? `${d.st.fuE - d.f2} első, ${d.f2} második kör` : "első kör") : "nincs esedékes", d.st.dmFu ? `+ ${d.st.dmFu} DM` : ""].filter(Boolean).join(" · ")} onClick={sel("queue")} />
                 <StatCard icon="chat" label="Válaszok" value={(d.st.valaszolt || 0) + (d.st.ugyfel || 0)} sub={d.sent ? `${(d.rate * 100).toLocaleString("hu-HU", { maximumFractionDigits: 1 })}% válaszarány` : ""} onClick={sel("queue")} />
                 <StatCard icon="user" label="Összes cím" value={d.active.length} sub={`${new Set(d.active.map((c) => c.cat)).size} kategória`} onClick={sel("cov")} />
               </div>

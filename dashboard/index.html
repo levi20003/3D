@@ -1533,22 +1533,24 @@ async function copy(text,msg){try{await navigator.clipboard.writeText(text);toas
 
 function counts(){
   const all=[...contacts.values()];const st={};let ma=0;
-  for(const c of all){const s=effStatus(c);st[s]=(st[s]||0)+1;if(isDM(c)&&(s==="uj"||s==="fu"))st.dmq=(st.dmq||0)+1;if(c.sentAt===today()||c.followupAt===today()||c.followup2At===today())ma++}
+  // st.uj/st.fu az összes cím; ujE/fuE csak az e-mailes, dmUj/dmFu a privát üzenetes (a Címlista ezeket külön csoportban mutatja)
+  st.ujE=0;st.fuE=0;st.dmUj=0;st.dmFu=0;
+  for(const c of all){const s=effStatus(c),dm=isDM(c);st[s]=(st[s]||0)+1;if(s==="uj")dm?st.dmUj++:st.ujE++;if(s==="fu")dm?st.dmFu++:st.fuE++;if(dm&&(s==="uj"||s==="fu"))st.dmq=(st.dmq||0)+1;if(c.sentAt===today()||c.followupAt===today()||c.followup2At===today())ma++}
   return {all,st,ma};
 }
 function renderStats(){
   const {all,st,ma}=counts();const g=+settings.goal||30;
-  $("#st-uj").textContent=st.uj||0;$("#st-fu").textContent=st.fu||0;$("#st-val").textContent=(st.valaszolt||0)+(st.ugyfel||0);
+  $("#st-uj").textContent=st.ujE;$("#st-fu").textContent=st.fuE;$("#st-val").textContent=(st.valaszolt||0)+(st.ugyfel||0);
   $("#st-all").textContent=all.filter(c=>!PRE.has(c.status)).length;$("#st-ma").textContent=ma+" / "+g;$("#st-bar").style.width=Math.min(100,ma/g*100)+"%";
-  const nJ=all.filter(c=>c.status==="javasolt").length,f2=all.filter(c=>fuStage(c)===2).length,S=goalStats(),nq=(st.uj||0)+(st.fu||0);
-  $("#st-uj-s").textContent=nJ?nJ+" javaslat vár jóváhagyásra":st.dmq?st.dmq+" cég DM-re vár":"";
-  $("#st-fu-s").textContent=st.fu?(f2?`${st.fu-f2} első, ${f2} második kör`:"első kör"):"nincs esedékes";
+  const nJ=all.filter(c=>c.status==="javasolt").length,f2=all.filter(c=>!isDM(c)&&fuStage(c)===2).length,S=goalStats(),nq=(st.uj||0)+(st.fu||0);
+  $("#st-uj-s").textContent=[st.dmUj?`+ ${st.dmUj} cég DM-re vár`:"",nJ?`${nJ} javaslat vár jóváhagyásra`:""].filter(Boolean).join(" · ")||(st.ujE?"e-mail":"nincs kiküldendő e-mail");
+  $("#st-fu-s").textContent=[st.fuE?(f2?`${st.fuE-f2} első, ${f2} második kör`:"első kör"):"nincs esedékes",st.dmFu?`+ ${st.dmFu} DM-emlékeztető`:""].filter(Boolean).join(" · ");
   $("#st-val-s").innerHTML=S.sent?`<span class="up">${(S.rep/S.sent*100).toLocaleString("hu-HU",{maximumFractionDigits:1})}%</span> válaszarány`:"";
   $("#st-all-s").textContent=new Set(all.filter(c=>!PRE.has(c.status)).map(c=>c.cat)).size+" kategória";
   $("#sc-txt").textContent=`${ma} / ${g} levél ment ki ma`+(nq?`, ${nq} vár még`:"");$("#sc-bar").style.width=Math.min(100,ma/g*100)+"%";
   const qb=$("#nb-queue");qb.hidden=!nq;qb.textContent=nq;
   const oo=[...orders.values()].filter(o=>["keres","ajanlat","elfogadva","gyartas"].includes(o.status)).length,ob=$("#nb-orders");ob.hidden=!oo;ob.textContent=oo;
-  $("#hello-sub").textContent=new Date().toLocaleDateString("hu-HU",{weekday:"long",month:"long",day:"numeric"})+` · ${st.uj||0} kiküldendő cím, ${st.fu||0} esedékes follow-up`+(nJ?`, ${nJ} javaslat`:"");
+  $("#hello-sub").textContent=new Date().toLocaleDateString("hu-HU",{weekday:"long",month:"long",day:"numeric"})+` · ${st.ujE} kiküldendő e-mail, ${st.fuE} esedékes follow-up`+(st.dmq?`, ${st.dmq} DM`:"")+(nJ?`, ${nJ} javaslat`:"");
 }
 function inGroup(c){return fGroup==="dm"?isDM(c):!isDM(c)}
 function cityOf(c){return (c.city||"").trim()}
@@ -1641,7 +1643,9 @@ document.addEventListener("click",async e=>{
   if(!b){if(menuId){menuId=null;renderList()}return}
   if(b.dataset.tab){document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===b.dataset.tab));["queue","cov","orders","goals","plan","calc","gen","todo","tpl","add","set"].forEach(k=>$("#p-"+k).hidden=k!==b.dataset.tab);if(b.dataset.tab==="cov")renderCov();if(b.dataset.tab==="todo")renderOverview();if(b.dataset.tab==="goals")renderGoals();if(b.dataset.tab==="gen"&&window.genOpen)window.genOpen();return}
   if(b.dataset.g){listLimit=LIST_STEP;fGroup=b.dataset.g;fStatus="uj";fCat="all";sel.clear();renderAll();return}
-  if(b.dataset.go){listLimit=LIST_STEP;const g=b.dataset.go;fGroup=g==="dmq"?"dm":"email";if(g==="javasolt")fCity="all";fStatus=g==="ma"?"elkuldve":g==="dmq"?"uj":g;fCat="all";$("#t-queue").click();renderAll();return}
+  if(b.dataset.go){listLimit=LIST_STEP;const g=b.dataset.go;fGroup=g==="dmq"?"dm":"email";
+    // Ha e-mailes tétel nincs, de DM van, a privát üzenetek csoportját nyitjuk meg, hogy ne üres lista jöjjön
+    if(g==="uj"||g==="fu"){const st=counts().st;if(!(g==="uj"?st.ujE:st.fuE)&&(g==="uj"?st.dmUj:st.dmFu))fGroup="dm"}if(g==="javasolt")fCity="all";fStatus=g==="ma"?"elkuldve":g==="dmq"?"uj":g;fCat="all";$("#t-queue").click();renderAll();return}
   if(b.dataset.s){listLimit=LIST_STEP;fStatus=b.dataset.s;fCat="all";renderAll();return}
   if(b.dataset.c){listLimit=LIST_STEP;fCat=b.dataset.c;renderAll();return}
   const c=contacts.get(b.dataset.id);if(!c)return;
@@ -2060,10 +2064,10 @@ function renderInbox(){
   const reply=[...todos.values()].filter(t=>t.type==="valasz"&&!t.done).sort((a,b)=>(a.due||"").localeCompare(b.due||""));
   reply.forEach(t=>items.push({k:"valasz",title:t.title,detail:t.detail,link:t.link,id:t.id}));
   const cs=[...contacts.values()];
-  const fu=cs.filter(c=>effStatus(c)==="fu").length;
-  const left=Math.max(0,(+settings.goal||30)-sentTodayCount()),fuToday=Math.min(fu,left),ujToday=Math.min(cs.filter(c=>effStatus(c)==="uj").length,left-fuToday);
+  const fu=cs.filter(c=>!isDM(c)&&effStatus(c)==="fu").length;
+  const left=Math.max(0,(+settings.goal||30)-sentTodayCount()),fuToday=Math.min(fu,left),ujToday=Math.min(cs.filter(c=>!isDM(c)&&effStatus(c)==="uj").length,left-fuToday);
   if(fu)items.push({k:"fu",title:`${fu} follow-up esedékes${fu>fuToday?` · ma ${fuToday} belőle`:""}`,detail:(fu>fuToday?`Mai adag a ${+settings.goal||30}-as célból: előbb ${fuToday} follow-up, ${ujToday?`utána ${ujToday} új cím. `:"az új címek holnap jönnek. "}`:"")+"Kategóriára szabott emlékeztető a levél szálában (6 nap után), majd egy rövid utolsó levél (+8 nap). A legjobban válaszoló kategóriák vannak elöl.",go:"fu"});
-  const uj=cs.filter(c=>effStatus(c)==="uj").length;const sentToday=cs.filter(c=>c.sentAt===today()).length;const goal=+settings.goal||30;
+  const uj=cs.filter(c=>!isDM(c)&&effStatus(c)==="uj").length;const sentToday=cs.filter(c=>c.sentAt===today()).length;const goal=+settings.goal||30;
   if(uj&&sentToday<goal)items.push({k:"kuld",title:`Mai kiküldés: ${sentToday} / ${Math.min(goal,uj+sentToday)}${fu&&ujToday<uj?(ujToday?` · ma ${ujToday} jut rá`:" · holnap jön"):""}`,detail:`${uj} cím vár kiküldésre. Egyenként, csatolmány nélkül.`,go:"uj"});
   const nJav=cs.filter(c=>c.status==="javasolt").length;
   if(nJav)items.push({k:"javaslat",title:`${nJav} új cím vár jóváhagyásra`,detail:"A napi keresés találta őket. Nézd át a forrást, és hagyd jóvá, amit érdemes megkeresni.",go:"javasolt"});
