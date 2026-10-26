@@ -1502,7 +1502,10 @@ function daysSince(s){if(!s)return 0;const a=new Date(s+"T00:00:00"),b=new Date(
 function huDate(s){if(!s)return"";const [y,m,d]=s.split("-");return `${+m}. ${+d}.`}
 const CAT_PRIO=["nyomda","dekor","ipar","epitoipar","mezogazd","epitesz","hobbi","oktatas","sport","rendezveny","turizmus","civil","auto","lakber","allat","kisker","egyeb","szolg"];
 const catRank=c=>{const i=CAT_PRIO.indexOf(c.cat);return i<0?99:i};
-function fuStage(c){if(c.status!=="elkuldve"||!c.sentAt)return 0;if(!c.followupAt)return daysSince(c.sentAt)>=(+settings.fuDays||6)?1:0;if(!c.followup2At)return daysSince(c.followupAt)>=(+settings.fu2Days||8)?2:0;return 0}
+// Follow-up csak az új címről (levente3d.szeged@gmail.com) küldött e-mailekhez jár; a régi címről mentekhez nem. A DM-emlékeztetők maradnak.
+const NEW_ACCT_SINCE="2026-10-19";
+const fuEligible=c=>isDM(c)||c.acct==="levente3d"||(c.sentAt||"")>=(settings.fuSince||NEW_ACCT_SINCE);
+function fuStage(c){if(c.status!=="elkuldve"||!c.sentAt||c.bounced||!fuEligible(c))return 0;if(!c.followupAt)return daysSince(c.sentAt)>=(+settings.fuDays||6)?1:0;if(!c.followup2At)return daysSince(c.followupAt)>=(+settings.fu2Days||8)?2:0;return 0}
 function effStatus(c){if(fuStage(c))return"fu";return c.status||"uj"}
 function fuTpl(c,st){if(st===2)return tplFor("followup2");const k="fu_"+c.cat;return (tpls[k]||TPL_DEFAULT[k])?tplFor(k):tplFor("followup")}
 function tplFor(k){return Object.assign({},TPL_DEFAULT[k]||TPL_DEFAULT.egyeb,tpls[k]||{})}
@@ -1590,7 +1593,7 @@ function renderList(){
   const total=rows.length;const jRows=fStatus==="javasolt"?rows.filter(c=>!isBlocked(c)).map(c=>c.email):[];lastJRows=jRows;rows=rows.slice(0,listLimit);
   $("#list").innerHTML=(jRows.length?`<div class="bulkbar"><span><b>${jRows.length} javasolt cím</b> a napi keresésből. Nézd meg a forrást, és hagyd jóvá, amit érdemes megkeresni. Az elvetettek nem jönnek vissza.</span><button class="btn primary" type="button" data-jall="1">Mind jóváhagyása (${jRows.length})</button></div>`:"")+rows.map(c=>{
     const s=effStatus(c);const id=esc(c.email);
-    const via=c.channel==="dm"?" · DM":"";const when=(c.followup2At?`2. follow-up: ${huDate(c.followup2At)}`:c.followupAt?`1. follow-up: ${huDate(c.followupAt)}`:c.sentAt?`Küldve: ${huDate(c.sentAt)} (${daysSince(c.sentAt)} napja)`:"")+(c.sentAt?via:"");
+    const via=(c.channel==="dm"?" · DM":"")+(c.sentAt&&!fuEligible(c)?" · régi címről, nincs follow-up":"");const when=(c.followup2At?`2. follow-up: ${huDate(c.followup2At)}`:c.followupAt?`1. follow-up: ${huDate(c.followupAt)}`:c.sentAt?`Küldve: ${huDate(c.sentAt)} (${daysSince(c.sentAt)} napja)`:"")+(c.sentAt?via:"");
     let main="";const canSend=!!mcpNs, pend=pendingSend===c.email, busy=sending.has(c.email);const srcUrl=((c.source||"").match(/https?:\/\/[^\s,]+/)||[])[0];
     if(isBlocked(c))main=`<span class="pill p-fu">Tiltólistán, nem küldünk neki</span>`;
     else if(s==="javasolt")main=`<button class="btn primary" data-act="approve" data-id="${id}">Jóváhagyás</button><button class="btn" data-act="reject" data-id="${id}">Elvetés</button>${srcUrl?`<a class="btn ghost" href="${esc(srcUrl)}" target="_blank" rel="noopener">Forrás</a>`:""}`;
@@ -2465,7 +2468,7 @@ const HU_MONL=["január","február","március","április","május","június","j�
 let calOff=0;
 function niceMax(v){if(v<=0)return 10000;const p=Math.pow(10,Math.floor(Math.log10(v))),f=v/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
 const ftk=n=>n>=1e6?(n/1e6).toLocaleString("hu-HU",{maximumFractionDigits:1})+" M":n>=1000?Math.round(n/1000)+" e":String(Math.round(n));
-function fuDue(c){if(c.bounced||c.status!=="elkuldve"||!c.sentAt)return "";if(!c.followupAt)return addDays(c.sentAt,+settings.fuDays||6);if(!c.followup2At)return addDays(c.followupAt,+settings.fu2Days||8);return ""}
+function fuDue(c){if(c.bounced||c.status!=="elkuldve"||!c.sentAt||!fuEligible(c))return "";if(!c.followupAt)return addDays(c.sentAt,+settings.fuDays||6);if(!c.followup2At)return addDays(c.followupAt,+settings.fu2Days||8);return ""}
 function renderOverview(){
   if(!$("#ov-rev"))return;
   const now=new Date(),td=today(),months=[];

@@ -47,6 +47,7 @@ Levente Claude Pro előfizetéssel dolgozik, ezért **minden lépésnél a lehet
 ## Üzleti szabályok
 - **Soha ne küldj e-mailt** Levente kifejezett kérése nélkül; ha kéri, egyenként, sosem BCC-ben. Levente általában maga küld a pult Küldés gombjával.
 - **Tiltólista:** informatikai cégek, N-System (n-system.hu – Levente gyakorlati helye), Future Visuals, `settings/blocklist` (a `domains`, az `emails` és a `keywords` mező is: kulcsszó a cég nevében vagy bármely címében), semmilyen csatornán, follow-upot és DM-et sem, egyetemi tanulmányi és könyvtári címek, magánszemélyek, pubok, bárok, szórakozóhelyek (éttermek és gyorséttermek csak tartalékként, a `plan.fallback` szerint), autósiskola, autószerviz. Edzőtermek, fitness- és crossfittermek, jóga- és pilatesstúdiók felvehetők (`cat: sport`).
+- **Follow-up** csak a levente3d.szeged@gmail.com címről küldött levelekre jár (`acct: "levente3d"` vagy `sentAt` 2026-10-19 vagy később). A régi címről ment levelekhez nincs follow-up. Aki válaszolt (valaszolt, ugyfel, vagy a Gmailben van tőle válasz), annak sincs; ilyenkor állítsd az állapotát `valaszolt`-ra.
 - Soha ne találj ki e-mail-címet; csak oldalon ténylegesen látott címet vegyél fel, duplikáció-ellenőrzéssel (contacts + Gmail `to:/bcc:`).
 - Kategóriák: nyomda, ipar, epitoipar, mezogazd, epitesz, oktatas, sport, rendezveny, kisker, turizmus, hobbi, szolg, auto, lakber, civil, allat, vendeglato, egyeb.
 - Gép: Bambu A1 mini, max 18×18×18 cm, PLA fekete/fehér/ezüst/pink. Árazás a pult Árkalkulátorában (Perfect Profil kapocs: 1 000 Ft/db).
