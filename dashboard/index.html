@@ -515,7 +515,7 @@ table.lt tr.lr:hover td{background:var(--bg)}
   </section>
 
   <section id="p-tpl" hidden>
-    <p class="small" style="margin:0 0 12px">Helyőrzők: <code>{cegnev}</code> a cég neve, <code>{szemelyes}</code> a címhez írt személyes mondat, <code>{link}</code> a munkáid linkje a Beállításokból. Ha egy helyőrző üres, a sora kimarad.</p>
+    <p class="small" style="margin:0 0 12px">Helyőrzők: <code>{cegnev}</code> a cég neve, <code>{link}</code> a munkáid linkje a Beállításokból. Ha egy helyőrző üres, a sora kimarad.</p>
     <div class="grid2" id="tplGrid"></div>
     <h2 style="font-size:20px;margin:28px 0 4px">Google Cégprofil szövegek</h2>
     <p class="small" style="margin:0 0 12px">A business.google.com oldalon hozd létre a profilt, és ezeket másold be. A fotókhoz használd a weboldal képeit.</p>
@@ -615,7 +615,7 @@ Szeged</textarea></label>
           <label class="field"><span>Kategória</span><select id="a-cat"></select><input type="text" id="a-newcat" placeholder="Az új kategória neve" hidden></label>
           <label class="field"><span>Város</span><input type="text" id="a-city" value="Szeged"></label>
         </div>
-        <label class="field"><span>Személyes első mondat (nem kötelező)</span><input type="text" id="a-hook"></label>
+        <label class="field"><span>Mit csinálnak (belső jegyzet, levélbe nem kerül)</span><input type="text" id="a-hook"></label>
         <label class="field"><span>Megjegyzés</span><input type="text" id="a-note"></label>
         <div><button class="btn primary" type="submit">Hozzáadás</button></div>
       </form>
@@ -1044,6 +1044,10 @@ const CATS = {
   epitesz:{label:"Építész, belsőépítész, ingatlan"},
   oktatas:{label:"Iskola, tanszék, múzeum"},
   sport:{label:"Sportklub, egyesület"},
+  joga:{label:"Jóga, pilates stúdió"},
+  tanc:{label:"Tánc- és mozgásstúdió"},
+  fitnesz:{label:"Fitnesz, crossfit, edzőterem"},
+  terapia:{label:"Gyógytorna, masszázs, fizioterápia"},
   rendezveny:{label:"Esküvő, rendezvény"},
   kisker:{label:"Bolt, ajándék, könyv"},
   turizmus:{label:"Szuvenír, turisztika"},
@@ -1056,15 +1060,15 @@ const CATS = {
   vendeglato:{label:"Vendéglátás"},
   egyeb:{label:"Egyéb"}
 };
-const DM_FOR={nyomda:"dm_b2b",dekor:"dm_b2b",ipar:"dm_b2b",epitoipar:"dm_b2b",mezogazd:"dm_b2b",epitesz:"dm_b2b",kisker:"dm",szolg:"dm_szolg",sport:"dm_sport",rendezveny:"dm_rendezveny",hobbi:"dm_hobbi",turizmus:"dm_turizmus",auto:"dm_b2b",lakber:"dm",civil:"dm_sport",allat:"dm_szolg",vendeglato:"dm_vendeglato"};
+const DM_FOR={nyomda:"dm_b2b",dekor:"dm_b2b",ipar:"dm_b2b",epitoipar:"dm_b2b",mezogazd:"dm_b2b",epitesz:"dm_b2b",kisker:"dm",szolg:"dm_szolg",sport:"dm_sport",joga:"dm_studio",tanc:"dm_studio",fitnesz:"dm_studio",terapia:"dm_terapia",rendezveny:"dm_rendezveny",hobbi:"dm_hobbi",turizmus:"dm_turizmus",auto:"dm_b2b",lakber:"dm",civil:"dm_sport",allat:"dm_szolg",vendeglato:"dm_vendeglato"};
 const dmKey=c=>DM_FOR[c.cat]||"dm";
+// DM-nél az előnézet és a másolás is a privát üzenetet adja: esedékes emlékeztetőnél a dm_fu-t, különben a kategória DM-jét
+const dmText=c=>fill(tplFor(effStatus(c)==="fu"?"dm_fu":dmKey(c)).body,c);
 const STATUS = {javasolt:"Javasolt",elvetve:"Elvetve",uj:"Új",elkuldve:"Elküldve",fu:"Follow-up esedékes",valaszolt:"Válaszolt",ugyfel:"Ügyfél",lezarva:"Lezárva"};
 const SIG_DEFAULT = "Üdvözlettel:\nLevente\nLevente 3D · nyomtatás, Szeged\n+36 70 596 1640\nlevente3d.szeged@gmail.com";
 const TPL_DEFAULT = {
   dekor:{subject:"Egyedi reklámtárgyak, logók és dekorációs elemek 3D nyomtatással – Szeged",
 body:`Szép napot kívánok!
-
-{szemelyes}
 
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
@@ -1083,8 +1087,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   nyomda:{subject:"Tekercs-összefogó kapocs és pótalkatrész nyomdáknak – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Nyomdáknak és kiadóknak vállalok kisebb 3D-s gyártási feladatokat, például:
@@ -1101,8 +1103,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   ipar:{subject:"Pótalkatrész és prototípus 3D nyomtatással – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Gyártó- és műhelyi cégek számára vállalok kisebb 3D-s gyártási feladatokat, például:
@@ -1118,8 +1118,6 @@ Néhány korábbi munkámat a weblapomon találja: {link}
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
   kisker:{subject:"Egyedi 3D nyomtatott termékek a polcra – {cegnev}",
 body:`Szép napot kívánok!
-
-{szemelyes}
 
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
@@ -1139,8 +1137,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   szolg:{subject:"Egyedi névtáblák, jelzők és ajándékok – {cegnev}",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Szalonoknak, rendelőknek és szálláshelyeknek apró 3D-s tárgyakat készítek, például:
@@ -1156,8 +1152,6 @@ Néhány korábbi munkámat a weblapomon találja: {link}
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
   vendeglato:{subject:"QR-kódos asztali táblák és asztalszámok – {cegnev}",
 body:`Szép napot kívánok!
-
-{szemelyes}
 
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
@@ -1175,8 +1169,6 @@ Ha van ilyen igényük, egy darabot szívesen elkészítek ingyen mintának.`},
   egyeb:{subject:"Egyedi műanyag alkatrész vagy logós termék 3D nyomtatással – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Egyedi műanyag alkatrészeket és logós termékeket gyártok, például:
@@ -1192,8 +1184,6 @@ Néhány korábbi munkámat a weblapomon találja: {link}
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
   epitoipar:{subject:"Egyedi műanyag alkatrész, sablon és kábelvezető szerelőknek – Szeged",
 body:`Szép napot kívánok!
-
-{szemelyes}
 
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
@@ -1211,8 +1201,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   mezogazd:{subject:"Pótalkatrész és egyedi elem kertészeteknek, gazdaságoknak – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Kertészeteknek és gazdaságoknak pótalkatrész-gyártást vállalok, például:
@@ -1228,8 +1216,6 @@ Néhány korábbi munkámat a weblapomon találja: {link}
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
   epitesz:{subject:"Makett, prototípus és egyedi elem 3D nyomtatással – Szeged",
 body:`Szép napot kívánok!
-
-{szemelyes}
 
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
@@ -1247,8 +1233,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   oktatas:{subject:"Szemléltetőeszköz és egyedi modell 3D nyomtatással – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Iskoláknak, tanszékeknek és múzeumoknak szemléltető modelleket készítek, például:
@@ -1264,8 +1248,6 @@ Néhány korábbi munkámat a weblapomon találja: {link}
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
   sport:{subject:"Logós érem, kulcstartó és ajándék sportegyesületeknek – Szeged",
 body:`Szép napot kívánok!
-
-{szemelyes}
 
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
@@ -1283,8 +1265,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   rendezveny:{subject:"Asztalszám, tortadísz és egyedi ajándék rendezvényekre – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Esküvőkre és rendezvényekre egyedi dekorációt készítek, például:
@@ -1300,8 +1280,6 @@ Néhány korábbi munkámat a weblapomon találja: {link}
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
   turizmus:{subject:"Saját tervezésű szegedi szuvenír 3D nyomtatással",
 body:`Szép napot kívánok!
-
-{szemelyes}
 
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
@@ -1321,8 +1299,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   hobbi:{subject:"Egyedi alkatrész, tartó és tárolóbetét szaküzleteknek – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Hobbi- és szaküzleteknek kiegészítőket készítek, például:
@@ -1341,8 +1317,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   auto:{subject:"Pótalkatrész és egyedi tartó autós és kerékpáros műhelyeknek – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Autószerelőknek, kereskedőknek, kerékpár- és motorszervizeknek kisebb 3D-s gyártást vállalok, például:
@@ -1358,8 +1332,6 @@ Néhány korábbi munkámat a weblapomon találja: {link}
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
   lakber:{subject:"Egyedi fogantyú, lámpa- és dekorelem 3D nyomtatással – Szeged",
 body:`Szép napot kívánok!
-
-{szemelyes}
 
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
@@ -1377,8 +1349,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   civil:{subject:"Logós díj, tábla és kiállítási tárgy 3D nyomtatással – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Egyesületeknek, alapítványoknak és kulturális intézményeknek kisebb 3D-s gyártást vállalok, például:
@@ -1395,8 +1365,6 @@ Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugo
   allat:{subject:"Egyedi névtábla, tartó és ajándék állatorvosoknak, állatboltoknak – Szeged",
 body:`Szép napot kívánok!
 
-{szemelyes}
-
 Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
 
 Állatorvosoknak, kisállat-boltoknak és állatmenhelyeknek kisebb 3D-s gyártást vállalok, például:
@@ -1410,35 +1378,155 @@ A gyártást meglévő 3D modell, referenciafotó vagy konkrét elképzelés ala
 Néhány korábbi munkámat a weblapomon találja: {link}
 
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
+  joga:{subject:"Egyedi táblák, tartók és logós ajándékok jógastúdióknak – {cegnev}",
+body:`Szép napot kívánok!
+
+Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
+
+Jóga- és pilatesstúdióknak apró 3D-s tárgyakat készítek, például:
+• QR-kódos tábla a recepcióra (órarend, foglalás)
+• fali tartó szőnyegnek, blokknak, hevedernek
+• logós kulcstartó vagy kis ajándék a tagoknak
+• névtábla, ajtótábla
+
+A gyártást meglévő 3D modell, referenciafotó vagy konkrét elképzelés alapján is vállalom.
+
+Néhány korábbi munkámat a weblapomon találja: {link}
+
+Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
+  tanc:{subject:"Logós érem, kulcstartó és egyedi kellék tánciskoláknak – {cegnev}",
+body:`Szép napot kívánok!
+
+Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
+
+Tánc- és mozgásstúdióknak apró 3D-s tárgyakat készítek, például:
+• logós érem és díj házi versenyre, gálára
+• logós kulcstartó a tanítványoknak
+• QR-kódos tábla a recepcióra
+• egyedi kellék fellépésre
+
+A gyártást meglévő 3D modell, referenciafotó vagy konkrét elképzelés alapján is vállalom.
+
+Néhány korábbi munkámat a weblapomon találja: {link}
+
+Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
+  fitnesz:{subject:"QR-kódos táblák, tartók és logós ajándékok edzőtermeknek – {cegnev}",
+body:`Szép napot kívánok!
+
+Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
+
+Edzőtermeknek apró 3D-s tárgyakat készítek, például:
+• QR-kódos tábla (órarend, edzéstervek, foglalás)
+• fali tartó kulacsnak, telefonnak, kiegészítőknek
+• logós kulcstartó a tagoknak
+• eltört műanyag kupak, burkolat pótlása
+
+A gyártást meglévő 3D modell, referenciafotó vagy konkrét elképzelés alapján is vállalom.
+
+Néhány korábbi munkámat a weblapomon találja: {link}
+
+Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
+  terapia:{subject:"Egyedi névtáblák, pulttáblák és ajándékok rendelőknek – {cegnev}",
+body:`Szép napot kívánok!
+
+Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
+
+Gyógytornászoknak, masszőröknek és rendelőknek apró 3D-s tárgyakat készítek, például:
+• névtábla, ajtótábla
+• QR-kódos pulttábla (foglalás, Google-értékelés)
+• prospektus- és névjegytartó
+• logós kis ajándék a vendégeknek
+
+A gyártást meglévő 3D modell, referenciafotó vagy konkrét elképzelés alapján is vállalom.
+
+Néhány korábbi munkámat a weblapomon találja: {link}
+
+Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
+  dm_studio:{subject:"DM – jóga, tánc, fitnesz stúdió",
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten jógastúdióknak, tánciskoláknak és edzőtermeknek segítek, például ilyen termékekkel:
+• QR kódos recepciós táblák
+• Logós kulcstartók
+• Logós tagkártyatartók és telefontartók
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
+  dm_terapia:{subject:"DM – gyógytorna, masszázs",
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten gyógytornászoknak és masszőröknek segítek, például ilyen termékekkel:
+• Ajtótáblák
+• QR kódos pulttáblák (foglalás, Google értékelés)
+• Vendégajándékok
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
   dm_b2b:{subject:"DM – gyártás, nyomda, műhely",
-body:`Szia! Levente vagyok, Szegeden 3D nyomtatással gyártok egyedi műanyag alkatrészeket és kiegészítőket kis szériában.
-{szemelyes}
-Ha van nálatok olyan darab, ami eltört, már nem kapható, vagy egyedi méretben kellene (tartó, kapocs, távtartó, burkolat), küldj róla egy fotót pár mérettel, és megnézem, tudok-e segíteni.
-Munkáim: {link}`},
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten nyomdáknak, reklámcégeknek és műhelyeknek segítek, például ilyen termékekkel:
+• Egyedi tartók
+• Kapcsok
+• Burkolatok
+• Pótalkatrészek
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
   dm_sport:{subject:"DM – sportklub, egyesület",
-body:`Szia! Levente vagyok, Szegeden 3D nyomtatással készítek egyedi tárgyakat. 🙂
-{szemelyes}
-A klubnak tudnék logós érmet, kulcstartót vagy kitűzőt csinálni a ti színeitekben, versenyre, táborra vagy szurkolóknak, 20 db-tól.
-Egyet szívesen megcsinálok ingyen mintának. Megmutassam, hogy nézne ki?
-Munkáim: {link}`},
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten sportkluboknak és egyesületeknek segítek, például ilyen termékekkel:
+• Logós érmek
+• Kulcstartók
+• Klubajándékok
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
   dm_rendezveny:{subject:"DM – esküvő, rendezvény",
-body:`Szia! Levente vagyok, Szegeden 3D nyomtatással készítek egyedi dekorációt rendezvényekre.
-{szemelyes}
-Asztalszámot, ültetőkártya-tartót, monogramos tortadíszt vagy névre szóló köszönőajándékot tudok készíteni, a ti színeitekhez igazítva.
-Küldjek pár fotót vagy egy mintát?
-Munkáim: {link}`},
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten esküvőszervezőknek és rendezvényszervezőknek segítek, például ilyen termékekkel:
+• Asztalszámok
+• Ültetőkártyatartók
+• Monogramos tortadíszek
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
   dm_hobbi:{subject:"DM – hobbi, társasjáték, modell",
-body:`Szia! Levente vagyok, Szegeden 3D nyomtatással gyártok egyedi tárgyakat.
-{szemelyes}
-Társasjáték-inzertet, kártyatartót, modellező alkatrészt vagy egyedi tartót tudnék csinálni nektek viszonteladásra, vagy a vásárlóitok egyedi kéréseire.
-Ha érdekel, beviszek pár mintát.
-Munkáim: {link}`},
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten társasjátékboltoknak és hobbiboltoknak segítek, például ilyen termékekkel:
+• Rendszerezők társasjátékokhoz
+• Kártyatartók
+• Modellező alkatrészek
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
   dm_turizmus:{subject:"DM – szuvenír, ajándékbolt",
-body:`Szia! Levente vagyok, Szegeden 3D nyomtatással készítek saját tervezésű szegedi szuvenírt (Dóm-modell, mágnes, kulcstartó, könyvjelző).
-{szemelyes}
-Viszonteladásra vagy bizományba tudnám adni, akár a ti logótokkal.
-Beviszek pár mintát, ha érdekel?
-Munkáim: {link}`},
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten ajándékboltoknak és szuvenírboltoknak segítek, például ilyen termékekkel:
+• Szegedi Dóm makettek
+• Szeged feliratos mágnesek
+• Szuvenír kulcstartók
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
   followup:{subject:"3D nyomtatás – rövid emlékeztető",
 body:`Szép napot kívánok!
 
@@ -1462,45 +1550,64 @@ Munkáim: {link}`},
   fu_kisker:{"subject": "1. follow-up – bolt", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Hogy ne legyen kockázata, bizományba is adom a termékeket: kihelyezek néhány darabot, és csak az eladottak után számolunk el.\n\nHa érdekli, egy 10 perces alkalommal beviszem a mintákat, vagy előbb küldök fotókat.\n\nMunkáim: {link}"},
   fu_turizmus:{"subject": "1. follow-up – turizmus", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. A szegedi szuvenírekből (Dóm-modell, mágnes, kulcstartó, könyvjelző) bizományba is adok, így csak az eladott darabok után számolunk el, és kérésre az Önök logójával is elkészítem őket.\n\nHa érdekli, beviszek néhány mintát.\n\nMunkáim: {link}"},
   fu_hobbi:{"subject": "1. follow-up – hobbi", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha a vásárlóik kérdeznek olyat, ami készen nem kapható (társasjáték-inzert, tartó, adapter, eltört műanyag alkatrész), szívesen átvállalom ezeket a kéréseket, Önök pedig árréssel továbbadhatják.\n\nHa érdekli, beviszek néhány mintát.\n\nMunkáim: {link}"},
-  fu_vendeglato:{"subject": "1. follow-up – vendéglátás", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha jól jönne néhány QR-kódos asztali tábla (menü, értékelés vagy Wi-Fi) vagy asztalszám az Önök arculatában, egy darabot ingyen elkészítek mintának.\n\nElég egy válasz, hogy mire lenne szükség.\n\nMunkáim: {link}"},
-  fu_szolg:{"subject": "1. follow-up – szolgáltatás", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha jól jönne egy QR-kódos asztali tábla, egy ajtó- vagy névtábla az Önök arculatában, egy darabot ingyen elkészítek mintának.\n\nElég egy válasz, hogy mire lenne szükség.\n\nMunkáim: {link}"},
+  fu_vendeglato:{"subject": "1. follow-up – vendéglátás", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha jól jönne néhány QR kódos asztali tábla (menü, értékelés vagy wifi) vagy asztalszám az Önök arculatában, egy darabot ingyen elkészítek mintának.\n\nElég egy válasz, hogy mire lenne szükség.\n\nMunkáim: {link}"},
+  fu_szolg:{"subject": "1. follow-up – szolgáltatás", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha jól jönne egy QR kódos asztali tábla, egy ajtó- vagy névtábla az Önök arculatában, egy darabot ingyen elkészítek mintának.\n\nElég egy válasz, hogy mire lenne szükség.\n\nMunkáim: {link}"},
   fu_egyeb:{"subject": "1. follow-up – egyéb", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha van egy eltört vagy már nem kapható műanyag alkatrész, vagy egy egyedi ötlet, egy fotó és pár méret alapján 24 órán belül árat adok, Szegeden, pár napos átfutással.\n\nMunkáim: {link}"},
   fu_auto:{"subject": "1. follow-up – autó, kerékpár", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Autós és kerékpáros alkatrészeknél gyakori, hogy egy apró műanyag elem (takarósapka, rögzítőkapocs, tartó, burkolat) már nem kapható, vagy miatta egy egész egységet kellene cserélni. Egy fotó és pár méret alapján pár nap alatt elkészítem.\n\nHa van ilyen darab, egy válasz a fotóval elég.\n\nMunkáim: {link}"},
   fu_lakber:{"subject": "1. follow-up – lakberendezés", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha egy projekthez kellene egyedi fogantyú, lámpa- vagy bútorelem, vagy egy kis szériás dekortárgy, a tervből vagy egy fotóból pár nap alatt elkészítem.\n\nElég egy fotó vagy rajz, és 24 órán belül árat adok.\n\nMunkáim: {link}"},
   fu_civil:{"subject": "1. follow-up – civil, kulturális", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha a közelgő rendezvényhez, kiállításhoz vagy programhoz kellene logós díj, kitűző, tábla vagy kis ajándék, az Önök logója alapján pár nap alatt elkészítem.\n\nElég egy válasz a logóval vagy egy rövid leírással.\n\nMunkáim: {link}"},
-  fu_allat:{"subject": "1. follow-up – állat", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha jól jönne egy névtábla, QR-kódos azonosító vagy etetőtartó az Önök arculatában, vagy egy kis logós ajándék a gazdiknak, egy fotó vagy rövid leírás alapján 24 órán belül árat adok.\n\nElég egy válasz, hogy mire lenne szükség.\n\nMunkáim: {link}"},
+  fu_allat:{"subject": "1. follow-up – állat", "body": "Szép napot kívánok!\n\nRöviden visszatérnék a múlt heti levelemre. Ha jól jönne egy névtábla, QR kódos azonosító vagy etetőtartó az Önök arculatában, vagy egy kis logós ajándék a gazdiknak, egy fotó vagy rövid leírás alapján 24 órán belül árat adok.\n\nElég egy válasz, hogy mire lenne szükség.\n\nMunkáim: {link}"},
   followup2:{"subject": "2. follow-up – utolsó, minden kategória", "body": "Szép napot kívánok!\n\nNem szeretném tovább zavarni, ez az utolsó levelem ebben a témában. Ha később lesz egy darab, amit 3D nyomtatással kellene elkészíteni, elég erre a levélre válaszolni, és 24 órán belül jelentkezem.\n\nKöszönöm a figyelmet!"},
   dm:{subject:"DM – bolt, ajándék, dekor",
-body:`Szia! Levente vagyok, Szegeden 3D nyomtatással készítek egyedi termékeket kis szériában. 🙂
-{szemelyes}
-A boltotokba tudnék saját tervezésű darabokat adni (pl. áttört könyvjelző, ékszertartó, kulcstartó, dísz), akár a logótokkal, viszonteladásra vagy bizományba.
-Ha érdekel, beviszek 3–4 mintát, vagy küldök fotókat.
-Munkáim: {link}`},
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten ajándékboltoknak és lakberendezési üzleteknek segítek, például ilyen termékekkel:
+• Logós kulcstartók
+• Könyvjelzők
+• Ékszertartók
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
   dm_szolg:{subject:"DM – szalon, szállás, rendelő",
-body:`Szia! Levente vagyok, Szegeden 3D nyomtatással készítek egyedi apró tárgyakat vállalkozásoknak.
-{szemelyes}
-Nektek pl. névtáblát, QR-kódos pulttáblát, ajtótáblát vagy logós kis ajándékot tudnék készíteni a ti stílusotokban, 10 db-tól.
-Egy darabot szívesen megcsinálok ingyen mintának. Megmutassam, hogy nézne ki?
-Munkáim: {link}`},
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten szalonoknak, rendelőknek és szálláshelyeknek segítek, például ilyen termékekkel:
+• Egyedi recepciós logók
+• Céges elemek
+• QR kódos táblák
+• Ügyfélajándékok
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
   dm_vendeglato:{subject:"DM – étterem, gyorsétterem",
-body:`Szia! Levente vagyok, Szegeden 3D nyomtatással készítek egyedi apró tárgyakat vállalkozásoknak.
-{szemelyes}
-Nektek pl. QR-kódos asztali táblát (menü, Google-értékelés, Wi-Fi), asztalszámot vagy pulttáblát tudnék készíteni a logótokkal, 10 db-tól.
-Egy darabot szívesen megcsinálok ingyen mintának. Megmutassam, hogy nézne ki?
-Munkáim: {link}`},
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten éttermeknek és kávézóknak segítek, például ilyen termékekkel:
+• QR kódos asztali táblák (menü, wifi, értékelés)
+• Asztalszámok
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
   dm_fu:{subject:"DM – emlékeztető (5–7 nap után)",
-body:`Szia! Csak rákérdeznék a pár napja küldött üzenetemre a 3D nyomtatott termékekkel kapcsolatban. Ha most nem aktuális, semmi gond. Ha igen, küldj egy fotót az alkatrészről, és megnézem, tudok-e segíteni. 🙂`}
+body:`Szia! Rákérdeznék a múltkori üzenetemre. 🙂 Ha kérsz mintát, csak írd meg, mire lenne szükségetek, és elkészítem. Ha most nem aktuális, semmi gond.`}
 };
 
 let blocklist={domains:[],emails:[]};
 let db=null, contacts=new Map(), tpls={}, settings={link:"",goal:30,fuDays:6,sig:SIG_DEFAULT};
+let fPlat="ig";
 let fGroup="email", fStatus="uj", fCat="all", fCity="all", openId=null, menuId=null;
 const $=s=>document.querySelector(s);
 
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function daysSince(s){if(!s)return 0;const a=new Date(s+"T00:00:00"),b=new Date(today()+"T00:00:00");return Math.round((b-a)/864e5)}
 function huDate(s){if(!s)return"";const [y,m,d]=s.split("-");return `${+m}. ${+d}.`}
-const CAT_PRIO=["nyomda","dekor","ipar","epitoipar","mezogazd","epitesz","hobbi","oktatas","sport","rendezveny","turizmus","civil","auto","lakber","allat","kisker","egyeb","szolg"];
+const CAT_PRIO=["nyomda","dekor","ipar","epitoipar","mezogazd","epitesz","hobbi","oktatas","sport","joga","tanc","fitnesz","terapia","rendezveny","turizmus","civil","auto","lakber","allat","kisker","egyeb","szolg"];
 const catRank=c=>{const i=CAT_PRIO.indexOf(c.cat);return i<0?99:i};
 // Follow-up csak az új címről (levente3d.szeged@gmail.com) küldött e-mailekhez jár; a régi címről mentekhez nem. A DM-emlékeztetők maradnak.
 const NEW_ACCT_SINCE="2026-10-19";
@@ -1510,11 +1617,13 @@ function effStatus(c){if(fuStage(c))return"fu";return c.status||"uj"}
 function fuTpl(c,st){if(st===2)return tplFor("followup2");const k="fu_"+c.cat;return (tpls[k]||TPL_DEFAULT[k])?tplFor(k):tplFor("followup")}
 function tplFor(k){return Object.assign({},TPL_DEFAULT[k]||TPL_DEFAULT.egyeb,tpls[k]||{})}
 const isDM=c=>!String(c.email||"").includes("@");
+// Privát üzenetnél a felület: a kézi választás (dmVia), különben ahol van profil; a régi, link nélküli DM-ek Instagramon mentek
+const platOf=c=>c.dmVia||(c.ig?"ig":c.fb?"fb":"ig");
 const threadOk=c=>!!(c.threadId&&c.acct==="levente3d");
 const dmLinks=c=>(c.fb?`<a class="btn ghost" href="${esc(c.fb)}" target="_blank" rel="noopener">Facebook</a>`:"")+(c.ig?`<a class="btn ghost" href="${esc(c.ig)}" target="_blank" rel="noopener">Instagram</a>`:"");
 function displayName(c){if(c.name||isDM(c))return c.name||c.email;const [loc,dom]=c.email.split("@");return FREEMAIL.has(dom)?loc:dom.replace(/\.(hu|com|eu)$/,"")}
 function fill(text,c,extra={},oneLine=false){
-  const vals={cegnev:c.name||"",szemelyes:c.hook||"",link:settings.link||"",...extra};
+  const vals={cegnev:c.name||"",szemelyes:"",link:settings.link||"",...extra};
   if(oneLine)return text.replace(/\{(\w+)\}/g,(m,k)=>k in vals?vals[k]:m).replace(/\s*[–-]\s*$/,"").trim();
   return text.split("\n").filter(line=>{const keys=[...line.matchAll(/\{(\w+)\}/g)].map(m=>m[1]);return !keys.some(k=>k in vals&&!vals[k])}).join("\n")
     .replace(/\{(\w+)\}/g,(m,k)=>k in vals?vals[k]:m).replace(/ – $/,"").replace(/\n{3,}/g,"\n\n").trim();
@@ -1556,7 +1665,7 @@ function renderStats(){
   const oo=[...orders.values()].filter(o=>["keres","ajanlat","elfogadva","gyartas"].includes(o.status)).length,ob=$("#nb-orders");ob.hidden=!oo;ob.textContent=oo;
   $("#hello-sub").textContent=new Date().toLocaleDateString("hu-HU",{weekday:"long",month:"long",day:"numeric"})+` · ${st.ujE} kiküldendő e-mail, ${st.fuE} esedékes follow-up`+(st.dmq?`, ${st.dmq} DM`:"")+(nJ?`, ${nJ} javaslat`:"");
 }
-function inGroup(c){return fGroup==="dm"?isDM(c):!isDM(c)}
+function inGroup(c){return fGroup==="dm"?isDM(c)&&platOf(c)===fPlat:!isDM(c)}
 function cityOf(c){return (c.city||"").trim()}
 function ensureCats(){for(const c of contacts.values()){if(c.cat&&!CATS[c.cat]&&c.catLabel)CATS[c.cat]={label:c.catLabel}}}
 function resolveCat(x){x=(x||"").trim();if(!x)return{cat:"egyeb"};const k=x.toLowerCase();if(CATS[k])return{cat:k};
@@ -1572,8 +1681,9 @@ function renderChips(){
   const nJ=all.filter(c=>c.status==="javasolt").length,nX=all.filter(c=>c.status==="elvetve").length;
   if(nJ)sOpts.unshift(["javasolt","Javaslatok"]);if(nX)sOpts.push(["elvetve","Elvetett"]);
   const gAll=all.filter(c=>inGroup(c)&&!PRE.has(c.status)),gst={javasolt:nJ,elvetve:nX};gAll.forEach(c=>{const x=effStatus(c);gst[x]=(gst[x]||0)+1});
-  const nE=all.filter(c=>!isDM(c)).length,nD=all.length-nE;
-  $("#groupChips").innerHTML=`<button class="chip" data-g="email" aria-pressed="${fGroup==="email"}">E-mail<span class="c">${nE}</span></button><button class="chip" data-g="dm" aria-pressed="${fGroup==="dm"}">Privát üzenet (Instagram, Facebook)<span class="c">${nD}</span></button>`;
+  const nE=all.filter(c=>!isDM(c)).length,nP=p=>all.filter(c=>isDM(c)&&platOf(c)===p&&!PRE.has(c.status)).length;
+  const rate=p=>{const x=all.filter(c=>isDM(c)&&platOf(c)===p&&c.sentAt),r=x.filter(c=>["valaszolt","ugyfel"].includes(c.status)).length;return x.length?`${r}/${x.length} válasz (${Math.round(r/x.length*100)}%)`:"még nem ment üzenet"};
+  $("#groupChips").innerHTML=`<button class="chip" data-g="email" aria-pressed="${fGroup==="email"}">E-mail<span class="c">${nE}</span></button><button class="chip" data-g="ig" aria-pressed="${fGroup==="dm"&&fPlat==="ig"}">Instagram<span class="c">${nP("ig")}</span></button><button class="chip" data-g="fb" aria-pressed="${fGroup==="dm"&&fPlat==="fb"}">Facebook<span class="c">${nP("fb")}</span></button>`+(fGroup==="dm"?`<span class="small" style="flex-basis:100%">Instagram: ${rate("ig")} · Facebook: ${rate("fb")}. Ahol mindkét profil megvan, a sor alatti gombbal teheted át a másik felületre.</span>`:"");
   $("#statusChips").innerHTML=sOpts.map(([k,l])=>`<button class="chip" data-s="${k}" aria-pressed="${fStatus===k}">${l}<span class="c">${k==="all"?gAll.length:(gst[k]||0)}</span></button>`).join("");
   ensureCats();
   const pool=all.filter(c=>matchS(c));
@@ -1607,18 +1717,20 @@ function renderList(){
     else if(s==="fu")main=canSend?`<button class="btn primary${pend?" confirm":""}" data-act="sendfu" data-id="${id}"${busy?" disabled":""}>${busy?"Küldés…":pend?"Biztos? Follow-up most":"Follow-up küldése"}</button><a class="btn ghost" href="${esc(gmailUrl(c,"fu"))}" target="_blank" rel="noopener">Gmailben</a>`
       :`<a class="btn primary" href="${esc(gmailUrl(c,"fu"))}" target="_blank" rel="noopener">Follow-up Gmailben</a><button class="btn" data-act="fusent" data-id="${id}">Follow-up elküldve</button>`;
     const detail=openId===c.email?`<div class="detail">
-        <label for="h-${id}">Személyes első mondat</label>
-        <input type="text" id="h-${id}" value="${esc(c.hook)}" data-hook="${id}" placeholder="pl. Láttam, hogy …">
+        <label for="h-${id}">Mit csinálnak (belső jegyzet)</label>
+        <input type="text" id="h-${id}" value="${esc(c.hook)}" data-hook="${id}" placeholder="pl. Nyomda, matricák, molinók">
         <label for="n-${id}">Megjegyzés</label>
         <input type="text" id="n-${id}" value="${esc(c.note)}" data-notef="${id}">
         <label for="cs-${id}">Kategória</label>
         <select id="cs-${id}" data-catsel="${id}">${catOptions(c.cat)}</select>
-        <label>Levél előnézet</label>
+        ${isDM(c)?`<label>Üzenet előnézet (${platOf(c)==="fb"?"Facebook":"Instagram"})</label>
+        <div class="preview">${esc(dmText(c))}</div>
+        <div class="acts" style="justify-content:flex-start"><button class="btn" data-act="copybody" data-id="${id}">Üzenet másolása</button>`:`<label>Levél előnézet</label>
         <div class="preview">${esc((m=>"Tárgy: "+m.subject+"\n\n"+m.body)(compose(c,s==="fu"?"fu":"")))}</div>
-        <div class="acts" style="justify-content:flex-start"><button class="btn" data-act="copybody" data-id="${id}">Szöveg másolása</button><button class="btn" data-act="copysubj" data-id="${id}">Tárgy másolása</button><button class="btn" data-act="copydm" data-id="${id}">DM szöveg másolása</button><span class="small">Forrás: ${esc(c.source||"–")}</span></div>
+        <div class="acts" style="justify-content:flex-start"><button class="btn" data-act="copybody" data-id="${id}">Szöveg másolása</button><button class="btn" data-act="copysubj" data-id="${id}">Tárgy másolása</button>`}<span class="small">Forrás: ${esc(c.source||"–")}</span></div>
       </div>`:"";
     return `<div class="row s-${s}">
-      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${c.note?`<div class="note">${esc(c.note)}</div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
+      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${c.note?`<div class="note">${esc(c.note)}</div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
       <div class="meta cat">${esc(CATS[c.cat]?.label||c.cat)}<br>${esc(c.city||"")}</div>
       <div class="meta"><span class="pill p-${s}">${s==="fu"?fuStage(c)+". follow-up esedékes":c.bounced?"Visszapattant":STATUS[s]}</span><br>${when}</div>
       <div class="acts">${main}<button class="btn ghost" data-act="open" data-id="${id}" aria-expanded="${openId===c.email}">${openId===c.email?"Bezár":"Részletek"}</button>
@@ -1647,19 +1759,21 @@ document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-act],[data-s],[data-c],[data-g],[data-tab],[data-go]");
   if(!b){if(menuId){menuId=null;renderList()}return}
   if(b.dataset.tab){document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===b.dataset.tab));["queue","cov","orders","goals","plan","calc","gen","todo","tpl","add","set"].forEach(k=>$("#p-"+k).hidden=k!==b.dataset.tab);if(b.dataset.tab==="cov")renderCov();if(b.dataset.tab==="todo")renderOverview();if(b.dataset.tab==="goals")renderGoals();if(b.dataset.tab==="gen"&&window.genOpen)window.genOpen();return}
-  if(b.dataset.g){listLimit=LIST_STEP;fGroup=b.dataset.g;fStatus="uj";fCat="all";sel.clear();renderAll();return}
+  if(b.dataset.g){listLimit=LIST_STEP;if(b.dataset.g==="ig"||b.dataset.g==="fb"){fPlat=b.dataset.g;fGroup="dm"}else fGroup=b.dataset.g;fStatus="uj";fCat="all";sel.clear();renderAll();return}
   if(b.dataset.go){listLimit=LIST_STEP;const g=b.dataset.go;fGroup=g==="dmq"?"dm":"email";
     // Ha e-mailes tétel nincs, de DM van, a privát üzenetek csoportját nyitjuk meg, hogy ne üres lista jöjjön
-    if(g==="uj"||g==="fu"){const st=counts().st;if(!(g==="uj"?st.ujE:st.fuE)&&(g==="uj"?st.dmUj:st.dmFu))fGroup="dm"}if(g==="javasolt")fCity="all";fStatus=g==="ma"?"elkuldve":g==="dmq"?"uj":g;fCat="all";$("#t-queue").click();renderAll();return}
+    if(g==="uj"||g==="fu"){const st=counts().st;if(!(g==="uj"?st.ujE:st.fuE)&&(g==="uj"?st.dmUj:st.dmFu))fGroup="dm"}if(fGroup==="dm"){const q=p=>[...contacts.values()].filter(c=>isDM(c)&&platOf(c)===p&&["uj","fu"].includes(effStatus(c))).length;fPlat=q("ig")>=q("fb")?"ig":"fb"}if(g==="javasolt")fCity="all";fStatus=g==="ma"?"elkuldve":g==="dmq"?"uj":g;fCat="all";$("#t-queue").click();renderAll();return}
   if(b.dataset.s){listLimit=LIST_STEP;fStatus=b.dataset.s;fCat="all";renderAll();return}
   if(b.dataset.c){listLimit=LIST_STEP;fCat=b.dataset.c;renderAll();return}
   const c=contacts.get(b.dataset.id);if(!c)return;
   const a=b.dataset.act;
   if(isBlocked(c)&&["send","sendfu","sent","dmsent","fusent","copydm","copydmfu","copybody","copysubj","approve"].includes(a)){toast("Ez a cég tiltólistán van, neki nem küldünk semmit");return}
-  if(a==="copymail")return isDM(c)?copy(c.fb||c.ig||"","Profil link kimásolva"):copy(c.email,"E-mail cím kimásolva");
+  if(a==="via")return save(c,{dmVia:platOf(c)==="ig"?"fb":"ig"});
+  if(a==="copymail")return isDM(c)?copy((platOf(c)==="fb"?c.fb||c.ig:c.ig||c.fb)||"","Profil link kimásolva"):copy(c.email,"E-mail cím kimásolva");
   if(a==="send"||a==="sendfu"){
     if(pendingSend!==c.email){pendingSend=c.email;clearTimeout(pendT);pendT=setTimeout(()=>{pendingSend=null;renderList()},6000);return renderList()}
     pendingSend=null;await sendOne(c,a==="sendfu"?"fu":"");return}
+  if(a==="copybody"&&isDM(c))return copy(dmText(c),"Üzenet kimásolva");
   if(a==="copybody"){const s=effStatus(c);return copy(compose(c,s==="fu"?"fu":"").body,"Levél szövege kimásolva")}
   if(a==="copysubj"){const s=effStatus(c);return copy(compose(c,s==="fu"?"fu":"").subject,"Tárgy kimásolva")}
   if(a==="open"){openId=openId===c.email?null:c.email;menuId=null;return renderList()}
@@ -1726,12 +1840,16 @@ const CAT_KW={
   mezogazd:["mezogazd","=agro","agrar","farm","gazdasag","kerteszet","kertesz","noveny","vetomag","szoleszet","boraszat","pinceszet","mehesz","gyumolcs","zoldseg","allattart","faiskola","virag"],
   epitesz:["epitesz","ingatlan","belsoepit","architect","=arch","interior","realestate","lakaspark","tervezoiroda"],
   oktatas:["iskola","gimnazium","=gimi","egyetem","foiskola","tanszek","=edu","muzeum","museum","ovoda","bolcsode","=suli","szakkepz","akademia","intezet","kollegium","=u-szeged","=szte","oktat","nyelviskola","tanoda","=sulinet"],
-  sport:["sport","=klub","=club","=fc","=se","=kse","=sc","fitness","fitnesz","=gym","edzo","kosarlabd","foci","futball","labdarug","uszo","kezilabd","tenisz","karate","=judo","=joga","yoga","tancisk","dance","futok","=run","birkoz","kick","box"],
+  sport:["sport","=klub","=club","=fc","=se","=kse","=sc","edzo","kosarlabd","foci","futball","labdarug","uszo","kezilabd","tenisz","karate","=judo","futok","=run","birkoz","kick","box"],
+  joga:["=joga","jogastud","jogakozpont","yoga","pilates"],
+  tanc:["tancisk","tancstud","=tanc","dance","balett","ballet","rudtanc","salsa","zumba"],
+  fitnesz:["fitness","fitnesz","=gym","crossfit","edzoterem","functional","funkcionalis","=trx"],
+  terapia:["gyogytorn","fizioter","physio","masszazs","massage","manualter","=reha","rehabilit","csontkovacs"],
   rendezveny:["eskuvo","rendezveny","=event","events","wedding","party","menyasszony","lagzi","fotobox","szertartas","ceremonia","lufi","ballon","dekorator"],
   kisker:["bolt","=shop","webshop","ajandek","konyvesbolt","konyv","aruhaz","store","butik","boutique","uzlet","kereskedes","papirbolt","irodaszer","diszkont","=market","gift"],
   turizmus:["=tour","tours","turiz","turist","szuvenir","souvenir","utaz","travel","tourinform","latogatokozpont","idegenvezet"],
   hobbi:["hobbi","hobby","jatek","tarsas","boardgame","hangszer","=music","zene","=foto","fotos","fotograf","photo","makett","modell","=lego","kreativ","craft","barkacs","horgasz","airsoft","cosplay","rajzol"],
-  szolg:["szallas","panzio","hotel","apartman","vendeghaz","szalon","kozmetik","fodrasz","beauty","rendelo","fogorvos","fogaszat","dental","klinika","egeszseg","gyogy","masszazs","=spa","wellness","korom","szempilla","orvos","patika","gyogyszertar","optika","pszich","terapia","hostel","kemping","camping","fizioter"],
+  szolg:["szallas","panzio","hotel","apartman","vendeghaz","szalon","kozmetik","fodrasz","beauty","rendelo","fogorvos","fogaszat","dental","klinika","egeszseg","gyogy","=spa","wellness","korom","szempilla","orvos","patika","gyogyszertar","optika","pszich","hostel","kemping","camping"],
   auto:["=auto","autos","autoszer","autohaz","motor","kerekpar","bicikli","=bike","bikes","gumiszerviz","=gumi","szerviz","=car","cars","jarmu","garage","garazs","karosszer","tuning","=moto"],
   lakber:["lakber","butor","=home","furniture","otthon","fuggony","lampa","konyhastudio","matrac","parketta"],
   civil:["alapitvany","egyesulet","kultur","muvelodes","szinhaz","theatre","theater","galeria","gallery","konyvtar","library","nonprofit","=civil","kozosseg","egyhaz","plebania","reformatus","katolikus","onkormanyzat","=ph"],
@@ -1739,9 +1857,9 @@ const CAT_KW={
   vendeglato:["etterem","kavez","=cafe","=bar","bistro","bisztro","pizz","cukrasz","=pub","kitchen","restaurant","=food","=grill","burger","pekseg","pekar","fagyi","gelato","borozo","sorozo","csarda","kifozde","=bufe","catering","coffee","kave","konyha"]
 };
 const GENERIC_LOCAL=new Set(["info","office","iroda","hello","hi","mail","email","contact","kapcsolat","ugyfelszolgalat","rendeles","order","orders","sales","ertekesites","admin","titkarsag","postmaster","webmaster","support","ugyfel","penzugy","szamla","szeged","web","posta","levelezes","központ","kozpont","recepcio","reception","foglalas","booking"]);
-const CITIES=[["hodmezovasarhely","Hódmezővásárhely"],["vasarhely","Hódmezővásárhely"],["szeged","Szeged"],["mako","Makó"],["szentes","Szentes"],["csongrad","Csongrád"],["kistelek","Kistelek"],["morahalom","Mórahalom"],["mindszent","Mindszent"],["sandorfalva","Sándorfalva"],["algyo","Algyő"],["deszk","Deszk"],["kiszombor","Kiszombor"],["bekescsaba","Békéscsaba"],["oroshaza","Orosháza"],["szarvas","Szarvas"],["kecskemet","Kecskemét"],["kiskunhalas","Kiskunhalas"],["kiskunfelegyhaza","Kiskunfélegyháza"],["szolnok","Szolnok"],["debrecen","Debrecen"],["budapest","Budapest"],["pecs","Pécs"],["miskolc","Miskolc"]];
+const CITIES=[["hodmezovasarhely","Hódmezővásárhely"],["vasarhely","Hódmezővásárhely"],["szeged","Szeged"],["mako","Makó"],["szentes","Szentes"],["csongrad","Csongrád"],["kistelek","Kistelek"],["morahalom","Mórahalom"],["mindszent","Mindszent"],["sandorfalva","Sándorfalva"],["algyo","Algyő"],["deszk","Deszk"],["kiszombor","Kiszombor"],["bekescsaba","Békéscsaba"],["oroshaza","Orosháza"],["szarvas","Szarvas"],["kecskemet","Kecskemét"],["kiskunhalas","Kiskunhalas"],["kiskunfelegyhaza","Kiskunfélegyháza"],["szolnok","Szolnok"],["kiskoros","Kiskőrös"],["kunszentmarton","Kunszentmárton"],["janoshalma","Jánoshalma"],["mezokovacshaza","Mezőkovácsháza"],["bacsalmas","Bácsalmás"],["cegled","Cegléd"],["nagykoros","Nagykőrös"],["szekszard","Szekszárd"],["kalocsa","Kalocsa"],["mohacs","Mohács"],["mezotur","Mezőtúr"],["torokszentmiklos","Törökszentmiklós"],["karcag","Karcag"],["kunszentmiklos","Kunszentmiklós"],["sarkad","Sarkad"],["debrecen","Debrecen"],["budapest","Budapest"],["pecs","Pécs"],["miskolc","Miskolc"]];
 // Ezek személynevek is lehetnek, ezért szövegből csak irányítószám után fogadjuk el őket.
-const CITY_DOMAIN_ONLY=[["gyula","Gyula"],["bekes","Békés"],["baja","Baja"],["gyor","Győr"]];
+const CITY_DOMAIN_ONLY=[["paks","Paks"],["gyula","Gyula"],["bekes","Békés"],["baja","Baja"],["gyor","Győr"]];
 const CO_RE=/\b(kft|bt|zrt|nyrt|kkt|e\.?\s?v|egyesulet|alapitvany|nyomda|studio|szalon|etterem|panzio|hotel|iskola|klub|muhely|bolt|kozpont)\b\.?/;
 const tokens=s=>deacc(s).split(/[^a-z0-9\-]+/).flatMap(t=>[t,...t.split("-")]).filter(Boolean);
 function kwHits(kws,txt,toks){let n=0;for(const k of kws){if(k[0]==="="?toks.has(k.slice(1)):txt.includes(k))n++}return n}
@@ -2193,11 +2311,11 @@ function renderBulk(){
   if(bulk.running){el.innerHTML=`<div class="bulkbar"><b>Küldés folyamatban: ${bulk.done} / ${bulk.total}</b><span class="small">Egyenként megy, levelek között pár másodperc szünettel.</span><button class="btn" data-bulk="stop">Leállítás</button></div>`;return}
   const n=sel.size;
   if(bulk.confirm){el.innerHTML=`<div class="bulkbar warn"><b>Biztosan elküldesz ${n} levelet, mindegyiket külön?</b><button class="btn primary" data-bulk="go">Igen, küldés</button><button class="btn" data-bulk="cancel">Mégse</button></div>`;return}
-  el.innerHTML=`<div class="bulkbar"><span>${n?`<b>${n} kijelölve</b>`:"Jelöld ki, kiknek küldjön, vagy válaszd ki az első 20-at."}</span><button class="btn" data-bulk="pick20">Első 20 kijelölése</button>${n?`<button class="btn" data-bulk="clear">Kijelölés törlése</button><button class="btn primary" data-bulk="ask">Kijelöltek küldése (${n})</button>`:""}</div>`;
+  el.innerHTML=`<div class="bulkbar"><span>${n?`<b>${n} kijelölve</b>`:"Jelöld ki, kiknek küldjön, vagy jelöld ki mindet."}</span><button class="btn" data-bulk="pick20">Mind kijelölése</button>${n?`<button class="btn" data-bulk="clear">Kijelölés törlése</button><button class="btn primary" data-bulk="ask">Kijelöltek küldése (${n})</button>`:""}</div>`;
 }
 document.addEventListener("change",e=>{const id=e.target.dataset?.sel;if(!id)return;e.target.checked?sel.add(id):sel.delete(id);renderBulk()});
 document.addEventListener("click",async e=>{const k=e.target.dataset?.bulk;if(!k)return;
-  if(k==="pick20"){const q=$("#q").value.trim().toLowerCase();[...contacts.values()].sort((a,b)=>catRank(a)-catRank(b)).filter(c=>effStatus(c)===fStatus&&!isDM(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&!isBlocked(c)&&(!q||[c.name,c.email,c.city,c.note].join(" ").toLowerCase().includes(q))).slice(0,20).forEach(c=>sel.add(c.email));renderList();renderBulk()}
+  if(k==="pick20"){const q=$("#q").value.trim().toLowerCase();[...contacts.values()].sort((a,b)=>catRank(a)-catRank(b)).filter(c=>effStatus(c)===fStatus&&!isDM(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&!isBlocked(c)&&(!q||[c.name,c.email,c.city,c.note].join(" ").toLowerCase().includes(q))).forEach(c=>sel.add(c.email));renderList();renderBulk()}
   if(k==="clear"){sel.clear();renderList();renderBulk()}
   if(k==="ask"){bulk.confirm=true;renderBulk()}
   if(k==="cancel"){bulk.confirm=false;renderBulk()}
@@ -2321,11 +2439,11 @@ document.addEventListener("click",e=>{
 /* ---------- Lefedettség és keresési terv ---------- */
 const AREAS=[
   {n:"Szeged + 50 km",c:["Szeged","Hódmezővásárhely","Makó","Szentes","Csongrád","Kistelek","Mórahalom","Sándorfalva","Algyő","Deszk","Mindszent","Kiskunmajsa","Szegvár","Domaszék","Kiszombor","Szatymaz","Zsombó","Ásotthalom","Balástya"]},
-  {n:"Békés vármegye",c:["Békéscsaba","Orosháza","Gyula","Szarvas","Békés"]},
-  {n:"Bács-Kiskun vármegye",c:["Kecskemét","Kiskunhalas","Kiskunfélegyháza","Baja","Kiskőrös"]},
+  {n:"100 km-ig",c:["Kecskemét","Békéscsaba","Orosháza","Kiskunfélegyháza","Kiskunhalas","Szarvas","Gyula","Békés","Baja","Kiskőrös","Kunszentmárton","Jánoshalma","Mezőkovácsháza","Bácsalmás"]},
+  {n:"150 km-ig",c:["Szolnok","Cegléd","Nagykőrös","Szekszárd","Paks","Kalocsa","Mohács","Mezőtúr","Törökszentmiklós","Karcag","Kunszentmiklós","Sarkad"]},
   {n:"Budapest",c:["Budapest"]}];
 // Lakosság ezer főben: a város "telítettsége" = címek / lakosság, a legkevésbé lefedett városba megy a keresés.
-const POP={"Szeged":160,"Hódmezővásárhely":43,"Makó":22,"Szentes":27,"Csongrád":15,"Kistelek":7,"Mórahalom":6,"Sándorfalva":8,"Algyő":5,"Deszk":4,"Mindszent":6,"Kiskunmajsa":11,"Szegvár":4,"Domaszék":5,"Kiszombor":4,"Szatymaz":4,"Zsombó":4,"Ásotthalom":4,"Balástya":3,"Békéscsaba":57,"Orosháza":27,"Gyula":30,"Szarvas":16,"Békés":19,"Kecskemét":108,"Kiskunhalas":27,"Kiskunfélegyháza":29,"Baja":34,"Kiskőrös":13,"Budapest":1700};
+const POP={"Szeged":160,"Hódmezővásárhely":43,"Makó":22,"Szentes":27,"Csongrád":15,"Kistelek":7,"Mórahalom":6,"Sándorfalva":8,"Algyő":5,"Deszk":4,"Mindszent":6,"Kiskunmajsa":11,"Szegvár":4,"Domaszék":5,"Kiszombor":4,"Szatymaz":4,"Zsombó":4,"Ásotthalom":4,"Balástya":3,"Békéscsaba":57,"Orosháza":27,"Gyula":30,"Szarvas":16,"Békés":19,"Kecskemét":108,"Kiskunhalas":27,"Kiskunfélegyháza":29,"Baja":34,"Kiskőrös":13,"Kunszentmárton":8,"Jánoshalma":9,"Mezőkovácsháza":6,"Bácsalmás":6,"Szolnok":70,"Cegléd":35,"Nagykőrös":23,"Szekszárd":32,"Paks":19,"Kalocsa":16,"Mohács":17,"Mezőtúr":16,"Törökszentmiklós":20,"Karcag":20,"Kunszentmiklós":8,"Sarkad":9,"Budapest":1700};
 const NICHES={
   nyomda:["nyomda","digitális nyomda","gyorsnyomda","címkenyomda","csomagolóanyag gyártó","könyvkötészet","szitanyomás","fénymásoló szalon"],
   dekor:["reklámügynökség","reklámstúdió","reklámajándék","promóciós termék","lézergravírozás","matricázás","reklámtábla készítés","pólónyomás","kirakatdekoráció","display gyártás"],
@@ -2335,11 +2453,15 @@ const NICHES={
   epitesz:["belsőépítész","építésziroda","látványtervező","lakberendező","makettkészítő","ingatlaniroda"],
   oktatas:["általános iskola","szakképző iskola","óvoda","múzeum","nyelviskola"],
   sport:["sportegyesület","úszóklub","kosárlabda klub","lovarda","harcművészeti egyesület"],
+  joga:["jógastúdió","pilates stúdió","reformer pilates","jóga oktatás","jógaközpont"],
+  tanc:["tánciskola","táncstúdió","balettiskola","rúdtánc stúdió","zumba","gyerektorna"],
+  fitnesz:["edzőterem","crossfit","funkcionális edzőterem","személyi edző stúdió","fitnesz stúdió","boxterem"],
+  terapia:["gyógytorna","fizioterápia","masszázs","sportmasszázs","manuálterápia","rehabilitációs központ"],
   rendezveny:["esküvőszervező","rendezvényszervező","dekoratőr","fotobox","lufidekoráció"],
   kisker:["ajándékbolt","könyvesbolt","játékbolt","virágbolt","papír-írószer bolt","kézműves bolt"],
   turizmus:["szuvenír bolt","tourinform","látogatóközpont","idegenvezetés"],
   hobbi:["társasjáték bolt","szabadulószoba","modellező bolt","horgászbolt","hangszerbolt","fotóstúdió"],
-  szolg:["fogtechnikai labor","optika","kozmetikai szalon","szálláshely","gyógytorna","fodrászat"],
+  szolg:["fogtechnikai labor","optika","kozmetikai szalon","szálláshely","fodrászat"],
   lakber:["lakberendezés","bútorüzlet","konyhastúdió","lámpabolt"],
   civil:["alapítvány","egyesület","művelődési ház","színház","könyvtár"],
   allat:["állatorvos","kutyakozmetika","állateledel bolt","akvarisztika","lovarda"],
@@ -2348,12 +2470,13 @@ const NICHES={
 const SKIP_DEFAULT=["vendeglato","auto"];
 // Partnerszegmensek: ők kapnak 3D-s kéréseket az ügyfeleiktől, vagy maguk használnak egyedi alkatrészt, makettet, displayt.
 const FOCUS_PRESET=["nyomda","dekor","epitesz","lakber","ipar"];
-const FOCUS_WHY={nyomda:"partner: a nem nyomható 3D-s kéréseket továbbadhatja",dekor:"partner: egyedi tábla, display, reklámtárgy",epitesz:"partner: makett, egyedi lakberendezési elem",lakber:"partner: egyedi elem, kiegészítő a vevőinek",ipar:"saját használat: prototípus, pótalkatrész, sablon"};
+const FOCUS_WHY={nyomda:"partner: a nem nyomható 3D-s kéréseket továbbadhatja",dekor:"partner: egyedi tábla, display, reklámtárgy",epitesz:"partner: makett, egyedi lakberendezési elem",lakber:"partner: egyedi elem, kiegészítő a vevőinek",ipar:"saját használat: prototípus, pótalkatrész, sablon",joga:"kis stúdió, DM-re válaszol · szőnyegtartó, QR-kódos tábla, logós ajándék tagoknak",tanc:"kis stúdió, DM-re válaszol · logós érem, kulcstartó, ajtótábla, fellépés-kellék",fitnesz:"kis terem, DM-re válaszol · kulacs- és telefontartó, QR-kódos tábla, logós ajándék",terapia:"kis rendelő, DM-re válaszol · névtábla, QR-kódos pulttábla, kis tartók"};
 const focusList=()=>(settings.focus||[]).filter(k=>CATS[k]);
 const SEARCH_RULES=[
   "Minden olyan e-mail címet vegyél fel, amelyet a cég maga tesz közzé (weboldal Kapcsolat vagy Impresszum, Google Térkép adatlap, Facebook névjegy), nem csak info@ kezdetűt. Csak ténylegesen látott címet, soha ne tippelj.",
   "Cégenként egy címet: ha több van, az általános vagy az értékesítési címet. Ha a domain vagy a doc_id már szerepel a contacts-ban (az elvetve állapotúakat is beleértve), hagyd ki.",
   "Ha a cégnek nincs e-mail címe, de van Facebook- vagy Instagram-oldala, DM-kapcsolatként vedd fel: doc_id dm-<név>-<város> (kisbetű, kötőjel), email mező ugyanez, channel: dm, fb vagy ig mező a profil linkjével.",
+  "Kis stúdiók (joga, tanc, fitnesz, terapia kategória): ha van Instagram- vagy Facebook-oldaluk, DM-kapcsolatként vedd fel őket akkor is, ha van e-mail címük (ezek a helyek e-mailre alig válaszolnak, privát üzenetre igen). A talált e-mail címet ilyenkor a note mezőbe írd. Ha nincs közösségi oldaluk, e-mail címmel vedd fel.",
   "Új rekord: status javasolt, cat, city, name, hook (egy mondat arról, mit csinálnak), source (az oldal URL-je és a dátum). Levente a pultban hagyja jóvá.",
   "Ha a tervben van focus lista, csak ezekben a kategóriákban vegyél fel címet. A hook mondja meg, mire használhatnák a 3D nyomtatást (például nyomdánál: a hozzájuk befutó, papírra nem nyomható kérések; belsőépítésznél: makett, egyedi elem).",
   "Magánszemély címét ne vedd fel, és tartsd be a settings/blocklist tiltólistát meg a skill tiltólistáját.",
@@ -2521,7 +2644,7 @@ function renderOverview(){
 document.addEventListener("click",e=>{
   const cb=e.target.closest?.("[data-cal]");if(cb){calOff+=+cb.dataset.cal;renderOverview();return}
   const r=e.target.closest?.("[data-find]");if(!r)return;const c=contacts.get(r.dataset.find);if(!c)return;
-  fGroup=isDM(c)?"dm":"email";fStatus="all";fCat="all";fCity="all";$("#q").value=c.email;openId=c.email;listLimit=LIST_STEP;$("#t-queue").click();renderAll()});
+  fGroup=isDM(c)?"dm":"email";if(isDM(c))fPlat=platOf(c);fStatus="all";fCat="all";fCity="all";$("#q").value=c.email;openId=c.email;listLimit=LIST_STEP;$("#t-queue").click();renderAll()});
 $("#gsearch").addEventListener("submit",e=>{e.preventDefault();$("#q").value=$("#gq").value.trim();fStatus="all";fCat="all";fCity="all";listLimit=LIST_STEP;$("#t-queue").click();renderAll()});
 
 renderTpl();renderSettings();renderAll();renderOrders();renderLedger();renderRates();renderCalc();renderPlan();renderTodos();renderGoals();
