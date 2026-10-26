@@ -44,7 +44,18 @@ h1 .bt{font-weight:500;color:var(--muted)}
 .tabs::-webkit-scrollbar{display:none}
 .tab{background:none;border:0;font:inherit;font-weight:600;color:var(--muted);padding:9px 12px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
 .tab[aria-selected="true"]{color:var(--ink);border-color:var(--accent)}
-.grp .chip{font-size:14px;font-weight:600;padding:7px 14px}
+.grp{gap:10px}
+.grp .chip{font-size:15px;font-weight:600;padding:10px 16px;border-radius:12px;display:inline-flex;align-items:center;gap:6px}
+.chip .todo-b{background:var(--accent);color:var(--on-accent);border-radius:999px;padding:1px 8px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;margin-left:2px}
+.chip[aria-pressed="true"] .todo-b{background:var(--on-accent);color:var(--accent)}
+.chip.hot:not([aria-pressed="true"]){border-color:var(--accent);color:var(--accent);font-weight:700}
+.chip.hot:not([aria-pressed="true"]) .c{color:var(--accent)}
+.nextbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.nextbar span{flex:1 1 240px;font-weight:600}
+.btn.primary{font-size:14px;padding:9px 15px;box-shadow:0 1px 0 rgba(0,0,0,.06),0 4px 12px -4px rgba(95,98,57,.45)}
+.btn.big{font-size:15px;padding:11px 18px;border-radius:10px}
+.row .acts .btn.primary{min-height:38px}
+.row .meta .pill{white-space:normal;max-width:100%}
 .bar-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
 .chip{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -343,6 +354,7 @@ table.lt tr.lr:hover td{background:var(--bg)}
   <section id="p-queue" hidden>
     <div class="bar-tools grp" id="groupChips"></div>
     <div class="bar-tools" id="statusChips"></div>
+    <div id="nextBar"></div>
     <div class="bar-tools" id="catChips"></div>
     <div class="bar-tools"><label class="small" for="cityFilter">Város</label> <select id="cityFilter" aria-label="Szűrés városra"></select></div>
     <form class="bar-tools" id="qadd" style="margin-bottom:6px"><input type="text" id="qa-text" inputmode="email" autocomplete="off" placeholder="Gyors felvétel: írj be egy e-mail címet, és nyomj Entert" style="flex:1 1 260px;min-width:0"><button class="btn primary" type="submit">Felvétel</button></form>
@@ -1648,22 +1660,26 @@ function counts(){
   const all=[...contacts.values()];const st={};let ma=0;
   // st.uj/st.fu az összes cím; ujE/fuE csak az e-mailes, dmUj/dmFu a privát üzenetes (a Címlista ezeket külön csoportban mutatja)
   st.ujE=0;st.fuE=0;st.dmUj=0;st.dmFu=0;
-  for(const c of all){const s=effStatus(c),dm=isDM(c);st[s]=(st[s]||0)+1;if(s==="uj")dm?st.dmUj++:st.ujE++;if(s==="fu")dm?st.dmFu++:st.fuE++;if(dm&&(s==="uj"||s==="fu"))st.dmq=(st.dmq||0)+1;if(c.sentAt===today()||c.followupAt===today()||c.followup2At===today())ma++}
+  st.igUj=0;st.fbUj=0;st.igFu=0;st.fbFu=0;
+  for(const c of all){const s=effStatus(c),dm=isDM(c);st[s]=(st[s]||0)+1;if(s==="uj")dm?st.dmUj++:st.ujE++;if(s==="fu")dm?st.dmFu++:st.fuE++;
+    if(dm&&!isBlocked(c)&&(s==="uj"||s==="fu"))st[platOf(c)+(s==="uj"?"Uj":"Fu")]++;if(dm&&(s==="uj"||s==="fu"))st.dmq=(st.dmq||0)+1;if(c.sentAt===today()||c.followupAt===today()||c.followup2At===today())ma++}
   return {all,st,ma};
 }
 function renderStats(){
   const {all,st,ma}=counts();const g=+settings.goal||30;
-  $("#st-uj").textContent=st.ujE;$("#st-fu").textContent=st.fuE;$("#st-val").textContent=(st.valaszolt||0)+(st.ugyfel||0);
+  // A kártyák az összes csatornát mutatják (e-mail + Instagram + Facebook), alattuk a bontás, hogy a DM-ek ne vesszenek el
+  const brk=(e,i,f,none)=>[e?`E-mail ${e}`:"",i?`Instagram ${i}`:"",f?`Facebook ${f}`:""].filter(Boolean).join(" · ")||none;
+  $("#st-uj").textContent=st.ujE+st.igUj+st.fbUj;$("#st-fu").textContent=st.fuE+st.igFu+st.fbFu;$("#st-val").textContent=(st.valaszolt||0)+(st.ugyfel||0);
   $("#st-all").textContent=all.filter(c=>!PRE.has(c.status)).length;$("#st-ma").textContent=ma+" / "+g;$("#st-bar").style.width=Math.min(100,ma/g*100)+"%";
   const nJ=all.filter(c=>c.status==="javasolt").length,f2=all.filter(c=>!isDM(c)&&fuStage(c)===2).length,S=goalStats(),nq=(st.uj||0)+(st.fu||0);
-  $("#st-uj-s").textContent=[st.dmUj?`+ ${st.dmUj} cég DM-re vár`:"",nJ?`${nJ} javaslat vár jóváhagyásra`:""].filter(Boolean).join(" · ")||(st.ujE?"e-mail":"nincs kiküldendő e-mail");
-  $("#st-fu-s").textContent=[st.fuE?(f2?`${st.fuE-f2} első, ${f2} második kör`:"első kör"):"nincs esedékes",st.dmFu?`+ ${st.dmFu} DM-emlékeztető`:""].filter(Boolean).join(" · ");
+  $("#st-uj-s").textContent=brk(st.ujE,st.igUj,st.fbUj,"nincs kiküldendő")+(nJ?` · ${nJ} javaslat`:"");
+  $("#st-fu-s").textContent=brk(st.fuE,st.igFu,st.fbFu,"nincs esedékes")+(f2?` · ebből ${f2} második kör`:"");
   $("#st-val-s").innerHTML=S.sent?`<span class="up">${(S.rep/S.sent*100).toLocaleString("hu-HU",{maximumFractionDigits:1})}%</span> válaszarány`:"";
   $("#st-all-s").textContent=new Set(all.filter(c=>!PRE.has(c.status)).map(c=>c.cat)).size+" kategória";
   $("#sc-txt").textContent=`${ma} / ${g} levél ment ki ma`+(nq?`, ${nq} vár még`:"");$("#sc-bar").style.width=Math.min(100,ma/g*100)+"%";
   const qb=$("#nb-queue");qb.hidden=!nq;qb.textContent=nq;
   const oo=[...orders.values()].filter(o=>["keres","ajanlat","elfogadva","gyartas"].includes(o.status)).length,ob=$("#nb-orders");ob.hidden=!oo;ob.textContent=oo;
-  $("#hello-sub").textContent=new Date().toLocaleDateString("hu-HU",{weekday:"long",month:"long",day:"numeric"})+` · ${st.ujE} kiküldendő e-mail, ${st.fuE} esedékes follow-up`+(st.dmq?`, ${st.dmq} DM`:"")+(nJ?`, ${nJ} javaslat`:"");
+  $("#hello-sub").textContent=new Date().toLocaleDateString("hu-HU",{weekday:"long",month:"long",day:"numeric"})+` · kiküldendő: ${brk(st.ujE,st.igUj,st.fbUj,"nincs")} · follow-up: ${brk(st.fuE,st.igFu,st.fbFu,"nincs")}`+(nJ?` · ${nJ} javaslat`:"");
 }
 function inGroup(c){return fGroup==="dm"?isDM(c)&&platOf(c)===fPlat:!isDM(c)}
 function cityOf(c){return (c.city||"").trim()}
@@ -1683,8 +1699,16 @@ function renderChips(){
   const gAll=all.filter(c=>inGroup(c)&&!PRE.has(c.status)),gst={javasolt:nJ,elvetve:nX};gAll.forEach(c=>{const x=effStatus(c);gst[x]=(gst[x]||0)+1});
   const nE=all.filter(c=>!isDM(c)).length,nP=p=>all.filter(c=>isDM(c)&&platOf(c)===p&&!PRE.has(c.status)).length;
   const rate=p=>{const x=all.filter(c=>isDM(c)&&platOf(c)===p&&c.sentAt),r=x.filter(c=>["valaszolt","ugyfel"].includes(c.status)).length;return x.length?`${r}/${x.length} válasz (${Math.round(r/x.length*100)}%)`:"még nem ment üzenet"};
-  $("#groupChips").innerHTML=`<button class="chip" data-g="email" aria-pressed="${fGroup==="email"}">E-mail<span class="c">${nE}</span></button><button class="chip" data-g="ig" aria-pressed="${fGroup==="dm"&&fPlat==="ig"}">Instagram<span class="c">${nP("ig")}</span></button><button class="chip" data-g="fb" aria-pressed="${fGroup==="dm"&&fPlat==="fb"}">Facebook<span class="c">${nP("fb")}</span></button>`+(fGroup==="dm"?`<span class="small" style="flex-basis:100%">Instagram: ${rate("ig")} · Facebook: ${rate("fb")}. Ahol mindkét profil megvan, a sor alatti gombbal teheted át a másik felületre.</span>`:"");
-  $("#statusChips").innerHTML=sOpts.map(([k,l])=>`<button class="chip" data-s="${k}" aria-pressed="${fStatus===k}">${l}<span class="c">${k==="all"?gAll.length:(gst[k]||0)}</span></button>`).join("");
+  // Csatornánként a teendő (kiküldendő + esedékes) külön jelvényen, hogy a nem kijelölt csatorna munkája is látszódjon
+  const work={email:st.ujE+st.fuE,ig:st.igUj+st.igFu,fb:st.fbUj+st.fbFu},CH={email:"E-mail",ig:"Instagram",fb:"Facebook"},cur=fGroup==="dm"?fPlat:"email";
+  const gchip=(k,n)=>`<button class="chip" data-g="${k}" aria-pressed="${cur===k}" title="${work[k]?work[k]+" teendő: kiküldendő és esedékes":"Nincs teendő"}">${CH[k]}<span class="c">${n}</span>${work[k]?`<span class="todo-b">${work[k]} teendő</span>`:""}</button>`;
+  $("#groupChips").innerHTML=gchip("email",nE)+gchip("ig",nP("ig"))+gchip("fb",nP("fb"))+(fGroup==="dm"?`<span class="small" style="flex-basis:100%">Instagram: ${rate("ig")} · Facebook: ${rate("fb")}. Ahol mindkét profil megvan, a sor alatti gombbal teheted át a másik felületre.</span>`:"");
+  $("#statusChips").innerHTML=sOpts.map(([k,l])=>`<button class="chip${["uj","fu","javasolt"].includes(k)&&gst[k]?" hot":""}" data-s="${k}" aria-pressed="${fStatus===k}">${l}<span class="c">${k==="all"?gAll.length:(gst[k]||0)}</span></button>`).join("");
+  const others=Object.keys(work).filter(k=>k!==cur&&work[k]),alt=fStatus==="uj"?"fu":"uj",altN=gst[alt]||0;
+  $("#nextBar").innerHTML=(["uj","fu"].includes(fStatus)&&!(gst[fStatus]||0)&&(others.length||altN))
+    ?`<div class="nextbar"><span>${CH[cur]}: nincs ${fStatus==="uj"?"kiküldendő":"esedékes"}. Itt vár munka:</span>`+
+      (altN?`<button class="btn primary big" type="button" data-s="${alt}">${CH[cur]} ${alt==="fu"?(cur==="email"?"follow-up":"emlékeztető"):"kiküldendő"}: ${altN}</button>`:"")+
+      others.map(k=>`<button class="btn${altN?"":" primary"} big" type="button" data-g="${k}">${CH[k]}: ${work[k]} teendő</button>`).join("")+`</div>`:"";
   ensureCats();
   const pool=all.filter(c=>matchS(c));
   const cc={};pool.filter(c=>fCity==="all"||cityOf(c)===fCity).forEach(c=>cc[c.cat]=(cc[c.cat]||0)+1);
@@ -1759,10 +1783,14 @@ document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-act],[data-s],[data-c],[data-g],[data-tab],[data-go]");
   if(!b){if(menuId){menuId=null;renderList()}return}
   if(b.dataset.tab){document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===b.dataset.tab));["queue","cov","orders","goals","plan","calc","gen","todo","tpl","add","set"].forEach(k=>$("#p-"+k).hidden=k!==b.dataset.tab);if(b.dataset.tab==="cov")renderCov();if(b.dataset.tab==="todo")renderOverview();if(b.dataset.tab==="goals")renderGoals();if(b.dataset.tab==="gen"&&window.genOpen)window.genOpen();return}
-  if(b.dataset.g){listLimit=LIST_STEP;if(b.dataset.g==="ig"||b.dataset.g==="fb"){fPlat=b.dataset.g;fGroup="dm"}else fGroup=b.dataset.g;fStatus="uj";fCat="all";sel.clear();renderAll();return}
+  if(b.dataset.g){listLimit=LIST_STEP;if(b.dataset.g==="ig"||b.dataset.g==="fb"){fPlat=b.dataset.g;fGroup="dm"}else fGroup=b.dataset.g;
+    // Ha nincs kiküldendő, de van esedékes follow-up/emlékeztető, azt nyitjuk meg
+    {const st=counts().st,k=fGroup==="dm"?fPlat:"e";const u=k==="e"?st.ujE:st[k+"Uj"],f=k==="e"?st.fuE:st[k+"Fu"];fStatus=!u&&f?"fu":"uj"}
+    fCat="all";sel.clear();renderAll();return}
   if(b.dataset.go){listLimit=LIST_STEP;const g=b.dataset.go;fGroup=g==="dmq"?"dm":"email";
     // Ha e-mailes tétel nincs, de DM van, a privát üzenetek csoportját nyitjuk meg, hogy ne üres lista jöjjön
-    if(g==="uj"||g==="fu"){const st=counts().st;if(!(g==="uj"?st.ujE:st.fuE)&&(g==="uj"?st.dmUj:st.dmFu))fGroup="dm"}if(fGroup==="dm"){const q=p=>[...contacts.values()].filter(c=>isDM(c)&&platOf(c)===p&&["uj","fu"].includes(effStatus(c))).length;fPlat=q("ig")>=q("fb")?"ig":"fb"}if(g==="javasolt")fCity="all";fStatus=g==="ma"?"elkuldve":g==="dmq"?"uj":g;fCat="all";$("#t-queue").click();renderAll();return}
+    if(g==="uj"||g==="fu"){const st=counts().st,sf=g==="uj"?"Uj":"Fu",e=g==="uj"?st.ujE:st.fuE;if(!e&&(st["ig"+sf]||st["fb"+sf])){fGroup="dm";fPlat=st["ig"+sf]>=st["fb"+sf]?"ig":"fb"}}
+    else if(fGroup==="dm"){const q=p=>[...contacts.values()].filter(c=>isDM(c)&&platOf(c)===p&&["uj","fu"].includes(effStatus(c))).length;fPlat=q("ig")>=q("fb")?"ig":"fb"}if(g==="javasolt")fCity="all";fStatus=g==="ma"?"elkuldve":g==="dmq"?"uj":g;fCat="all";$("#t-queue").click();renderAll();return}
   if(b.dataset.s){listLimit=LIST_STEP;fStatus=b.dataset.s;fCat="all";renderAll();return}
   if(b.dataset.c){listLimit=LIST_STEP;fCat=b.dataset.c;renderAll();return}
   const c=contacts.get(b.dataset.id);if(!c)return;
