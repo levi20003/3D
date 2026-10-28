@@ -56,6 +56,22 @@ h1 .bt{font-weight:500;color:var(--muted)}
 .btn.big{font-size:15px;padding:11px 18px;border-radius:10px}
 .row .acts .btn.primary{min-height:38px}
 .row .meta .pill{white-space:normal;max-width:100%}
+.btn.danger{background:none;border-color:var(--warn);color:var(--warn)}
+.btn.danger.solid{background:var(--warn);color:var(--on-accent)}
+.qline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;clear:both}
+.qline .small{flex:1 1 200px}
+.unsure-n{color:var(--warn);font-weight:600}
+@media (max-width:820px),(pointer:coarse){
+  .btn,.chip,.side .tab{min-height:44px}
+  .chip{display:inline-flex;align-items:center}
+  .btn{justify-content:center}
+  .selbox{display:inline-grid;place-items:center;min-width:44px;min-height:44px;margin:-10px 4px -6px -10px;padding:0}
+  .more>.btn{min-width:44px}
+  .menu button{min-height:44px}
+  .iconbtn{width:44px;height:44px}
+  button.mail{display:flex;align-items:center;min-height:44px;padding:0}
+  #cityFilter,input[type=search],input[type=text],input[type=email],input[type=number],select{min-height:44px}
+}
 .bar-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
 .chip{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -1756,7 +1772,7 @@ function renderList(){
   let rows=[...contacts.values()].filter(c=>matchS(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&(!q||[c.name,c.email,c.city,c.note,c.hook].join(" ").toLowerCase().includes(q)));
   rows.sort((a,b)=>{const o=["javasolt","fu","uj","valaszolt","ugyfel","elkuldve","lezarva","elvetve"];return o.indexOf(effStatus(a))-o.indexOf(effStatus(b))||catRank(a)-catRank(b)||(b.sentAt||"").localeCompare(a.sentAt||"")||displayName(a).localeCompare(displayName(b),"hu")});
   if(!contacts.size){$("#list").innerHTML=`<div class="empty">${db?"Még nincs cím. Az „Új címek” fülön adhatsz hozzá.":"Az adatbázis ebben a nézetben nem érhető el. Nyisd meg az oldalt a claude.ai-on bejelentkezve."}</div>`;return}
-  if(!rows.length){$("#list").innerHTML=`<div class="empty">Ebben a szűrésben nincs cím.</div>`;return}
+  if(!rows.length){$("#list").innerHTML=`<div class="empty">Ebben a szűrésben nincs cím.<br><span class="small">${q?"Töröld a keresőmezőt, vagy ":""}válassz fent másik állapotot vagy csatornát, illetve vegyél fel új címet a Gyors felvétellel.</span></div>`;return}
   const total=rows.length;const jRows=fStatus==="javasolt"?rows.filter(c=>!isBlocked(c)).map(c=>c.email):[];lastJRows=jRows;rows=rows.slice(0,listLimit);
   $("#list").innerHTML=(jRows.length?`<div class="bulkbar"><span><b>${jRows.length} javasolt cím</b> a napi keresésből. Nézd meg a forrást, és hagyd jóvá, amit érdemes megkeresni. Az elvetettek nem jönnek vissza.</span><button class="btn primary" type="button" data-jall="1">Mind jóváhagyása (${jRows.length})</button></div>`:"")+rows.map(c=>{
     const s=effStatus(c);const id=esc(c.email);
@@ -1773,6 +1789,8 @@ function renderList(){
     else if(s==="fu"&&c.fuDraftUrl&&+c.fuDraft===fuStage(c))main=`<a class="btn primary" href="${esc(c.fuDraftUrl)}" target="_blank" rel="noopener" title="Claude reggel előkészítette, átnézed és elküldöd">${fuStage(c)}. follow-up piszkozat</a><button class="btn" data-act="fusent" data-id="${id}">Elküldtem</button>`;
     else if(s==="fu")main=canSend?`<button class="btn primary${pend?" confirm":""}" data-act="sendfu" data-id="${id}"${busy?" disabled":""}>${busy?"Küldés…":pend?"Biztos? Follow-up most":"Follow-up küldése"}</button><a class="btn ghost" href="${esc(gmailUrl(c,"fu"))}" target="_blank" rel="noopener">Gmailben</a>`
       :`<a class="btn primary" href="${esc(gmailUrl(c,"fu"))}" target="_blank" rel="noopener">Follow-up Gmailben</a><button class="btn" data-act="fusent" data-id="${id}">Follow-up elküldve</button>`;
+    if(isUnsure(c)&&!sqHas(c.email))main=`<button class="btn primary" data-act="unsureyes" data-id="${id}">Elment</button><button class="btn" data-act="unsureno" data-id="${id}">Nem ment el</button>`;
+    else if(sqHas(c.email)&&!isDM(c))main="";
     const detail=openId===c.email?`<div class="detail">
         <label for="h-${id}">Mit csinálnak (belső jegyzet)</label>
         <input type="text" id="h-${id}" value="${esc(c.hook)}" data-hook="${id}" placeholder="pl. Nyomda, matricák, molinók">
@@ -1788,7 +1806,7 @@ function renderList(){
         <div class="acts" style="justify-content:center"><button class="btn ghost" data-act="open" data-id="${id}" aria-label="Részletek bezárása">▲ Bezárás</button></div>
       </div>`:"";
     return `<div class="row s-${s}">
-      <div class="who">${sqHas(c.email)?`<span class="pill p-javasolt" style="float:right;margin-left:8px">Sorban, háttérben megy</span>`:""}${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)&&!sqHas(c.email)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${c.note?`<div class="note">${esc(c.note)}</div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
+      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)&&!sqHas(c.email)&&!isUnsure(c)&&!isBlocked(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${(n=>n?`<div class="note">${esc(n)}</div>`:"")(String(c.note||"").replace(UNSURE_RE,"").replace(/^\s*·\s*/,""))}${(x=>{if(!x)return"";const [cl,lb,why]=sqLabel(x);return `<div class="qline"><span class="pill ${cl}">${lb}</span>${why?`<span class="small">${why}</span>`:""}</div>`})(sqOpen().find(x=>x.email===c.email))}${isUnsure(c)&&!sqHas(c.email)?`<div class="qline"><span class="pill p-fu">Küldés bizonytalan</span><span class="small">A Gmail nem jelezte vissza, elment-e. Nézd meg az Elküldött mappát, és jelöld.</span></div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
       <div class="meta cat">${esc(CATS[c.cat]?.label||c.cat)}<br>${esc(c.city||"")}</div>
       <div class="meta"><span class="pill p-${s}">${s==="fu"?fuStage(c)+". follow-up esedékes":c.bounced?"Visszapattant":STATUS[s]}</span><br>${when}</div>
       <div class="acts">${main}<button class="btn ghost" data-act="open" data-id="${id}" aria-expanded="${openId===c.email}">${openId===c.email?"▲ Bezár":"Részletek ▼"}</button>
@@ -1829,6 +1847,9 @@ document.addEventListener("click",async e=>{
   if(b.dataset.c){listLimit=LIST_STEP;fCat=b.dataset.c;renderAll();return}
   const c=contacts.get(b.dataset.id);if(!c)return;
   const a=b.dataset.act;
+  if(a==="unsureyes"||a==="unsureno"){const s=effStatus(c),patch={sendUnsure:"",note:String(c.note||"").replace(UNSURE_RE,"").replace(/^\s*·\s*/,"")};
+    if(a==="unsureyes"){if(s==="uj")Object.assign(patch,{status:"elkuldve",sentAt:today(),channel:"email"});else if(s==="fu")patch[(fuStage(c)||1)===2?"followup2At":"followupAt"]=today()}
+    b.disabled=true;await save(c,patch);toast(a==="unsureyes"?"Rendben, elküldöttnek jelöltem":"Rendben, újra küldhető");return}
   if(isBlocked(c)&&["send","sendfu","sent","dmsent","fusent","copydm","copydmfu","copybody","copysubj","approve"].includes(a)){toast("Ez a cég tiltólistán van, neki nem küldünk semmit");return}
   if(a==="via")return save(c,{dmVia:platOf(c)==="ig"?"fb":"ig"});
   if(a==="copymail")return isDM(c)?copy((platOf(c)==="fb"?c.fb||c.ig:c.ig||c.fb)||"","Profil link kimásolva"):copy(c.email,"E-mail cím kimásolva");
@@ -2344,6 +2365,7 @@ async function sendOne(c,kind,fromQueue){
   if(!mcpNs){toast("A közvetlen küldés itt nem érhető el, használd a Gmailben gombot");return false}
   if(isBlocked(c)){toast("Ez a cím tiltólistán van, nem küldöm el");return false}
   const cur=contacts.get(c.email)||c;
+  if(!fromQueue&&isUnsure(cur)){toast("Előbb nézd meg a Gmail Elküldött mappáját, és jelöld: elment vagy nem");return false}
   if(kind!=="fu"&&cur.status!=="uj"){toast("Ennek a címnek már ment levél");return false}
   if(sentTodayCount()>=60){toast("Ma már 60 levél ment el. A Gmail védelme miatt holnap folytasd.");return false}
   const st=kind==="fu"?(fuStage(cur)||1):0;const m=compose(cur,kind);
@@ -2365,31 +2387,42 @@ async function sendOne(c,kind,fromQueue){
     else if(code==="not_in_manifest"||code==="approval_required"||code==="consent_required")toast("A küldéshez engedélyezned kell a Gmailt ennek az oldalnak");
     else if(code==="tool_error")toast("A Gmail nem küldte el: "+(e.message||"ismeretlen hiba").slice(0,120));
     else if(code==="server_unavailable"||code==="upstream_error"||code==="cancelled"){
-      await save(contacts.get(c.email)||cur,{note:((cur.note||"")+" · Küldés bizonytalan ("+huDate(today())+"), nézd meg az Elküldött mappát").replace(/^ · /,"")});
+      await save(contacts.get(c.email)||cur,{sendUnsure:today()});
       toast("Nem biztos, hogy elment. Nézd meg a Gmail Elküldött mappáját, mielőtt újra küldöd.");
     } else toast("A küldés nem sikerült ("+(code||"hiba")+")");
     return false;
   }
 }
+// A "Mind kijelölése" pontosan ezeket jelöli ki: a mostani szűrés e-mailes, küldhető címei
+function selectable(){const q=$("#q").value.trim().toLowerCase();
+  return [...contacts.values()].filter(c=>effStatus(c)===fStatus&&!isDM(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&!isBlocked(c)&&!sqHas(c.email)&&!isUnsure(c)&&(!q||[c.name,c.email,c.city,c.note].join(" ").toLowerCase().includes(q))).sort((a,b)=>catRank(a)-catRank(b))}
 function renderBulk(){
   const el=$("#bulk");if(!el)return;
-  const open=sqOpen(),busy=senderBusy(),qbar=open.length?`<div class="bulkbar"><b>Háttérküldés: ${open.length} levél vár${sqDoneToday()?`, ma ${sqDoneToday()} már elment`:""}</b><span class="small">${busy?"A háttérküldő most dolgozik, egyenként küldi őket. Bezárhatod az appot.":"Kapsz egy értesítést a projektben: ott válaszolj „igen”, és utána az app nélkül is egyenként elküldi. Ha nem indítod, munkanap 9 és 14 órakor magától is rákérdez."}</span>${busy||!mcpNs?"":`<button class="btn" data-bulk="kick">Indítás most</button>`}<button class="btn" data-bulk="qstop">Leállítás</button></div>`:"";
+  const open=sqOpen(),busy=senderBusy(),stuck=sqStuck().length,waiting=open.length-stuck;
+  const qbar=open.length?(bulk.stopAsk?`<div class="bulkbar warn"><b>Leállítod a háttérküldést?</b><span class="small">${open.length} levél nem megy ki. A címek visszakerülnek a listába, később újra kijelölheted őket.</span><button class="btn danger solid" data-bulk="qstopyes">Igen, leállítás</button><button class="btn ghost" data-bulk="qstopno">Mégse</button></div>`
+    :`<div class="bulkbar"><b>Háttérküldés: ${waiting} levél vár${stuck?`, <span class="unsure-n">${stuck} ellenőrzésre vár</span>`:""}${sqDoneToday()?`, ma ${sqDoneToday()} már elment`:""}</b><span class="small">${busy?"A háttérküldő most dolgozik, egyenként küldi őket. Bezárhatod az appot.":"A Claude projektben kapsz egy kérdést: ott írd be, hogy „igen”. Utána az app nélkül is egyenként elküldi. Ha nem indítod, munkanapokon 9 és 14 órakor magától is rákérdez."}${stuck?" Az „Ellenőrzésre vár” leveleknél megszakadt a küldés; a háttérküldő az Elküldött mappa alapján rendezi őket.":""}${(r=>r&&senderDoc.lastRun?`<br><b>Legutóbbi futás</b> (${new Date(senderDoc.lastRun).toLocaleString("hu-HU",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}): ${+r.kesz||0} elment, ${+r.maradt||0} maradt${+r.hiba?`, ${r.hiba} hiba`:""}.${r.megjegyzes?" "+esc(r.megjegyzes):""}`:"")(senderDoc.lastResult)}</span>${busy||!mcpNs?"":`<button class="btn primary" data-bulk="kick">Indítás most</button>`}<button class="btn danger" data-bulk="qstop">Leállítás…</button></div>`):"";
   if(!mcpNs||(fStatus!=="uj"&&fStatus!=="fu")){el.innerHTML=qbar;return}
-  if(bulk.running){el.innerHTML=qbar+`<div class="bulkbar"><b>Küldés innen az oldalról: ${bulk.done} / ${bulk.total}</b><span class="small">A háttérküldő nem indult el, ezért amíg nyitva van az oldal, innen megy egyenként. Ha bezárod, a maradékot a háttérküldő viszi tovább.</span><button class="btn" data-bulk="stop">Leállítás</button></div>`;return}
-  if(bulk.confirm){el.innerHTML=qbar+`<div class="bulkbar warn"><b>Biztosan elküldesz ${sel.size} levelet, mindegyiket külön?</b><span class="small">Sorba teszem és elindítom a háttérküldőt. Egy megerősítést kér a projektben, utána az app nélkül is megy.</span><button class="btn primary" data-bulk="go">Igen, küldés</button><button class="btn" data-bulk="cancel">Mégse</button></div>`;return}
-  const n=sel.size;
-  el.innerHTML=qbar+`<div class="bulkbar"><span>${n?`<b>${n} kijelölve</b>`:"Jelöld ki, kiknek küldjön, vagy jelöld ki mindet."}</span><button class="btn" data-bulk="pick20">Mind kijelölése</button>${n?`<button class="btn" data-bulk="clear">Kijelölés törlése</button><button class="btn primary" data-bulk="ask">Kijelöltek küldése (${n})</button>`:""}</div>`;
+  if(bulk.running){el.innerHTML=qbar+`<div class="bulkbar"><b>Küldés innen az oldalról: ${bulk.done} / ${bulk.total}</b><span class="small">A háttérküldő nem indult el, ezért amíg nyitva van az oldal, innen megy egyenként. Ha bezárod, a maradékot a háttérküldő viszi tovább.</span><button class="btn danger" data-bulk="stop">Leállítás</button></div>`;return}
+  if(bulk.confirm){el.innerHTML=qbar+`<div class="bulkbar warn"><b>Biztosan elküldesz ${sel.size} levelet, mindegyiket külön?</b><span class="small">Sorba teszem és elindítom a háttérküldőt. A Claude projektben egyszer rákérdez, ott írd be, hogy „igen”. Utána az app nélkül is megy.</span><button class="btn primary big" data-bulk="go">Igen, küldés</button><button class="btn ghost" data-bulk="cancel">Mégse</button></div>`;return}
+  const n=sel.size,cand=selectable(),left=Math.max(0,60-sentTodayCount()-open.length),all=cand.length&&cand.every(c=>sel.has(c.email));
+  if(!cand.length&&!n){
+    const fuE=counts().st.fuE;
+    el.innerHTML=qbar+(fStatus==="uj"&&fuE?`<div class="bulkbar"><span>Itt most nincs kijelölhető cím. Esedékes e-mail follow-up: <b>${fuE}</b>.</span><button class="btn primary" data-s="fu">Follow-upok megnyitása</button></div>`:"");return}
+  el.innerHTML=qbar+`<div class="bulkbar"><span>${n?`<b>${n} kijelölve</b>`:`<b>${cand.length}</b> cím küldhető ebben a nézetben.`}${n>left?` <span class="unsure-n">Ma még ${left} levél mehet ki (napi 60).</span>`:""}</span>${all?"":`<button class="btn" data-bulk="pick20">Mind kijelölése (${cand.length})</button>`}${n?`<button class="btn ghost" data-bulk="clear">Kijelölés törlése</button><button class="btn primary big" data-bulk="ask">Kijelöltek küldése (${n})</button>`:""}</div>`;
 }
 document.addEventListener("change",e=>{const id=e.target.dataset?.sel;if(!id)return;e.target.checked?sel.add(id):sel.delete(id);renderBulk()});
 document.addEventListener("click",async e=>{const k=e.target.dataset?.bulk;if(!k)return;
-  if(k==="pick20"){const q=$("#q").value.trim().toLowerCase();[...contacts.values()].sort((a,b)=>catRank(a)-catRank(b)).filter(c=>effStatus(c)===fStatus&&!isDM(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&!isBlocked(c)&&!sqHas(c.email)&&(!q||[c.name,c.email,c.city,c.note].join(" ").toLowerCase().includes(q))).forEach(c=>sel.add(c.email));renderList();renderBulk();
-    if(!sel.size)toast(fStatus==="uj"&&counts().st.fuE?"Itt nincs új cím. Nyomd meg fent az „E-mail follow-up” gombot, ott jelölj ki.":sqOpen().length?"Minden itt látható cím már a háttérküldés sorában van":"Ebben a szűrésben nincs kijelölhető e-mailes cím")}
+  if(k==="pick20"){const c0=sel.size;selectable().forEach(c=>sel.add(c.email));renderList();renderBulk();
+    toast(sel.size>c0?`${sel.size-c0} cím kijelölve`:"Ebben a nézetben nincs több kijelölhető cím")}
   if(k==="clear"){sel.clear();renderList();renderBulk()}
   if(k==="ask"){bulk.confirm=true;renderBulk()}
   if(k==="cancel"){bulk.confirm=false;renderBulk()}
-  if(k==="stop"||k==="qstop"){bulk.stop=true;await stopQueue()}
-  if(k==="kick"){toast(await kickSender()?"A háttérküldő elindult":"Nem sikerült elindítani, a következő ütemezett futás viszi")}
-  if(k==="go"){bulk.confirm=false;const ids=[...sel];sel.clear();renderList();
+  if(k==="stop"){bulk.stop=true;e.target.disabled=true;e.target.textContent="Leállítás…";await stopQueue()}
+  if(k==="qstop"){bulk.stopAsk=true;renderBulk()}
+  if(k==="qstopno"){bulk.stopAsk=false;renderBulk()}
+  if(k==="qstopyes"){bulk.stopAsk=false;bulk.stop=true;e.target.disabled=true;e.target.textContent="Leállítás…";await stopQueue()}
+  if(k==="kick"){e.target.disabled=true;e.target.textContent="Indítás…";toast(await kickSender()?"A háttérküldő elindult. A Claude projektben írd be, hogy „igen”.":"Nem sikerült elindítani. A következő ütemezett futás (9 vagy 14 óra) viszi.");renderBulk()}
+  if(k==="go"){if(e.target.disabled)return;e.target.disabled=true;e.target.textContent="Sorba állítás…";bulk.confirm=false;const ids=[...sel];sel.clear();renderList();
     const n=await enqueue(ids);if(!n){renderBulk();return}
     if(await kickSender()){toast(`${n} levél sorban. A projektben kapott kérdésre válaszolj „igen”, utána bezárhatod az appot.`);renderBulk();return}
     await runLocal()}
@@ -2402,6 +2435,14 @@ document.addEventListener("click",async e=>{const k=e.target.dataset?.bulk;if(!k
 const SENDER_TRIGGER="trig_01PpoZD5trAbqqPDeBuMgL2y";
 function sqOpen(){return [...sq.values()].filter(x=>x.state==="var"||x.state==="kuld").sort((a,b)=>(a.queuedAt||"").localeCompare(b.queuedAt||""))}
 function sqHas(email){return sqOpen().some(x=>x.email===email)}
+// Sorállapot a felületre: "var" = vár, "kuld" frissen = épp megy, "kuld" régóta = az oldal bezárult küldés közben, a háttérküldő rendezi
+const STUCK_MIN=15;
+const sqAge=x=>(Date.now()-new Date(x.claimedAt||x.queuedAt||0).getTime())/6e4;
+function sqStuck(){return sqOpen().filter(x=>x.state==="kuld"&&sqAge(x)>=STUCK_MIN)}
+function sqLabel(x){return x.state==="var"?["p-javasolt","Sorban, küldésre vár",""]:sqAge(x)<STUCK_MIN?["p-javasolt","Épp most megy ki",""]:["p-fu","Ellenőrzésre vár","Küldés közben megszakadt. A háttérküldő az Elküldött mappa alapján eldönti, elment-e."]}
+// Bizonytalan küldés: külön mező (sendUnsure), a régi jegyzetes jelölést is felismeri
+const UNSURE_RE=/\s*·?\s*Küldés bizonytalan \([^)]*\), nézd meg az Elküldött mappát/g;
+const isUnsure=c=>!!c.sendUnsure||/Küldés bizonytalan/.test(c.note||"");
 function sqDoneToday(){return [...sq.values()].filter(x=>x.state==="kesz"&&x.sentAt&&today()===isoDay(x.sentAt)).length}
 // a pult saját zárát csak az a lap tekinti foglaltnak, amelyik éppen küld; egy bezárt lap zárja nem tartja vissza az indítást
 function senderBusy(){return !!senderDoc.busyUntil&&new Date(senderDoc.busyUntil)>new Date()&&(senderDoc.by!=="pult"||bulk.running)}
@@ -2411,7 +2452,7 @@ async function enqueue(ids){
   if(!db){toast("Nincs adatbázis, nem tudom sorba állítani");return 0}
   let n=0,skip=0;
   for(const id of ids){const c=contacts.get(id);
-    if(!c||isDM(c)||isBlocked(c)||sqHas(c.email)){skip++;continue}
+    if(!c||isDM(c)||isBlocked(c)||sqHas(c.email)||isUnsure(c)){skip++;continue}
     const kind=effStatus(c)==="fu"?"fu":"";if(kind!=="fu"&&c.status!=="uj"){skip++;continue}
     const st=kind==="fu"?(fuStage(c)||1):0,m=compose(c,kind);
     const args={to:[c.email],subject:m.subject,body:m.body};if(kind==="fu"&&threadOk(c))args.replyThreadId=c.threadId;
@@ -2433,7 +2474,7 @@ async function kickSender(){
 async function stopQueue(){
   const open=sqOpen();let n=0;
   for(const x of open){try{await db?.collection("sendqueue").doc(x.id).update({state:"megszakitva",stoppedAt:new Date().toISOString()});n++}catch(e){}}
-  if(n)toast(`Leállítva, ${n} levél nem megy ki`);renderBulk();renderList();
+  toast(n?`Leállítva, ${n} levél nem megy ki`:"Nem volt leállítható levél");renderBulk();renderList();
 }
 // Tartalék: ha a háttérküldő nem indítható, amíg nyitva van az oldal, innen megy a sor.
 async function runLocal(){
@@ -2452,7 +2493,7 @@ async function runLocal(){
     const after=contacts.get(it.email)||{};
     if(ok){await ref.update({state:"kesz",sentAt:new Date().toISOString(),threadId:after.threadId||""}).catch(()=>{})}
     else if(sentTodayCount()>=60){await ref.update({state:"var"}).catch(()=>{});break}
-    else if(!/bizonytalan/.test(after.note||"")){await ref.update({state:"hiba",error:"Az oldalról nem ment el"}).catch(()=>{})}
+    else if(!isUnsure(after)){await ref.update({state:"hiba",error:"Az oldalról nem ment el"}).catch(()=>{})}
     bulk.done++;renderBulk();
     if(!bulk.stop)await new Promise(r=>setTimeout(r,4000+Math.random()*3000))
   }
