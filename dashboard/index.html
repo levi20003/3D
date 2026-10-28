@@ -138,7 +138,7 @@ table.cov{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-nume
 .smbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
 @media (max-width:820px){.smrow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.smrow .em{grid-column:1/-1}.smhead{display:none}}
 .selbox{float:left;margin:2px 8px 0 0}
-.selbox input{width:16px;height:16px;accent-color:var(--accent)}
+.selbox{padding:4px;margin:-2px 6px 0 -4px;cursor:pointer}.selbox input{width:22px;height:22px;cursor:pointer;accent-color:var(--accent)}
 .btn.confirm{background:var(--warn);border-color:var(--warn)}
 .btn[disabled]{opacity:.6;cursor:progress}
 .ledger{display:grid;gap:2px;margin-top:6px;max-height:340px;overflow:auto}
@@ -1060,6 +1060,7 @@ const CATS = {
   tanc:{label:"Tánc- és mozgásstúdió"},
   fitnesz:{label:"Fitnesz, crossfit, edzőterem"},
   terapia:{label:"Gyógytorna, masszázs, fizioterápia"},
+  ugyved:{label:"Ügyvédi iroda, közjegyző"},
   rendezveny:{label:"Esküvő, rendezvény"},
   kisker:{label:"Bolt, ajándék, könyv"},
   turizmus:{label:"Szuvenír, turisztika"},
@@ -1069,10 +1070,11 @@ const CATS = {
   lakber:{label:"Lakberendezés, bútor"},
   civil:{label:"Civil, kulturális intézmény"},
   allat:{label:"Állatorvos, kisállat"},
+  szabadulo:{label:"Szabadulószoba, élményjáték"},
   vendeglato:{label:"Vendéglátás"},
   egyeb:{label:"Egyéb"}
 };
-const DM_FOR={nyomda:"dm_b2b",dekor:"dm_b2b",ipar:"dm_b2b",epitoipar:"dm_b2b",mezogazd:"dm_b2b",epitesz:"dm_b2b",kisker:"dm",szolg:"dm_szolg",sport:"dm_sport",joga:"dm_studio",tanc:"dm_studio",fitnesz:"dm_studio",terapia:"dm_terapia",rendezveny:"dm_rendezveny",hobbi:"dm_hobbi",turizmus:"dm_turizmus",auto:"dm_b2b",lakber:"dm",civil:"dm_sport",allat:"dm_szolg",vendeglato:"dm_vendeglato"};
+const DM_FOR={szabadulo:"dm_szabadulo",nyomda:"dm_b2b",dekor:"dm_b2b",ipar:"dm_b2b",epitoipar:"dm_b2b",mezogazd:"dm_b2b",epitesz:"dm_b2b",kisker:"dm",szolg:"dm_szolg",sport:"dm_sport",joga:"dm_studio",tanc:"dm_studio",fitnesz:"dm_studio",terapia:"dm_terapia",ugyved:"dm_szolg",rendezveny:"dm_rendezveny",hobbi:"dm_hobbi",turizmus:"dm_turizmus",auto:"dm_b2b",lakber:"dm",civil:"dm_sport",allat:"dm_szolg",vendeglato:"dm_vendeglato"};
 const dmKey=c=>DM_FOR[c.cat]||"dm";
 // DM-nél az előnézet és a másolás is a privát üzenetet adja: esedékes emlékeztetőnél a dm_fu-t, különben a kategória DM-jét
 const dmText=c=>fill(tplFor(effStatus(c)==="fu"?"dm_fu":dmKey(c)).body,c);
@@ -1454,6 +1456,22 @@ A gyártást meglévő 3D modell, referenciafotó vagy konkrét elképzelés ala
 Néhány korábbi munkámat a weblapomon találja: {link}
 
 Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
+  ugyved:{subject:"Egyedi névtáblák, névjegytartók és irodai kiegészítők ügyvédi irodáknak – {cegnev}",
+body:`Szép napot kívánok!
+
+Levente vagyok, Szegeden egyedi, kis szériás 3D nyomtatással foglalkozom.
+
+Ügyvédi irodáknak és közjegyzőknek apró 3D-s tárgyakat készítek, például:
+• ajtó- és névtábla az iroda logójával
+• névjegy- és prospektustartó a recepcióra
+• logós tolltartó, asztali rendező
+• logós kis ajándék az ügyfeleknek
+
+A gyártást meglévő 3D modell, referenciafotó vagy konkrét elképzelés alapján is vállalom.
+
+Néhány korábbi munkámat a weblapomon találja: {link}
+
+Amennyiben van olyan feladatuk vagy elképzelésük, amivel megbíznának, nyugodtan keressenek.`},
   dm_studio:{subject:"DM – jóga, tánc, fitnesz stúdió",
 body:`Szia!
 Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
@@ -1522,6 +1540,18 @@ Kifejezetten társasjátékboltoknak és hobbiboltoknak segítek, például ilye
 • Rendszerezők társasjátékokhoz
 • Kártyatartók
 • Modellező alkatrészek
+
+Néhány munkámat itt tudod megnézni:
+{link}
+
+Ha van bármilyen egyedi ötletetek, szívesen dobok rá egy ingyen mintát/árat!`},
+  dm_szabadulo:{subject:"DM – szabadulószoba, élményjáték",
+body:`Szia!
+Levente vagyok Szegedről, egyedi 3D nyomtatással foglalkozom.
+Kifejezetten szabadulószobáknak segítek, például ilyen termékekkel:
+• Egyedi rejtvényelemek és kellékek
+• Kódos dobozok és zárszerkezetek
+• Logós trófeák a rekordtartóknak
 
 Néhány munkámat itt tudod megnézni:
 {link}
@@ -1619,7 +1649,7 @@ const $=s=>document.querySelector(s);
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function daysSince(s){if(!s)return 0;const a=new Date(s+"T00:00:00"),b=new Date(today()+"T00:00:00");return Math.round((b-a)/864e5)}
 function huDate(s){if(!s)return"";const [y,m,d]=s.split("-");return `${+m}. ${+d}.`}
-const CAT_PRIO=["nyomda","dekor","ipar","epitoipar","mezogazd","epitesz","hobbi","oktatas","sport","joga","tanc","fitnesz","terapia","rendezveny","turizmus","civil","auto","lakber","allat","kisker","egyeb","szolg"];
+const CAT_PRIO=["nyomda","dekor","ipar","epitoipar","mezogazd","epitesz","hobbi","oktatas","sport","joga","tanc","fitnesz","terapia","ugyved","rendezveny","szabadulo","turizmus","civil","auto","lakber","allat","kisker","egyeb","szolg"];
 const catRank=c=>{const i=CAT_PRIO.indexOf(c.cat);return i<0?99:i};
 // Follow-up csak az új címről (levente3d.szeged@gmail.com) küldött e-mailekhez jár; a régi címről mentekhez nem. A DM-emlékeztetők maradnak.
 const NEW_ACCT_SINCE="2026-10-19";
@@ -1634,8 +1664,11 @@ const platOf=c=>c.dmVia||(c.ig?"ig":c.fb?"fb":"ig");
 const threadOk=c=>!!(c.threadId&&c.acct==="levente3d");
 const dmLinks=c=>(c.fb?`<a class="btn ghost" href="${esc(c.fb)}" target="_blank" rel="noopener">Facebook</a>`:"")+(c.ig?`<a class="btn ghost" href="${esc(c.ig)}" target="_blank" rel="noopener">Instagram</a>`:"");
 function displayName(c){if(c.name||isDM(c))return c.name||c.email;const [loc,dom]=c.email.split("@");return FREEMAIL.has(dom)?loc:dom.replace(/\.(hu|com|eu)$/,"")}
+// A weboldal-link kategóriánként a saját képtárára ugrik (#horgony); más linkhez és az egyéb kategóriához nem nyúlunk
+const GALLERY={nyomda:"nyomda",dekor:"dekor",epitesz:"epitesz",lakber:"epitesz",epitoipar:"epitesz",ipar:"ipar",mezogazd:"ipar",joga:"studio",tanc:"studio",fitnesz:"studio",szolg:"szepseg",allat:"szepseg",vendeglato:"vendeglato",rendezveny:"eskuvo",kisker:"bolt",sport:"sport",civil:"sport",hobbi:"hobbi",turizmus:"szuvenir",szabadulo:"szabadulo",terapia:"terapia",ugyved:"ugyved"};
+function catLink(c){const l=settings.link||"",a=GALLERY[c.cat];return a&&l.includes("WZLdSDK19twEH9KM9WbH56")&&!l.includes("#")?l+"#"+a:l}
 function fill(text,c,extra={},oneLine=false){
-  const vals={cegnev:c.name||"",szemelyes:"",link:settings.link||"",...extra};
+  const vals={cegnev:c.name||"",szemelyes:"",link:catLink(c),...extra};
   if(oneLine)return text.replace(/\{(\w+)\}/g,(m,k)=>k in vals?vals[k]:m).replace(/\s*[–-]\s*$/,"").trim();
   return text.split("\n").filter(line=>{const keys=[...line.matchAll(/\{(\w+)\}/g)].map(m=>m[1]);return !keys.some(k=>k in vals&&!vals[k])}).join("\n")
     .replace(/\{(\w+)\}/g,(m,k)=>k in vals?vals[k]:m).replace(/ – $/,"").replace(/\n{3,}/g,"\n\n").trim();
@@ -1752,12 +1785,13 @@ function renderList(){
         <div class="acts" style="justify-content:flex-start"><button class="btn" data-act="copybody" data-id="${id}">Üzenet másolása</button>`:`<label>Levél előnézet</label>
         <div class="preview">${esc((m=>"Tárgy: "+m.subject+"\n\n"+m.body)(compose(c,s==="fu"?"fu":"")))}</div>
         <div class="acts" style="justify-content:flex-start"><button class="btn" data-act="copybody" data-id="${id}">Szöveg másolása</button><button class="btn" data-act="copysubj" data-id="${id}">Tárgy másolása</button>`}<span class="small">Forrás: ${esc(c.source||"–")}</span></div>
+        <div class="acts" style="justify-content:center"><button class="btn ghost" data-act="open" data-id="${id}" aria-label="Részletek bezárása">▲ Bezárás</button></div>
       </div>`:"";
     return `<div class="row s-${s}">
-      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${c.note?`<div class="note">${esc(c.note)}</div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
+      <div class="who">${sqHas(c.email)?`<span class="pill p-javasolt" style="float:right;margin-left:8px">Sorban, háttérben megy</span>`:""}${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)&&!sqHas(c.email)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${c.note?`<div class="note">${esc(c.note)}</div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
       <div class="meta cat">${esc(CATS[c.cat]?.label||c.cat)}<br>${esc(c.city||"")}</div>
       <div class="meta"><span class="pill p-${s}">${s==="fu"?fuStage(c)+". follow-up esedékes":c.bounced?"Visszapattant":STATUS[s]}</span><br>${when}</div>
-      <div class="acts">${main}<button class="btn ghost" data-act="open" data-id="${id}" aria-expanded="${openId===c.email}">${openId===c.email?"Bezár":"Részletek"}</button>
+      <div class="acts">${main}<button class="btn ghost" data-act="open" data-id="${id}" aria-expanded="${openId===c.email}">${openId===c.email?"▲ Bezár":"Részletek ▼"}</button>
         <span class="more"><button class="btn ghost" data-act="menu" data-id="${id}" aria-label="További műveletek">•••</button>${menuId===c.email?`<div class="menu">
           ${s==="uj"?`<button data-act="dmsent" data-id="${id}">DM-ben küldtem el</button>`:""}
           ${s!=="uj"?`<button data-act="unsent" data-id="${id}">Mégsem küldtem el</button>`:""}
@@ -1804,7 +1838,9 @@ document.addEventListener("click",async e=>{
   if(a==="copybody"&&isDM(c))return copy(dmText(c),"Üzenet kimásolva");
   if(a==="copybody"){const s=effStatus(c);return copy(compose(c,s==="fu"?"fu":"").body,"Levél szövege kimásolva")}
   if(a==="copysubj"){const s=effStatus(c);return copy(compose(c,s==="fu"?"fu":"").subject,"Tárgy kimásolva")}
-  if(a==="open"){openId=openId===c.email?null:c.email;menuId=null;return renderList()}
+  if(a==="open"){const closing=openId===c.email;openId=closing?null:c.email;menuId=null;renderList();
+    // Bezáráskor a sor maradjon látható, ne ugorjon el az oldal
+    if(closing)document.querySelector(`[data-act="open"][data-id="${CSS.escape(b.dataset.id)}"]`)?.closest(".row")?.scrollIntoView({block:"nearest"});return}
   if(a==="menu"){menuId=menuId===c.email?null:c.email;return renderList()}
   menuId=null;
   const prev={status:c.status||"uj",sentAt:c.sentAt||"",followupAt:c.followupAt||"",followup2At:c.followup2At||"",fuDraft:c.fuDraft||"",fuDraftUrl:c.fuDraftUrl||"",channel:c.channel||""};
@@ -1873,6 +1909,7 @@ const CAT_KW={
   tanc:["tancisk","tancstud","=tanc","dance","balett","ballet","rudtanc","salsa","zumba"],
   fitnesz:["fitness","fitnesz","=gym","crossfit","edzoterem","functional","funkcionalis","=trx"],
   terapia:["gyogytorn","fizioter","physio","masszazs","massage","manualter","=reha","rehabilit","csontkovacs"],
+  ugyved:["ugyved","kozjegyz","jogasz","legal"],
   rendezveny:["eskuvo","rendezveny","=event","events","wedding","party","menyasszony","lagzi","fotobox","szertartas","ceremonia","lufi","ballon","dekorator"],
   kisker:["bolt","=shop","webshop","ajandek","konyvesbolt","konyv","aruhaz","store","butik","boutique","uzlet","kereskedes","papirbolt","irodaszer","diszkont","=market","gift"],
   turizmus:["=tour","tours","turiz","turist","szuvenir","souvenir","utaz","travel","tourinform","latogatokozpont","idegenvezet"],
@@ -2292,7 +2329,7 @@ $("#tForm").addEventListener("submit",async e=>{e.preventDefault();const title=$
 
 
 /* ---------- Közvetlen küldés Gmailből ---------- */
-let mcpNs=null, pendingSend=null, pendT, sending=new Set(), sel=new Set(), bulk={running:false,stop:false,done:0,total:0,confirm:false};
+let sq=new Map(),senderDoc={},mcpNs=null, pendingSend=null, pendT, sending=new Set(), sel=new Set(), bulk={running:false,stop:false,done:0,total:0,confirm:false};
 // Tiltólista: pontos cím, domain (aldomainnel együtt), vagy kulcsszó egész szóként a címben, a névben, a profil linkben és a forrásban (ékezet nélkül).
 const blkNorm=s=>" "+deacc(String(s||"")).replace(/[^a-z0-9]+/g," ").trim()+" ";
 function isBlocked(x){const c=typeof x==="string"?{email:x}:x||{},email=String(c.email||"").toLowerCase();
@@ -2301,7 +2338,8 @@ function isBlocked(x){const c=typeof x==="string"?{email:x}:x||{},email=String(c
   const hay=blkNorm([c.email,c.name,c.fb,c.ig,c.web,c.source].join(" "));
   return (blocklist.keywords||[]).some(k=>{k=blkNorm(k);return k.trim().length>=4&&hay.includes(k)})}
 function sentTodayCount(){return [...contacts.values()].filter(c=>c.sentAt===today()||c.followupAt===today()||c.followup2At===today()).length}
-async function sendOne(c,kind){
+async function sendOne(c,kind,fromQueue){
+  if(!fromQueue&&sqHas(c.email)){toast("Ez a cím már a háttérküldés sorában van");return false}
   if(isDM(c)){toast("Ez a cég csak Facebookon vagy Instagramon érhető el");return false}
   if(!mcpNs){toast("A közvetlen küldés itt nem érhető el, használd a Gmailben gombot");return false}
   if(isBlocked(c)){toast("Ez a cím tiltólistán van, nem küldöm el");return false}
@@ -2335,25 +2373,92 @@ async function sendOne(c,kind){
 }
 function renderBulk(){
   const el=$("#bulk");if(!el)return;
-  if(!mcpNs||(fStatus!=="uj"&&fStatus!=="fu")){el.innerHTML="";return}
-  if(bulk.running){el.innerHTML=`<div class="bulkbar"><b>Küldés folyamatban: ${bulk.done} / ${bulk.total}</b><span class="small">Egyenként megy, levelek között pár másodperc szünettel.</span><button class="btn" data-bulk="stop">Leállítás</button></div>`;return}
+  const open=sqOpen(),busy=senderBusy(),qbar=open.length?`<div class="bulkbar"><b>Háttérküldés: ${open.length} levél vár${sqDoneToday()?`, ma ${sqDoneToday()} már elment`:""}</b><span class="small">${busy?"A háttérküldő most dolgozik, egyenként küldi őket. Bezárhatod az appot.":"Kapsz egy értesítést a projektben: ott válaszolj „igen”, és utána az app nélkül is egyenként elküldi. Ha nem indítod, munkanap 9 és 14 órakor magától is rákérdez."}</span>${busy||!mcpNs?"":`<button class="btn" data-bulk="kick">Indítás most</button>`}<button class="btn" data-bulk="qstop">Leállítás</button></div>`:"";
+  if(!mcpNs||(fStatus!=="uj"&&fStatus!=="fu")){el.innerHTML=qbar;return}
+  if(bulk.running){el.innerHTML=qbar+`<div class="bulkbar"><b>Küldés innen az oldalról: ${bulk.done} / ${bulk.total}</b><span class="small">A háttérküldő nem indult el, ezért amíg nyitva van az oldal, innen megy egyenként. Ha bezárod, a maradékot a háttérküldő viszi tovább.</span><button class="btn" data-bulk="stop">Leállítás</button></div>`;return}
+  if(bulk.confirm){el.innerHTML=qbar+`<div class="bulkbar warn"><b>Biztosan elküldesz ${sel.size} levelet, mindegyiket külön?</b><span class="small">Sorba teszem és elindítom a háttérküldőt. Egy megerősítést kér a projektben, utána az app nélkül is megy.</span><button class="btn primary" data-bulk="go">Igen, küldés</button><button class="btn" data-bulk="cancel">Mégse</button></div>`;return}
   const n=sel.size;
-  if(bulk.confirm){el.innerHTML=`<div class="bulkbar warn"><b>Biztosan elküldesz ${n} levelet, mindegyiket külön?</b><button class="btn primary" data-bulk="go">Igen, küldés</button><button class="btn" data-bulk="cancel">Mégse</button></div>`;return}
-  el.innerHTML=`<div class="bulkbar"><span>${n?`<b>${n} kijelölve</b>`:"Jelöld ki, kiknek küldjön, vagy jelöld ki mindet."}</span><button class="btn" data-bulk="pick20">Mind kijelölése</button>${n?`<button class="btn" data-bulk="clear">Kijelölés törlése</button><button class="btn primary" data-bulk="ask">Kijelöltek küldése (${n})</button>`:""}</div>`;
+  el.innerHTML=qbar+`<div class="bulkbar"><span>${n?`<b>${n} kijelölve</b>`:"Jelöld ki, kiknek küldjön, vagy jelöld ki mindet."}</span><button class="btn" data-bulk="pick20">Mind kijelölése</button>${n?`<button class="btn" data-bulk="clear">Kijelölés törlése</button><button class="btn primary" data-bulk="ask">Kijelöltek küldése (${n})</button>`:""}</div>`;
 }
 document.addEventListener("change",e=>{const id=e.target.dataset?.sel;if(!id)return;e.target.checked?sel.add(id):sel.delete(id);renderBulk()});
 document.addEventListener("click",async e=>{const k=e.target.dataset?.bulk;if(!k)return;
-  if(k==="pick20"){const q=$("#q").value.trim().toLowerCase();[...contacts.values()].sort((a,b)=>catRank(a)-catRank(b)).filter(c=>effStatus(c)===fStatus&&!isDM(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&!isBlocked(c)&&(!q||[c.name,c.email,c.city,c.note].join(" ").toLowerCase().includes(q))).forEach(c=>sel.add(c.email));renderList();renderBulk()}
+  if(k==="pick20"){const q=$("#q").value.trim().toLowerCase();[...contacts.values()].sort((a,b)=>catRank(a)-catRank(b)).filter(c=>effStatus(c)===fStatus&&!isDM(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&!isBlocked(c)&&!sqHas(c.email)&&(!q||[c.name,c.email,c.city,c.note].join(" ").toLowerCase().includes(q))).forEach(c=>sel.add(c.email));renderList();renderBulk();
+    if(!sel.size)toast(fStatus==="uj"&&counts().st.fuE?"Itt nincs új cím. Nyomd meg fent az „E-mail follow-up” gombot, ott jelölj ki.":sqOpen().length?"Minden itt látható cím már a háttérküldés sorában van":"Ebben a szűrésben nincs kijelölhető e-mailes cím")}
   if(k==="clear"){sel.clear();renderList();renderBulk()}
   if(k==="ask"){bulk.confirm=true;renderBulk()}
   if(k==="cancel"){bulk.confirm=false;renderBulk()}
-  if(k==="stop"){bulk.stop=true}
-  if(k==="go"){bulk.confirm=false;const ids=[...sel];bulk={running:true,stop:false,done:0,total:ids.length,confirm:false};renderBulk();
-    for(const id of ids){if(bulk.stop)break;const c=contacts.get(id);if(!c){bulk.done++;continue}
-      const ok=await sendOne(c,effStatus(c)==="fu"?"fu":"");if(!ok&&sentTodayCount()>=60)break;bulk.done++;renderBulk();
-      if(!bulk.stop)await new Promise(r=>setTimeout(r,4000+Math.random()*3000))}
-    const d=bulk.done;bulk.running=false;sel.clear();renderList();renderBulk();toast(`${d} levél elküldve`)}
+  if(k==="stop"||k==="qstop"){bulk.stop=true;await stopQueue()}
+  if(k==="kick"){toast(await kickSender()?"A háttérküldő elindult":"Nem sikerült elindítani, a következő ütemezett futás viszi")}
+  if(k==="go"){bulk.confirm=false;const ids=[...sel];sel.clear();renderList();
+    const n=await enqueue(ids);if(!n){renderBulk();return}
+    if(await kickSender()){toast(`${n} levél sorban. A projektben kapott kérdésre válaszolj „igen”, utána bezárhatod az appot.`);renderBulk();return}
+    await runLocal()}
 });
+
+/* ---------- Háttérküldés ----------
+   Az „Igen, küldés” a jóváhagyott leveleket kész szöveggel a sendqueue gyűjteménybe írja, és elindítja
+   a szerveroldali ütemezett feladatot, ami egyenként elküldi őket akkor is, ha az app be van zárva.
+   settings/sender.busyUntil a zár: egyszerre csak egy küldő dolgozik (a szerver vagy ez az oldal). */
+const SENDER_TRIGGER="trig_01PpoZD5trAbqqPDeBuMgL2y";
+function sqOpen(){return [...sq.values()].filter(x=>x.state==="var"||x.state==="kuld").sort((a,b)=>(a.queuedAt||"").localeCompare(b.queuedAt||""))}
+function sqHas(email){return sqOpen().some(x=>x.email===email)}
+function sqDoneToday(){return [...sq.values()].filter(x=>x.state==="kesz"&&x.sentAt&&today()===isoDay(x.sentAt)).length}
+// a pult saját zárát csak az a lap tekinti foglaltnak, amelyik éppen küld; egy bezárt lap zárja nem tartja vissza az indítást
+function senderBusy(){return !!senderDoc.busyUntil&&new Date(senderDoc.busyUntil)>new Date()&&(senderDoc.by!=="pult"||bulk.running)}
+function isoDay(iso){const d=new Date(iso);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+const qid=(email,kind,st)=>(kind==="fu"?"fu"+st:"uj")+"-"+email.replace(/[^A-Za-z0-9_\-.~:@+]/g,"_");
+async function enqueue(ids){
+  if(!db){toast("Nincs adatbázis, nem tudom sorba állítani");return 0}
+  let n=0,skip=0;
+  for(const id of ids){const c=contacts.get(id);
+    if(!c||isDM(c)||isBlocked(c)||sqHas(c.email)){skip++;continue}
+    const kind=effStatus(c)==="fu"?"fu":"";if(kind!=="fu"&&c.status!=="uj"){skip++;continue}
+    const st=kind==="fu"?(fuStage(c)||1):0,m=compose(c,kind);
+    const args={to:[c.email],subject:m.subject,body:m.body};if(kind==="fu"&&threadOk(c))args.replyThreadId=c.threadId;
+    // a "{MA}" értéket a küldő a küldés napjára cseréli
+    const patch=kind==="fu"?(st===2?{followup2At:"{MA}",fuDraft:"",fuDraftUrl:""}:{followupAt:"{MA}",fuDraft:"",fuDraftUrl:""}):{status:"elkuldve",sentAt:"{MA}",channel:"email"};
+    const x={email:c.email,name:displayName(c),kind:kind||"uj",stage:st,args,patch,state:"var",queuedAt:new Date().toISOString()};
+    const qi=qid(c.email,kind,st);sq.set(qi,{...x,id:qi});
+    try{await db.collection("sendqueue").doc(qi).set(x);n++}catch(e){sq.delete(qi);skip++}
+  }
+  renderList();renderBulk();
+  if(skip)toast(`${skip} címet kihagytam (már sorban van, már ment neki levél, vagy tiltólistás)`);
+  return n;
+}
+async function kickSender(){
+  if(!mcpNs)return false;
+  try{await mcpNs.callTool("Claude Code Remote","fire_trigger",{trigger_id:SENDER_TRIGGER});return true}
+  catch(e){return false}
+}
+async function stopQueue(){
+  const open=sqOpen();let n=0;
+  for(const x of open){try{await db?.collection("sendqueue").doc(x.id).update({state:"megszakitva",stoppedAt:new Date().toISOString()});n++}catch(e){}}
+  if(n)toast(`Leállítva, ${n} levél nem megy ki`);renderBulk();renderList();
+}
+// Tartalék: ha a háttérküldő nem indítható, amíg nyitva van az oldal, innen megy a sor.
+async function runLocal(){
+  if(senderBusy()){toast("A háttérküldő már dolgozik");return}
+  const lock=()=>db?.doc("settings/sender").set({...senderDoc,busyUntil:new Date(Date.now()+20*6e4).toISOString(),by:"pult"}).catch(()=>{});
+  await lock();
+  const items=sqOpen().filter(x=>x.state==="var");
+  bulk={running:true,stop:false,done:0,total:items.length,confirm:false};renderBulk();
+  for(const it of items){
+    if(bulk.stop)break;const cur=sq.get(it.id);if(!cur||cur.state!=="var"){bulk.done++;continue}
+    const c=contacts.get(it.email);if(!c){bulk.done++;continue}
+    if(bulk.done&&bulk.done%10===0)await lock();
+    const ref=db.collection("sendqueue").doc(it.id);
+    try{await ref.update({state:"kuld",claimedAt:new Date().toISOString(),claimedBy:"pult"})}catch(e){continue}
+    const ok=await sendOne(c,it.kind==="fu"?"fu":"",true);
+    const after=contacts.get(it.email)||{};
+    if(ok){await ref.update({state:"kesz",sentAt:new Date().toISOString(),threadId:after.threadId||""}).catch(()=>{})}
+    else if(sentTodayCount()>=60){await ref.update({state:"var"}).catch(()=>{});break}
+    else if(!/bizonytalan/.test(after.note||"")){await ref.update({state:"hiba",error:"Az oldalról nem ment el"}).catch(()=>{})}
+    bulk.done++;renderBulk();
+    if(!bulk.stop)await new Promise(r=>setTimeout(r,4000+Math.random()*3000))
+  }
+  await db?.doc("settings/sender").set({...senderDoc,busyUntil:new Date().toISOString(),by:"pult"}).catch(()=>{});
+  const d=bulk.done;bulk.running=false;renderList();renderBulk();toast(`${d} levél feldolgozva`);
+}
 
 /* ---------- Pénzügy (ledger) ---------- */
 let ledger=new Map();
@@ -2485,6 +2590,7 @@ const NICHES={
   tanc:["tánciskola","táncstúdió","balettiskola","rúdtánc stúdió","zumba","gyerektorna"],
   fitnesz:["edzőterem","crossfit","funkcionális edzőterem","személyi edző stúdió","fitnesz stúdió","boxterem"],
   terapia:["gyógytorna","fizioterápia","masszázs","sportmasszázs","manuálterápia","rehabilitációs központ"],
+  ugyved:["ügyvédi iroda","ügyvéd","közjegyző"],
   rendezveny:["esküvőszervező","rendezvényszervező","dekoratőr","fotobox","lufidekoráció"],
   kisker:["ajándékbolt","könyvesbolt","játékbolt","virágbolt","papír-írószer bolt","kézműves bolt"],
   turizmus:["szuvenír bolt","tourinform","látogatóközpont","idegenvezetés"],
@@ -2498,7 +2604,7 @@ const NICHES={
 const SKIP_DEFAULT=["vendeglato","auto"];
 // Partnerszegmensek: ők kapnak 3D-s kéréseket az ügyfeleiktől, vagy maguk használnak egyedi alkatrészt, makettet, displayt.
 const FOCUS_PRESET=["nyomda","dekor","epitesz","lakber","ipar"];
-const FOCUS_WHY={nyomda:"partner: a nem nyomható 3D-s kéréseket továbbadhatja",dekor:"partner: egyedi tábla, display, reklámtárgy",epitesz:"partner: makett, egyedi lakberendezési elem",lakber:"partner: egyedi elem, kiegészítő a vevőinek",ipar:"saját használat: prototípus, pótalkatrész, sablon",joga:"kis stúdió, DM-re válaszol · szőnyegtartó, QR-kódos tábla, logós ajándék tagoknak",tanc:"kis stúdió, DM-re válaszol · logós érem, kulcstartó, ajtótábla, fellépés-kellék",fitnesz:"kis terem, DM-re válaszol · kulacs- és telefontartó, QR-kódos tábla, logós ajándék",terapia:"kis rendelő, DM-re válaszol · névtábla, QR-kódos pulttábla, kis tartók"};
+const FOCUS_WHY={nyomda:"partner: a nem nyomható 3D-s kéréseket továbbadhatja",dekor:"partner: egyedi tábla, display, reklámtárgy",epitesz:"partner: makett, egyedi lakberendezési elem",lakber:"partner: egyedi elem, kiegészítő a vevőinek",ipar:"saját használat: prototípus, pótalkatrész, sablon",joga:"kis stúdió, DM-re válaszol · szőnyegtartó, QR-kódos tábla, logós ajándék tagoknak",tanc:"kis stúdió, DM-re válaszol · logós érem, kulcstartó, ajtótábla, fellépés-kellék",fitnesz:"kis terem, DM-re válaszol · kulacs- és telefontartó, QR-kódos tábla, logós ajándék",terapia:"kis rendelő, DM-re válaszol · névtábla, QR-kódos pulttábla, kis tartók",ugyved:"iroda ügyfélforgalommal · ajtótábla, névjegytartó, logós ügyfélajándék"};
 const focusList=()=>(settings.focus||[]).filter(k=>CATS[k]);
 const SEARCH_RULES=[
   "Minden olyan e-mail címet vegyél fel, amelyet a cég maga tesz közzé (weboldal Kapcsolat vagy Impresszum, Google Térkép adatlap, Facebook névjegy), nem csak info@ kezdetűt. Csak ténylegesen látott címet, soha ne tippelj.",
@@ -2689,6 +2795,8 @@ renderTpl();renderSettings();renderAll();renderOrders();renderLedger();renderRat
   db.doc("settings/blocklist").onSnapshot(s=>{if(s.exists)blocklist=s.data()},()=>{});
   db.collection("ledger").onSnapshot(s=>{ledger=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));renderLedger();try{renderGoals()}catch(e){}},()=>{});
   db.collection("todos").onSnapshot(s=>{todos=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));renderTodos();setTimeout(ensureMonthly,1500);setTimeout(ensureAuto,2500)},()=>{});
+  db.collection("sendqueue").where("queuedAt",">=",new Date(Date.now()-14*864e5).toISOString()).onSnapshot(s=>{sq=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));renderList();renderBulk()},()=>{});
+  db.doc("settings/sender").onSnapshot(s=>{senderDoc=s.exists?s.data():{};renderBulk()},()=>{});
 })();
 </script>
 
