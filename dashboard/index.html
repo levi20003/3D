@@ -361,7 +361,7 @@ table.lt tr.lr:hover td{background:var(--bg)}
 
   <div class="stats" id="stats">
     <button class="stat" data-go="uj"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span><div class="l">Kiküldendő</div></div><div class="n" id="st-uj">–</div><div class="s" id="st-uj-s"></div></button>
-    <button class="stat goal" data-go="ma"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></span><div class="l">Ma elküldve</div></div><div class="n" id="st-ma">–</div><div class="bar"><i id="st-bar"></i></div></button>
+    <button class="stat goal" data-go="ma"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></span><div class="l">Ma elküldve</div></div><div class="n" id="st-ma">–</div><div class="bar"><i id="st-bar"></i></div><div class="s" id="st-ma-s"></div></button>
     <button class="stat" data-go="fu"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="l">Follow-up esedékes</div></div><div class="n" id="st-fu">–</div><div class="s" id="st-fu-s"></div></button>
     <button class="stat" data-go="valaszolt"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg></span><div class="l">Válaszolt</div></div><div class="n" id="st-val">–</div><div class="s" id="st-val-s"></div></button>
     <button class="stat" data-go="all"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span><div class="l">Összes cím</div></div><div class="n" id="st-all">–</div><div class="s" id="st-all-s"></div></button>
@@ -1719,13 +1719,15 @@ function renderStats(){
   // A kártyák az összes csatornát mutatják (e-mail + Instagram + Facebook), alattuk a bontás, hogy a DM-ek ne vesszenek el
   const brk=(e,i,f,none)=>[e?`E-mail ${e}`:"",i?`Instagram ${i}`:"",f?`Facebook ${f}`:""].filter(Boolean).join(" · ")||none;
   $("#st-uj").textContent=st.ujE+st.igUj+st.fbUj;$("#st-fu").textContent=st.fuE+st.igFu+st.fbFu;$("#st-val").textContent=(st.valaszolt||0)+(st.ugyfel||0);
-  $("#st-all").textContent=all.filter(c=>!PRE.has(c.status)).length;$("#st-ma").textContent=ma+" / "+g;$("#st-bar").style.width=Math.min(100,ma/g*100)+"%";
+  $("#st-all").textContent=all.filter(c=>!PRE.has(c.status)).length;// a sáv a napi korláthoz méri a mai küldést; alatta a cél és a még küldhető darab
+  $("#st-ma").textContent=ma;$("#st-bar").style.width=Math.min(100,ma/DAILY_LIMIT*100)+"%";
+  $("#st-ma-s").textContent=`cél ${g}${ma>=g?" ✓":""} · még ${Math.max(0,DAILY_LIMIT-ma)} mehet (napi ${DAILY_LIMIT})`;
   const nJ=all.filter(c=>c.status==="javasolt").length,f2=all.filter(c=>!isDM(c)&&fuStage(c)===2).length,S=goalStats(),nq=(st.uj||0)+(st.fu||0);
   $("#st-uj-s").textContent=brk(st.ujE,st.igUj,st.fbUj,"nincs kiküldendő")+(nJ?` · ${nJ} javaslat`:"");
   $("#st-fu-s").textContent=brk(st.fuE,st.igFu,st.fbFu,"nincs esedékes")+(f2?` · ebből ${f2} második kör`:"");
   $("#st-val-s").innerHTML=S.sent?`<span class="up">${(S.rep/S.sent*100).toLocaleString("hu-HU",{maximumFractionDigits:1})}%</span> válaszarány`:"";
   $("#st-all-s").textContent=new Set(all.filter(c=>!PRE.has(c.status)).map(c=>c.cat)).size+" kategória";
-  $("#sc-txt").textContent=`${ma} / ${g} levél ment ki ma`+(nq?`, ${nq} vár még`:"");$("#sc-bar").style.width=Math.min(100,ma/g*100)+"%";
+  $("#sc-txt").textContent=`Ma ${ma} levél ment ki (cél ${g}, korlát ${DAILY_LIMIT})`+(nq?`, ${nq} vár még`:"");$("#sc-bar").style.width=Math.min(100,ma/DAILY_LIMIT*100)+"%";
   const qb=$("#nb-queue");qb.hidden=!nq;qb.textContent=nq;
   const oo=[...orders.values()].filter(o=>["keres","ajanlat","elfogadva","gyartas"].includes(o.status)).length,ob=$("#nb-orders");ob.hidden=!oo;ob.textContent=oo;
   $("#hello-sub").textContent=new Date().toLocaleDateString("hu-HU",{weekday:"long",month:"long",day:"numeric"})+` · kiküldendő: ${brk(st.ujE,st.igUj,st.fbUj,"nincs")} · follow-up: ${brk(st.fuE,st.igFu,st.fbFu,"nincs")}`+(nJ?` · ${nJ} javaslat`:"");
