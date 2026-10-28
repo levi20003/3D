@@ -2358,6 +2358,8 @@ function isBlocked(x){const c=typeof x==="string"?{email:x}:x||{},email=String(c
   if((blocklist.domains||[]).some(d=>{d=String(d).toLowerCase();return email.endsWith("@"+d)||email.endsWith("."+d)}))return true;
   const hay=blkNorm([c.email,c.name,c.fb,c.ig,c.web,c.source].join(" "));
   return (blocklist.keywords||[]).some(k=>{k=blkNorm(k);return k.trim().length>=4&&hay.includes(k)})}
+// Napi küldési korlát (új levél és follow-up együtt)
+const DAILY_LIMIT=100;
 function sentTodayCount(){return [...contacts.values()].filter(c=>c.sentAt===today()||c.followupAt===today()||c.followup2At===today()).length}
 async function sendOne(c,kind,fromQueue){
   if(!fromQueue&&sqHas(c.email)){toast("Ez a cím már küldésre vár");return false}
@@ -2367,7 +2369,7 @@ async function sendOne(c,kind,fromQueue){
   const cur=contacts.get(c.email)||c;
   if(!fromQueue&&isUnsure(cur)){toast("Előbb nézd meg a Gmail Elküldött mappáját, és jelöld: elment vagy nem");return false}
   if(kind!=="fu"&&cur.status!=="uj"){toast("Ennek a címnek már ment levél");return false}
-  if(sentTodayCount()>=60){toast("Ma már 60 levél ment el. A Gmail védelme miatt holnap folytasd.");return false}
+  if(sentTodayCount()>=DAILY_LIMIT){toast(`Ma már ${DAILY_LIMIT} levél ment el. A Gmail védelme miatt holnap folytasd.`);return false}
   const st=kind==="fu"?(fuStage(cur)||1):0;const m=compose(cur,kind);
   sending.add(c.email);renderList();
   try{
@@ -2404,11 +2406,11 @@ function renderBulk(){
   if(!mcpNs||(fStatus!=="uj"&&fStatus!=="fu")){el.innerHTML=qbar;return}
   if(bulk.running){el.innerHTML=qbar+`<div class="bulkbar"><b>Küldés folyamatban: ${bulk.done} / ${bulk.total}</b><span class="small">Egyenként megy, pár másodperc szünettel. Tartsd nyitva az appot, a képernyő bekapcsolva marad. Ha mégis bezárod, újranyitás után egy gombbal folytathatod.</span><button class="btn danger" data-bulk="stop">Leállítás</button></div>`;return}
   if(bulk.confirm){el.innerHTML=qbar+`<div class="bulkbar warn"><b>Biztosan elküldesz ${sel.size} levelet, mindegyiket külön?</b><span class="small">Egyenként megy innen az oldalról, ezért küldés közben tartsd nyitva az appot.</span><button class="btn primary big" data-bulk="go">Igen, küldés</button><button class="btn ghost" data-bulk="cancel">Mégse</button></div>`;return}
-  const n=sel.size,cand=selectable(),left=Math.max(0,60-sentTodayCount()-open.length),all=cand.length&&cand.every(c=>sel.has(c.email));
+  const n=sel.size,cand=selectable(),left=Math.max(0,DAILY_LIMIT-sentTodayCount()-open.length),all=cand.length&&cand.every(c=>sel.has(c.email));
   if(!cand.length&&!n){
     const fuE=counts().st.fuE;
     el.innerHTML=qbar+(fStatus==="uj"&&fuE?`<div class="bulkbar"><span>Itt most nincs kijelölhető cím. Esedékes e-mail follow-up: <b>${fuE}</b>.</span><button class="btn primary" data-s="fu">Follow-upok megnyitása</button></div>`:"");return}
-  el.innerHTML=qbar+`<div class="bulkbar"><span>${n?`<b>${n} kijelölve</b>`:`<b>${cand.length}</b> cím küldhető ebben a nézetben.`}${n>left?` <span class="unsure-n">Ma még ${left} levél mehet ki (napi 60).</span>`:""}</span>${all?"":`<button class="btn" data-bulk="pick20">Mind kijelölése (${cand.length})</button>`}${n?`<button class="btn ghost" data-bulk="clear">Kijelölés törlése</button><button class="btn primary big" data-bulk="ask">Kijelöltek küldése (${n})</button>`:""}</div>`;
+  el.innerHTML=qbar+`<div class="bulkbar"><span>${n?`<b>${n} kijelölve</b>`:`<b>${cand.length}</b> cím küldhető ebben a nézetben.`}${n>left?` <span class="unsure-n">Ma még ${left} levél mehet ki (napi ${DAILY_LIMIT}).</span>`:""}</span>${all?"":`<button class="btn" data-bulk="pick20">Mind kijelölése (${cand.length})</button>`}${n?`<button class="btn ghost" data-bulk="clear">Kijelölés törlése</button><button class="btn primary big" data-bulk="ask">Kijelöltek küldése (${n})</button>`:""}</div>`;
 }
 document.addEventListener("change",e=>{const id=e.target.dataset?.sel;if(!id)return;e.target.checked?sel.add(id):sel.delete(id);renderBulk()});
 document.addEventListener("click",async e=>{const k=e.target.dataset?.bulk;if(!k)return;
@@ -2501,7 +2503,7 @@ async function runLocal(){
     const ok=await sendOne(c,it.kind==="fu"?"fu":"",true);
     const after=contacts.get(it.email)||{};
     if(ok){await ref.update({state:"kesz",sentAt:new Date().toISOString(),threadId:after.threadId||""}).catch(()=>{})}
-    else if(sentTodayCount()>=60){await ref.update({state:"var"}).catch(()=>{});toast("Ma elérted a 60 levelet, a többi holnap folytatható");break}
+    else if(sentTodayCount()>=DAILY_LIMIT){await ref.update({state:"var"}).catch(()=>{});toast(`Ma elérted a ${DAILY_LIMIT} levelet, a többi holnap folytatható`);break}
     else if(!isUnsure(after)){await ref.update({state:"hiba",error:"Nem ment el"}).catch(()=>{})}
     bulk.done++;renderBulk();
     if(!bulk.stop)await new Promise(r=>setTimeout(r,4000+Math.random()*3000))
