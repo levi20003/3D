@@ -2350,7 +2350,7 @@ $("#tForm").addEventListener("submit",async e=>{e.preventDefault();const title=$
 
 
 /* ---------- Közvetlen küldés Gmailből ---------- */
-let sq=new Map(),senderDoc={},mcpNs=null, pendingSend=null, pendT, sending=new Set(), sel=new Set(), bulk={running:false,stop:false,done:0,total:0,confirm:false};
+let sq=new Map(),mcpNs=null, pendingSend=null, pendT, sending=new Set(), sel=new Set(), bulk={running:false,stop:false,done:0,total:0,confirm:false};
 // Tiltólista: pontos cím, domain (aldomainnel együtt), vagy kulcsszó egész szóként a címben, a névben, a profil linkben és a forrásban (ékezet nélkül).
 const blkNorm=s=>" "+deacc(String(s||"")).replace(/[^a-z0-9]+/g," ").trim()+" ";
 function isBlocked(x){const c=typeof x==="string"?{email:x}:x||{},email=String(c.email||"").toLowerCase();
@@ -2360,7 +2360,7 @@ function isBlocked(x){const c=typeof x==="string"?{email:x}:x||{},email=String(c
   return (blocklist.keywords||[]).some(k=>{k=blkNorm(k);return k.trim().length>=4&&hay.includes(k)})}
 function sentTodayCount(){return [...contacts.values()].filter(c=>c.sentAt===today()||c.followupAt===today()||c.followup2At===today()).length}
 async function sendOne(c,kind,fromQueue){
-  if(!fromQueue&&sqHas(c.email)){toast("Ez a cím már a háttérküldés sorában van");return false}
+  if(!fromQueue&&sqHas(c.email)){toast("Ez a cím már küldésre vár");return false}
   if(isDM(c)){toast("Ez a cég csak Facebookon vagy Instagramon érhető el");return false}
   if(!mcpNs){toast("A közvetlen küldés itt nem érhető el, használd a Gmailben gombot");return false}
   if(isBlocked(c)){toast("Ez a cím tiltólistán van, nem küldöm el");return false}
@@ -2398,12 +2398,12 @@ function selectable(){const q=$("#q").value.trim().toLowerCase();
   return [...contacts.values()].filter(c=>effStatus(c)===fStatus&&!isDM(c)&&(fCat==="all"||c.cat===fCat)&&(fCity==="all"||cityOf(c)===fCity)&&!isBlocked(c)&&!sqHas(c.email)&&!isUnsure(c)&&(!q||[c.name,c.email,c.city,c.note].join(" ").toLowerCase().includes(q))).sort((a,b)=>catRank(a)-catRank(b))}
 function renderBulk(){
   const el=$("#bulk");if(!el)return;
-  const open=sqOpen(),busy=senderBusy(),stuck=sqStuck().length,waiting=open.length-stuck;
-  const qbar=open.length?(bulk.stopAsk?`<div class="bulkbar warn"><b>Leállítod a háttérküldést?</b><span class="small">${open.length} levél nem megy ki. A címek visszakerülnek a listába, később újra kijelölheted őket.</span><button class="btn danger solid" data-bulk="qstopyes">Igen, leállítás</button><button class="btn ghost" data-bulk="qstopno">Mégse</button></div>`
-    :`<div class="bulkbar"><b>Háttérküldés: ${waiting} levél vár${stuck?`, <span class="unsure-n">${stuck} ellenőrzésre vár</span>`:""}${sqDoneToday()?`, ma ${sqDoneToday()} már elment`:""}</b><span class="small">${busy?"A háttérküldő most dolgozik, egyenként küldi őket. Bezárhatod az appot.":"A Claude projektben kapsz egy kérdést: ott írd be, hogy „igen”. Utána az app nélkül is egyenként elküldi. Ha nem indítod, munkanapokon 9 és 14 órakor magától is rákérdez."}${stuck?" Az „Ellenőrzésre vár” leveleknél megszakadt a küldés; a háttérküldő az Elküldött mappa alapján rendezi őket.":""}${(r=>r&&senderDoc.lastRun?`<br><b>Legutóbbi futás</b> (${new Date(senderDoc.lastRun).toLocaleString("hu-HU",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}): ${+r.kesz||0} elment, ${+r.maradt||0} maradt${+r.hiba?`, ${r.hiba} hiba`:""}.${r.megjegyzes?" "+esc(r.megjegyzes):""}`:"")(senderDoc.lastResult)}</span>${busy||!mcpNs?"":`<button class="btn primary" data-bulk="kick">Indítás most</button>`}<button class="btn danger" data-bulk="qstop">Leállítás…</button></div>`):"";
+  const open=sqOpen(),stuck=sqStuck().length;
+  const qbar=open.length&&!bulk.running?(bulk.stopAsk?`<div class="bulkbar warn"><b>Biztosan nem küldöd el ezt a ${open.length} levelet?</b><span class="small">Kikerülnek a sorból. A címek a listában maradnak, később újra kijelölheted őket.</span><button class="btn danger solid" data-bulk="qstopyes">Igen, nem küldöm el</button><button class="btn ghost" data-bulk="qstopno">Mégse</button></div>`
+    :`<div class="bulkbar warn"><b>${open.length} jóváhagyott levél vár${stuck?`, <span class="unsure-n">ebből ${stuck} ellenőrzésre vár</span>`:""}${sqDoneToday()?`, ma ${sqDoneToday()} már elment`:""}</b><span class="small">A küldés megszakadt, mert bezárult az app. Innen folytathatod.${stuck?" Az „Ellenőrzésre vár” leveleknél előbb megnézem a Gmail Elküldött mappáját, hogy ne menjen ki kétszer.":""}</span>${mcpNs?`<button class="btn primary big" data-bulk="resume">Küldés folytatása (${open.length})</button>`:`<span class="small">A folytatáshoz nyisd meg a pultot a Claude appban, bejelentkezve.</span>`}<button class="btn danger" data-bulk="qstop">Mégse küldöm el…</button></div>`):"";
   if(!mcpNs||(fStatus!=="uj"&&fStatus!=="fu")){el.innerHTML=qbar;return}
-  if(bulk.running){el.innerHTML=qbar+`<div class="bulkbar"><b>Küldés innen az oldalról: ${bulk.done} / ${bulk.total}</b><span class="small">A háttérküldő nem indult el, ezért amíg nyitva van az oldal, innen megy egyenként. Ha bezárod, a maradékot a háttérküldő viszi tovább.</span><button class="btn danger" data-bulk="stop">Leállítás</button></div>`;return}
-  if(bulk.confirm){el.innerHTML=qbar+`<div class="bulkbar warn"><b>Biztosan elküldesz ${sel.size} levelet, mindegyiket külön?</b><span class="small">Sorba teszem és elindítom a háttérküldőt. A Claude projektben egyszer rákérdez, ott írd be, hogy „igen”. Utána az app nélkül is megy.</span><button class="btn primary big" data-bulk="go">Igen, küldés</button><button class="btn ghost" data-bulk="cancel">Mégse</button></div>`;return}
+  if(bulk.running){el.innerHTML=qbar+`<div class="bulkbar"><b>Küldés folyamatban: ${bulk.done} / ${bulk.total}</b><span class="small">Egyenként megy, pár másodperc szünettel. Tartsd nyitva az appot, a képernyő bekapcsolva marad. Ha mégis bezárod, újranyitás után egy gombbal folytathatod.</span><button class="btn danger" data-bulk="stop">Leállítás</button></div>`;return}
+  if(bulk.confirm){el.innerHTML=qbar+`<div class="bulkbar warn"><b>Biztosan elküldesz ${sel.size} levelet, mindegyiket külön?</b><span class="small">Egyenként megy innen az oldalról, ezért küldés közben tartsd nyitva az appot.</span><button class="btn primary big" data-bulk="go">Igen, küldés</button><button class="btn ghost" data-bulk="cancel">Mégse</button></div>`;return}
   const n=sel.size,cand=selectable(),left=Math.max(0,60-sentTodayCount()-open.length),all=cand.length&&cand.every(c=>sel.has(c.email));
   if(!cand.length&&!n){
     const fuE=counts().st.fuE;
@@ -2417,35 +2417,29 @@ document.addEventListener("click",async e=>{const k=e.target.dataset?.bulk;if(!k
   if(k==="clear"){sel.clear();renderList();renderBulk()}
   if(k==="ask"){bulk.confirm=true;renderBulk()}
   if(k==="cancel"){bulk.confirm=false;renderBulk()}
-  if(k==="stop"){bulk.stop=true;e.target.disabled=true;e.target.textContent="Leállítás…";await stopQueue()}
+  if(k==="stop"){bulk.stop=true;e.target.disabled=true;e.target.textContent="Leállítás…";toast("Megáll az épp küldött levél után. A maradékot később folytathatod vagy elvetheted.")}
   if(k==="qstop"){bulk.stopAsk=true;renderBulk()}
   if(k==="qstopno"){bulk.stopAsk=false;renderBulk()}
-  if(k==="qstopyes"){bulk.stopAsk=false;bulk.stop=true;e.target.disabled=true;e.target.textContent="Leállítás…";await stopQueue()}
-  if(k==="kick"){e.target.disabled=true;e.target.textContent="Indítás…";toast(await kickSender()?"A háttérküldő elindult. A Claude projektben írd be, hogy „igen”.":"Nem sikerült elindítani. A következő ütemezett futás (9 vagy 14 óra) viszi.");renderBulk()}
+  if(k==="qstopyes"){bulk.stopAsk=false;e.target.disabled=true;e.target.textContent="Folyamatban…";await stopQueue()}
+  if(k==="resume"){if(e.target.disabled)return;e.target.disabled=true;e.target.textContent="Indul…";await runLocal()}
   if(k==="go"){if(e.target.disabled)return;e.target.disabled=true;e.target.textContent="Sorba állítás…";bulk.confirm=false;const ids=[...sel];sel.clear();renderList();
-    const n=await enqueue(ids);if(!n){renderBulk();return}
-    if(await kickSender()){toast(`${n} levél sorban. A projektben kapott kérdésre válaszolj „igen”, utána bezárhatod az appot.`);renderBulk();return}
-    await runLocal()}
+    const n=await enqueue(ids);if(n)await runLocal();else renderBulk()}
 });
 
-/* ---------- Háttérküldés ----------
-   Az „Igen, küldés” a jóváhagyott leveleket kész szöveggel a sendqueue gyűjteménybe írja, és elindítja
-   a szerveroldali ütemezett feladatot, ami egyenként elküldi őket akkor is, ha az app be van zárva.
-   settings/sender.busyUntil a zár: egyszerre csak egy küldő dolgozik (a szerver vagy ez az oldal). */
-const SENDER_TRIGGER="trig_01PpoZD5trAbqqPDeBuMgL2y";
+/* ---------- Küldési sor ----------
+   Az „Igen, küldés” a jóváhagyott leveleket a sendqueue gyűjteménybe írja, és innen az oldalról egyenként elküldi.
+   Ha közben bezárul az app, a sor megmarad, és újranyitáskor egy gombbal folytatható. */
 function sqOpen(){return [...sq.values()].filter(x=>x.state==="var"||x.state==="kuld").sort((a,b)=>(a.queuedAt||"").localeCompare(b.queuedAt||""))}
 function sqHas(email){return sqOpen().some(x=>x.email===email)}
-// Sorállapot a felületre: "var" = vár, "kuld" frissen = épp megy, "kuld" régóta = az oldal bezárult küldés közben, a háttérküldő rendezi
+// Sorállapot a felületre: "var" = vár; "kuld" = épp megy, vagy ha most nem fut küldés és régi, megszakadt (folytatáskor az Elküldött mappa dönt)
 const STUCK_MIN=15;
 const sqAge=x=>(Date.now()-new Date(x.claimedAt||x.queuedAt||0).getTime())/6e4;
-function sqStuck(){return sqOpen().filter(x=>x.state==="kuld"&&sqAge(x)>=STUCK_MIN)}
-function sqLabel(x){return x.state==="var"?["p-javasolt","Sorban, küldésre vár",""]:sqAge(x)<STUCK_MIN?["p-javasolt","Épp most megy ki",""]:["p-fu","Ellenőrzésre vár","Küldés közben megszakadt. A háttérküldő az Elküldött mappa alapján eldönti, elment-e."]}
+function sqStuck(){return bulk.running?[]:sqOpen().filter(x=>x.state==="kuld"&&sqAge(x)>=STUCK_MIN)}
+function sqLabel(x){return x.state==="var"?["p-javasolt","Küldésre vár",""]:bulk.running||sqAge(x)<STUCK_MIN?["p-javasolt","Épp most megy ki",""]:["p-fu","Ellenőrzésre vár","Küldés közben megszakadt. Folytatáskor a Gmail Elküldött mappája alapján eldöntöm, elment-e, és csak akkor küldöm újra, ha nem."]}
 // Bizonytalan küldés: külön mező (sendUnsure), a régi jegyzetes jelölést is felismeri
 const UNSURE_RE=/\s*·?\s*Küldés bizonytalan \([^)]*\), nézd meg az Elküldött mappát/g;
 const isUnsure=c=>!!c.sendUnsure||/Küldés bizonytalan/.test(c.note||"");
 function sqDoneToday(){return [...sq.values()].filter(x=>x.state==="kesz"&&x.sentAt&&today()===isoDay(x.sentAt)).length}
-// a pult saját zárát csak az a lap tekinti foglaltnak, amelyik éppen küld; egy bezárt lap zárja nem tartja vissza az indítást
-function senderBusy(){return !!senderDoc.busyUntil&&new Date(senderDoc.busyUntil)>new Date()&&(senderDoc.by!=="pult"||bulk.running)}
 function isoDay(iso){const d=new Date(iso);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 const qid=(email,kind,st)=>(kind==="fu"?"fu"+st:"uj")+"-"+email.replace(/[^A-Za-z0-9_\-.~:@+]/g,"_");
 async function enqueue(ids){
@@ -2466,38 +2460,53 @@ async function enqueue(ids){
   if(skip)toast(`${skip} címet kihagytam (már sorban van, már ment neki levél, vagy tiltólistás)`);
   return n;
 }
-async function kickSender(){
-  if(!mcpNs)return false;
-  try{await mcpNs.callTool("Claude Code Remote","fire_trigger",{trigger_id:SENDER_TRIGGER});return true}
-  catch(e){return false}
-}
 async function stopQueue(){
   const open=sqOpen();let n=0;
   for(const x of open){try{await db?.collection("sendqueue").doc(x.id).update({state:"megszakitva",stoppedAt:new Date().toISOString()});n++}catch(e){}}
-  toast(n?`Leállítva, ${n} levél nem megy ki`:"Nem volt leállítható levél");renderBulk();renderList();
+  toast(n?`Rendben, ${n} levél nem megy ki`:"Nem volt leállítható levél");renderBulk();renderList();
 }
-// Tartalék: ha a háttérküldő nem indítható, amíg nyitva van az oldal, innen megy a sor.
+// Egyszerre csak egy nyitott lap küldhet: rövid bérlet a settings/senderlock dokumentumon, levelenként megújítva.
+const TAB_ID="tab-"+Math.random().toString(36).slice(2);
+async function holdLock(){try{return (await db.doc("settings/senderlock").acquire({holder:TAB_ID,ttlMs:90000})).acquired}catch(e){return true}}
+// Félbeszakadt küldésnél (state "kuld") az Elküldött mappa dönt, hogy kell-e még küldeni.
+async function alreadySent(it){
+  try{const r=await mcpNs.callTool("Gmail","search_threads",{query:"in:sent to:"+it.email+" newer_than:2d",view:"THREAD_VIEW_MINIMAL",pageSize:10});
+    const th=(r&&r.payload&&r.payload.threads)||[];
+    for(const t of th)for(const m of (t.messages||[]))if((m.subject||"")===it.args.subject)return t.id||m.threadId||"";
+    return null}catch(e){return undefined}
+}
 async function runLocal(){
-  if(senderBusy()){toast("A háttérküldő már dolgozik");return}
-  const lock=()=>db?.doc("settings/sender").set({...senderDoc,busyUntil:new Date(Date.now()+20*6e4).toISOString(),by:"pult"}).catch(()=>{});
-  await lock();
-  const items=sqOpen().filter(x=>x.state==="var");
+  if(bulk.running)return;
+  if(!db||!mcpNs){toast("A küldés itt nem érhető el");return}
+  if(!await holdLock()){toast("Egy másik nyitott ablakban már folyik a küldés");return}
+  let wl=null;try{wl=await navigator.wakeLock?.request("screen")}catch(e){}
+  const items=sqOpen();
   bulk={running:true,stop:false,done:0,total:items.length,confirm:false};renderBulk();
   for(const it of items){
-    if(bulk.stop)break;const cur=sq.get(it.id);if(!cur||cur.state!=="var"){bulk.done++;continue}
+    if(bulk.stop)break;
+    const cur=sq.get(it.id);if(!cur||(cur.state!=="var"&&cur.state!=="kuld")){bulk.done++;continue}
     const c=contacts.get(it.email);if(!c){bulk.done++;continue}
-    if(bulk.done&&bulk.done%10===0)await lock();
+    if(!await holdLock()){toast("Egy másik ablak vette át a küldést");break}
     const ref=db.collection("sendqueue").doc(it.id);
+    if(cur.state==="kuld"){
+      const tid=await alreadySent(cur);
+      if(tid===undefined){bulk.done++;continue}
+      if(tid!==null){const patch={};for(const [k,v] of Object.entries(cur.patch||{}))patch[k]=v==="{MA}"?today():v;if(tid){patch.threadId=tid;patch.acct="levente3d"}
+        await save(c,patch);await ref.update({state:"kesz",sentAt:new Date().toISOString(),threadId:tid}).catch(()=>{});bulk.done++;renderBulk();continue}
+    }
+    // a cím állapota azóta változhatott (válaszolt, már ment neki levél): ilyenkor nem küldjük
+    const still=it.kind==="fu"?(effStatus(c)==="fu"&&fuStage(c)===it.stage):(c.status||"uj")==="uj";
+    if(!still||isBlocked(c)){await ref.update({state:"kihagyva",error:isBlocked(c)?"Tiltólistán van":"Már nem esedékes"}).catch(()=>{});bulk.done++;renderBulk();continue}
     try{await ref.update({state:"kuld",claimedAt:new Date().toISOString(),claimedBy:"pult"})}catch(e){continue}
     const ok=await sendOne(c,it.kind==="fu"?"fu":"",true);
     const after=contacts.get(it.email)||{};
     if(ok){await ref.update({state:"kesz",sentAt:new Date().toISOString(),threadId:after.threadId||""}).catch(()=>{})}
-    else if(sentTodayCount()>=60){await ref.update({state:"var"}).catch(()=>{});break}
-    else if(!isUnsure(after)){await ref.update({state:"hiba",error:"Az oldalról nem ment el"}).catch(()=>{})}
+    else if(sentTodayCount()>=60){await ref.update({state:"var"}).catch(()=>{});toast("Ma elérted a 60 levelet, a többi holnap folytatható");break}
+    else if(!isUnsure(after)){await ref.update({state:"hiba",error:"Nem ment el"}).catch(()=>{})}
     bulk.done++;renderBulk();
     if(!bulk.stop)await new Promise(r=>setTimeout(r,4000+Math.random()*3000))
   }
-  await db?.doc("settings/sender").set({...senderDoc,busyUntil:new Date().toISOString(),by:"pult"}).catch(()=>{});
+  try{await wl?.release()}catch(e){}
   const d=bulk.done;bulk.running=false;renderList();renderBulk();toast(`${d} levél feldolgozva`);
 }
 
@@ -2837,7 +2846,6 @@ renderTpl();renderSettings();renderAll();renderOrders();renderLedger();renderRat
   db.collection("ledger").onSnapshot(s=>{ledger=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));renderLedger();try{renderGoals()}catch(e){}},()=>{});
   db.collection("todos").onSnapshot(s=>{todos=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));renderTodos();setTimeout(ensureMonthly,1500);setTimeout(ensureAuto,2500)},()=>{});
   db.collection("sendqueue").where("queuedAt",">=",new Date(Date.now()-14*864e5).toISOString()).onSnapshot(s=>{sq=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));renderList();renderBulk()},()=>{});
-  db.doc("settings/sender").onSnapshot(s=>{senderDoc=s.exists?s.data():{};renderBulk()},()=>{});
 })();
 </script>
 
