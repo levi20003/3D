@@ -61,6 +61,12 @@ h1 .bt{font-weight:500;color:var(--muted)}
 .qline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;clear:both}
 .qline .small{flex:1 1 200px}
 .unsure-n{color:var(--warn);font-weight:600}
+.row.inv-row{opacity:1;border-left-color:var(--warn)}
+.inv{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+.inv label{display:grid;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.inv input{width:100%;min-width:0}
+.inv .acts{grid-column:1/-1;justify-content:flex-start}
+@media (max-width:820px){.inv{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:820px),(pointer:coarse){
   .btn,.chip,.side .tab{min-height:44px}
   .chip{display:inline-flex;align-items:center}
@@ -1669,7 +1675,7 @@ const CAT_PRIO=["nyomda","dekor","ipar","epitoipar","mezogazd","epitesz","hobbi"
 const catRank=c=>{const i=CAT_PRIO.indexOf(c.cat);return i<0?99:i};
 // Follow-up csak az új címről (levente3d.szeged@gmail.com) küldött e-mailekhez jár; a régi címről mentekhez nem. A DM-emlékeztetők maradnak.
 const NEW_ACCT_SINCE="2026-10-19";
-const fuEligible=c=>isDM(c)||c.acct==="levente3d"||(c.sentAt||"")>=(settings.fuSince||NEW_ACCT_SINCE);
+const fuEligible=c=>!c.movedToDm&&(isDM(c)||c.acct==="levente3d"||(c.sentAt||"")>=(settings.fuSince||NEW_ACCT_SINCE));
 function fuStage(c){if(c.status!=="elkuldve"||!c.sentAt||c.bounced||!fuEligible(c))return 0;if(!c.followupAt)return daysSince(c.sentAt)>=(+settings.fuDays||6)?1:0;if(!c.followup2At)return daysSince(c.followupAt)>=(+settings.fu2Days||8)?2:0;return 0}
 function effStatus(c){if(fuStage(c))return"fu";return c.status||"uj"}
 function fuTpl(c,st){if(st===2)return tplFor("followup2");const k="fu_"+c.cat;return (tpls[k]||TPL_DEFAULT[k])?tplFor(k):tplFor("followup")}
@@ -1741,20 +1747,23 @@ function resolveCat(x){x=(x||"").trim();if(!x)return{cat:"egyeb"};const k=x.toLo
   if(CATS[slug])return{cat:slug,catLabel:CATS[slug].label};
   const label=x.charAt(0).toUpperCase()+x.slice(1);CATS[slug]={label};return{cat:slug,catLabel:label}}
 const PRE=new Set(["javasolt","elvetve"]);
-function matchS(c){const s=effStatus(c);if(fStatus==="javasolt"||fStatus==="elvetve")return s===fStatus;if(!inGroup(c)||PRE.has(s))return false;return fStatus==="all"||(fStatus==="dmq"?(s==="uj"||s==="fu"):s===fStatus)}
+// Érvénytelen: visszapattant, nincs pótlása, és még nem zártad le kézzel. Csak az „Érvénytelen” szűrőben látszik.
+const isInv=c=>c.bounced===true&&!c.replacedBy&&!c.invalidDone;
+function matchS(c){const s=effStatus(c);if(fStatus==="ervenytelen")return isInv(c)&&inGroup(c);if(isInv(c))return false;if(fStatus==="javasolt"||fStatus==="elvetve")return s===fStatus;if(!inGroup(c)||PRE.has(s))return false;return fStatus==="all"||(fStatus==="dmq"?(s==="uj"||s==="fu"):s===fStatus)}
 function renderChips(){
   const {all,st}=counts();
   const sOpts=[["uj","Kiküldendő"],["fu",fGroup==="dm"?"Emlékeztető":"Follow-up"],["elkuldve","Elküldve"],["valaszolt","Válaszolt"],["ugyfel","Ügyfél"],["lezarva","Lezárva"],["all","Mind"]];
   const nJ=all.filter(c=>c.status==="javasolt").length,nX=all.filter(c=>c.status==="elvetve").length;
   if(nJ)sOpts.unshift(["javasolt","Javaslatok"]);if(nX)sOpts.push(["elvetve","Elvetett"]);
-  const gAll=all.filter(c=>inGroup(c)&&!PRE.has(c.status)),gst={javasolt:nJ,elvetve:nX};gAll.forEach(c=>{const x=effStatus(c);gst[x]=(gst[x]||0)+1});
+  const gAll=all.filter(c=>inGroup(c)&&!PRE.has(c.status)&&!isInv(c)),gst={javasolt:nJ,elvetve:nX,ervenytelen:all.filter(c=>isInv(c)&&inGroup(c)).length};gAll.forEach(c=>{const x=effStatus(c);gst[x]=(gst[x]||0)+1});
+  if(gst.ervenytelen)sOpts.splice(sOpts.findIndex(([k])=>k==="lezarva"),0,["ervenytelen","Érvénytelen"]);
   const nE=all.filter(c=>!isDM(c)).length,nP=p=>all.filter(c=>isDM(c)&&platOf(c)===p&&!PRE.has(c.status)).length;
   const rate=p=>{const x=all.filter(c=>isDM(c)&&platOf(c)===p&&c.sentAt),r=x.filter(c=>["valaszolt","ugyfel"].includes(c.status)).length;return x.length?`${r}/${x.length} válasz (${Math.round(r/x.length*100)}%)`:"még nem ment üzenet"};
   // Csatornánként a teendő (kiküldendő + esedékes) külön jelvényen, hogy a nem kijelölt csatorna munkája is látszódjon
   const work={email:st.ujE+st.fuE,ig:st.igUj+st.igFu,fb:st.fbUj+st.fbFu},CH={email:"E-mail",ig:"Instagram",fb:"Facebook"},cur=fGroup==="dm"?fPlat:"email";
   const gchip=(k,n)=>`<button class="chip" data-g="${k}" aria-pressed="${cur===k}" title="${work[k]?work[k]+" teendő: kiküldendő és esedékes":"Nincs teendő"}">${CH[k]}<span class="c">${n}</span>${work[k]?`<span class="todo-b">${work[k]} teendő</span>`:""}</button>`;
   $("#groupChips").innerHTML=gchip("email",nE)+gchip("ig",nP("ig"))+gchip("fb",nP("fb"))+(fGroup==="dm"?`<span class="small" style="flex-basis:100%">Instagram: ${rate("ig")} · Facebook: ${rate("fb")}. Ahol mindkét profil megvan, a sor alatti gombbal teheted át a másik felületre.</span>`:"");
-  $("#statusChips").innerHTML=sOpts.map(([k,l])=>`<button class="chip${["uj","fu","javasolt"].includes(k)&&gst[k]?" hot":""}" data-s="${k}" aria-pressed="${fStatus===k}">${l}<span class="c">${k==="all"?gAll.length:(gst[k]||0)}</span></button>`).join("");
+  $("#statusChips").innerHTML=sOpts.map(([k,l])=>`<button class="chip${["uj","fu","javasolt","ervenytelen"].includes(k)&&gst[k]?" hot":""}" data-s="${k}" aria-pressed="${fStatus===k}">${l}<span class="c">${k==="all"?gAll.length:(gst[k]||0)}</span></button>`).join("");
   const others=Object.keys(work).filter(k=>k!==cur&&work[k]),alt=fStatus==="uj"?"fu":"uj",altN=gst[alt]||0;
   $("#nextBar").innerHTML=(["uj","fu"].includes(fStatus)&&!(gst[fStatus]||0)&&(others.length||altN))
     ?`<div class="nextbar"><span>${CH[cur]}: nincs ${fStatus==="uj"?"kiküldendő":"esedékes"}. Itt vár munka:</span>`+
@@ -1791,7 +1800,8 @@ function renderList(){
     else if(s==="fu"&&c.fuDraftUrl&&+c.fuDraft===fuStage(c))main=`<a class="btn primary" href="${esc(c.fuDraftUrl)}" target="_blank" rel="noopener" title="Claude reggel előkészítette, átnézed és elküldöd">${fuStage(c)}. follow-up piszkozat</a><button class="btn" data-act="fusent" data-id="${id}">Elküldtem</button>`;
     else if(s==="fu")main=canSend?`<button class="btn primary${pend?" confirm":""}" data-act="sendfu" data-id="${id}"${busy?" disabled":""}>${busy?"Küldés…":pend?"Biztos? Follow-up most":"Follow-up küldése"}</button><a class="btn ghost" href="${esc(gmailUrl(c,"fu"))}" target="_blank" rel="noopener">Gmailben</a>`
       :`<a class="btn primary" href="${esc(gmailUrl(c,"fu"))}" target="_blank" rel="noopener">Follow-up Gmailben</a><button class="btn" data-act="fusent" data-id="${id}">Follow-up elküldve</button>`;
-    if(isUnsure(c)&&!sqHas(c.email))main=`<button class="btn primary" data-act="unsureyes" data-id="${id}">Elment</button><button class="btn" data-act="unsureno" data-id="${id}">Nem ment el</button>`;
+    if(isInv(c))main=`<span class="pill p-fu">Érvénytelen cím, nézd át kézzel</span>`;
+    else if(isUnsure(c)&&!sqHas(c.email))main=`<button class="btn primary" data-act="unsureyes" data-id="${id}">Elment</button><button class="btn" data-act="unsureno" data-id="${id}">Nem ment el</button>`;
     else if(sqHas(c.email)&&!isDM(c))main="";
     const detail=openId===c.email?`<div class="detail">
         <label for="h-${id}">Mit csinálnak (belső jegyzet)</label>
@@ -1807,7 +1817,7 @@ function renderList(){
         <div class="acts" style="justify-content:flex-start"><button class="btn" data-act="copybody" data-id="${id}">Szöveg másolása</button><button class="btn" data-act="copysubj" data-id="${id}">Tárgy másolása</button>`}<span class="small">Forrás: ${esc(c.source||"–")}</span></div>
         <div class="acts" style="justify-content:center"><button class="btn ghost" data-act="open" data-id="${id}" aria-label="Részletek bezárása">▲ Bezárás</button></div>
       </div>`:"";
-    return `<div class="row s-${s}">
+    return `<div class="row s-${s}${isInv(c)?" inv-row":""}">
       <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)&&!sqHas(c.email)&&!isUnsure(c)&&!isBlocked(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${(n=>n?`<div class="note">${esc(n)}</div>`:"")(String(c.note||"").replace(UNSURE_RE,"").replace(/^\s*·\s*/,""))}${(x=>{if(!x)return"";const [cl,lb,why]=sqLabel(x);return `<div class="qline"><span class="pill ${cl}">${lb}</span>${why?`<span class="small">${why}</span>`:""}</div>`})(sqOpen().find(x=>x.email===c.email))}${isUnsure(c)&&!sqHas(c.email)?`<div class="qline"><span class="pill p-fu">Küldés bizonytalan</span><span class="small">A Gmail nem jelezte vissza, elment-e. Nézd meg az Elküldött mappát, és jelöld.</span></div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
       <div class="meta cat">${esc(CATS[c.cat]?.label||c.cat)}<br>${esc(c.city||"")}</div>
       <div class="meta"><span class="pill p-${s}">${s==="fu"?fuStage(c)+". follow-up esedékes":c.bounced?"Visszapattant":STATUS[s]}</span><br>${when}</div>
@@ -1819,7 +1829,7 @@ function renderList(){
           ${["valaszolt","ugyfel","elkuldve","lezarva"].map(k=>`<button data-act="set" data-v="${k}" data-id="${id}">${STATUS[k]} állapotra</button>`).join("")}
           <button data-act="cat" data-id="${id}">Kategória váltása</button>
           <button data-act="del" data-id="${id}">Törlés…</button></div>`:""}</span>
-      </div>${detail}</div>`;
+      </div>${isInv(c)?invBox(c,id):""}${detail}</div>`;
   }).join("")+(total>rows.length?`<button class="btn" type="button" data-more="1" style="justify-self:center;margin-top:6px">Továbbiak mutatása (még ${total-rows.length})</button>`:"");
 }
 const LIST_STEP=150;let listLimit=LIST_STEP,qT,rafR=0;
@@ -1827,6 +1837,54 @@ function scheduleRender(){if(rafR)return;rafR=requestAnimationFrame(()=>{rafR=0;
 document.addEventListener("click",e=>{if(e.target.dataset?.more){listLimit+=LIST_STEP;renderList()}});
 function renderAll(){renderStats();renderChips();renderList();try{maybeSavePlan();if(!$("#p-cov").hidden)renderCov()}catch(e){};try{renderBulk()}catch(e){};try{renderGoals()}catch(e){};if(typeof renderInbox==="function"&&$("#tInbox"))try{renderInbox()}catch(e){}}
 
+// Érvénytelen cím kézi rendezése: új e-mail, átrakás DM-be, vagy lezárás
+function invBox(c,id){
+  const q=encodeURIComponent([displayName(c),c.city,"e-mail kapcsolat"].filter(Boolean).join(" "));
+  return `<div class="inv">
+    <label>Új e-mail cím<input type="email" id="ne-${id}" inputmode="email" autocomplete="off" placeholder="pl. info@ceg.hu"></label>
+    <label>Instagram- vagy Facebook-profil linkje<input type="text" id="nd-${id}" inputmode="url" value="${esc(c.ig||c.fb||"")}" placeholder="https://www.instagram.com/…"></label>
+    <div class="acts"><button class="btn primary" data-act="newmail" data-id="${id}">Új e-mail mentése</button><button class="btn" data-act="todm" data-id="${id}">Átteszem DM-be</button><a class="btn ghost" href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener">Keresés Google-ben</a><button class="btn danger" data-act="invdone" data-id="${id}">Nincs más, lezárom</button></div>
+  </div>`;
+}
+// Új rekord írása; hibánál visszavonja a helyi változást, és false-t ad (a régi rekordot csak siker után módosítjuk)
+async function saveNew(doc){
+  if(!db){toast("Nincs adatbázis, a változás nem mentődött");return false}
+  contacts.set(doc.email,doc);renderAll();
+  try{await db.collection("contacts").doc(doc.email).set(doc);return true}
+  catch(e){contacts.delete(doc.email);renderAll();toast(e.code==="invalid_argument"?"Ehhez nincs írási jogod":"Mentés nem sikerült, próbáld újra");return false}
+}
+const dmSlug=s=>deacc(s).replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+async function invAction(a,c,b){
+  const id=c.email,stamp=huDate(today());
+  if(a==="invdone"){await save(c,{invalidDone:true,status:"lezarva",note:[c.note,"Nincs más elérhetősége."].filter(Boolean).join(" · ")});toast("Lezárva: "+displayName(c));return}
+  let doc;
+  if(a==="newmail"){
+    const em=($("#ne-"+CSS.escape(id))?.value||"").trim().toLowerCase();
+    if(!EMAIL_RE.test(em)){toast("Ez nem érvényes e-mail cím");return}
+    if(em===id){toast("Ez ugyanaz a cím, ami visszapattant");return}
+    if(contacts.has(em)){toast("Ez a cím már szerepel a címlistán");return}
+    if(isBlocked({email:em,name:c.name})){toast("Ez a cím tiltólistán van, nem mentem el");return}
+    doc={email:em,name:c.name||"",cat:c.cat||"egyeb",city:c.city||"",hook:c.hook||"",status:"uj",sentAt:"",replaces:id,
+      note:`A visszapattant ${id} helyett.`,source:[c.source,"kézzel pótolva "+stamp].filter(Boolean).join(" · ")};
+    if(c.catLabel)doc.catLabel=c.catLabel;
+  }else{
+    const link=($("#nd-"+CSS.escape(id))?.value||"").trim();
+    if(!/^https:\/\/\S+\.\S+/.test(link)){toast("Add meg a profil linkjét (https://…)");return}
+    const ig=/instagram\.com/i.test(link),fb=/facebook\.com|fb\.com/i.test(link);
+    if(!ig&&!fb){toast("Instagram- vagy Facebook-linket adj meg");return}
+    const did="dm-"+[dmSlug(displayName(c)),dmSlug(c.city)].filter(Boolean).join("-");
+    if(contacts.has(did)){toast("Ehhez a céghez már van privát üzenetes rekord");return}
+    if(isBlocked({email:did,name:c.name,ig:ig?link:"",fb:fb?link:""})){toast("Ez a cég tiltólistán van");return}
+    doc={email:did,name:c.name||displayName(c),cat:c.cat||"egyeb",city:c.city||"",hook:c.hook||"",status:"uj",sentAt:"",channel:"dm",replaces:id,
+      note:"Az e-mail visszapattant, ezért DM.",source:[c.source,"kézzel pótolva "+stamp].filter(Boolean).join(" · ")};
+    if(ig)doc.ig=link;else doc.fb=link;
+    if(c.catLabel)doc.catLabel=c.catLabel;
+  }
+  b.disabled=true;
+  if(!await saveNew(doc)){b.disabled=false;return}
+  await save(contacts.get(id)||c,{replacedBy:doc.email,replaceDone:true});
+  toast(a==="newmail"?`Mentve: ${doc.email} a Kiküldendők közé került`:`Átkerült a ${doc.ig?"Instagram":"Facebook"} üzenetek közé`);
+}
 async function save(c,patch){
   const next={...c,...patch};contacts.set(c.email,next);renderAll();
   if(!db){toast("Nincs adatbázis, a változás nem mentődött");return}
@@ -1849,6 +1907,7 @@ document.addEventListener("click",async e=>{
   if(b.dataset.c){listLimit=LIST_STEP;fCat=b.dataset.c;renderAll();return}
   const c=contacts.get(b.dataset.id);if(!c)return;
   const a=b.dataset.act;
+  if(a==="newmail"||a==="todm"||a==="invdone")return invAction(a,c,b);
   if(a==="unsureyes"||a==="unsureno"){const s=effStatus(c),patch={sendUnsure:"",note:String(c.note||"").replace(UNSURE_RE,"").replace(/^\s*·\s*/,"")};
     if(a==="unsureyes"){if(s==="uj")Object.assign(patch,{status:"elkuldve",sentAt:today(),channel:"email"});else if(s==="fu")patch[(fuStage(c)||1)===2?"followup2At":"followupAt"]=today()}
     b.disabled=true;await save(c,patch);toast(a==="unsureyes"?"Rendben, elküldöttnek jelöltem":"Rendben, újra küldhető");return}
@@ -2627,17 +2686,17 @@ document.addEventListener("click",e=>{
 const AREAS=[
   {n:"Szeged + 50 km",c:["Szeged","Hódmezővásárhely","Makó","Szentes","Csongrád","Kistelek","Mórahalom","Sándorfalva","Algyő","Deszk","Mindszent","Kiskunmajsa","Szegvár","Domaszék","Kiszombor","Szatymaz","Zsombó","Ásotthalom","Balástya"]},
   {n:"100 km-ig",c:["Kecskemét","Békéscsaba","Orosháza","Kiskunfélegyháza","Kiskunhalas","Szarvas","Gyula","Békés","Baja","Kiskőrös","Kunszentmárton","Jánoshalma","Mezőkovácsháza","Bácsalmás"]},
-  {n:"150 km-ig",c:["Szolnok","Cegléd","Nagykőrös","Szekszárd","Paks","Kalocsa","Mohács","Mezőtúr","Törökszentmiklós","Karcag","Kunszentmiklós","Sarkad"]},
+  {n:"Alföld 150 km-ig",c:["Szolnok","Kalocsa","Mezőtúr","Törökszentmiklós","Karcag","Kunszentmiklós","Sarkad","Kunhegyes","Túrkeve","Dévaványa","Szeghalom","Füzesgyarmat"]},
   {n:"Budapest",c:["Budapest"]}];
 // Lakosság ezer főben: a város "telítettsége" = címek / lakosság, a legkevésbé lefedett városba megy a keresés.
-const POP={"Szeged":160,"Hódmezővásárhely":43,"Makó":22,"Szentes":27,"Csongrád":15,"Kistelek":7,"Mórahalom":6,"Sándorfalva":8,"Algyő":5,"Deszk":4,"Mindszent":6,"Kiskunmajsa":11,"Szegvár":4,"Domaszék":5,"Kiszombor":4,"Szatymaz":4,"Zsombó":4,"Ásotthalom":4,"Balástya":3,"Békéscsaba":57,"Orosháza":27,"Gyula":30,"Szarvas":16,"Békés":19,"Kecskemét":108,"Kiskunhalas":27,"Kiskunfélegyháza":29,"Baja":34,"Kiskőrös":13,"Kunszentmárton":8,"Jánoshalma":9,"Mezőkovácsháza":6,"Bácsalmás":6,"Szolnok":70,"Cegléd":35,"Nagykőrös":23,"Szekszárd":32,"Paks":19,"Kalocsa":16,"Mohács":17,"Mezőtúr":16,"Törökszentmiklós":20,"Karcag":20,"Kunszentmiklós":8,"Sarkad":9,"Budapest":1700};
+const POP={"Szeged":160,"Hódmezővásárhely":43,"Makó":22,"Szentes":27,"Csongrád":15,"Kistelek":7,"Mórahalom":6,"Sándorfalva":8,"Algyő":5,"Deszk":4,"Mindszent":6,"Kiskunmajsa":11,"Szegvár":4,"Domaszék":5,"Kiszombor":4,"Szatymaz":4,"Zsombó":4,"Ásotthalom":4,"Balástya":3,"Békéscsaba":57,"Orosháza":27,"Gyula":30,"Szarvas":16,"Békés":19,"Kecskemét":108,"Kiskunhalas":27,"Kiskunfélegyháza":29,"Baja":34,"Kiskőrös":13,"Kunszentmárton":8,"Jánoshalma":9,"Mezőkovácsháza":6,"Bácsalmás":6,"Szolnok":70,"Cegléd":35,"Nagykőrös":23,"Szekszárd":32,"Paks":19,"Kalocsa":16,"Mohács":17,"Mezőtúr":16,"Törökszentmiklós":20,"Karcag":20,"Kunszentmiklós":8,"Sarkad":9,"Kunhegyes":7,"Túrkeve":9,"Dévaványa":7,"Szeghalom":9,"Füzesgyarmat":5,"Budapest":1700};
 const NICHES={
   nyomda:["nyomda","digitális nyomda","gyorsnyomda","címkenyomda","csomagolóanyag gyártó","könyvkötészet","szitanyomás","fénymásoló szalon"],
-  dekor:["reklámügynökség","reklámstúdió","reklámajándék","promóciós termék","lézergravírozás","matricázás","reklámtábla készítés","pólónyomás","kirakatdekoráció","display gyártás"],
+  dekor:["reklámügynökség","reklámstúdió","reklámajándék","gravírozás","lézervágás","matricázás","reklámtábla készítés","pólónyomás","dekorációs cég","display gyártás","promóciós termék","kirakatdekoráció"],
   ipar:["gépgyártó","műanyagipari cég","fémmegmunkálás","CNC megmunkálás","termékfejlesztés","formatervező","laboratórium","elektronikai gyártás"],
   epitoipar:["asztalos","villanyszerelő","lakatos","nyílászáró","burkoló","épületgépész"],
   mezogazd:["kertészet","faiskola","méhészet","pincészet","mezőgazdasági gépjavító","gazdabolt"],
-  epitesz:["belsőépítész","építésziroda","látványtervező","lakberendező","makettkészítő","ingatlaniroda"],
+  epitesz:["építésziroda","belsőépítész","építész","lakberendező","látványtervező","tervezőiroda","makettkészítő","ingatlaniroda"],
   oktatas:["általános iskola","szakképző iskola","óvoda","múzeum","nyelviskola"],
   sport:["sportegyesület","úszóklub","kosárlabda klub","lovarda","harcművészeti egyesület"],
   joga:["jógastúdió","pilates stúdió","reformer pilates","jóga oktatás","jógaközpont"],
@@ -2647,7 +2706,7 @@ const NICHES={
   ugyved:["ügyvédi iroda","ügyvéd","közjegyző"],
   rendezveny:["esküvőszervező","rendezvényszervező","dekoratőr","fotobox","lufidekoráció"],
   kisker:["ajándékbolt","könyvesbolt","játékbolt","virágbolt","papír-írószer bolt","kézműves bolt"],
-  turizmus:["szuvenír bolt","tourinform","látogatóközpont","idegenvezetés"],
+  turizmus:["tourinform","látogatóközpont","szuvenír bolt","idegenvezetés"],
   hobbi:["társasjáték bolt","szabadulószoba","modellező bolt","horgászbolt","hangszerbolt","fotóstúdió"],
   szolg:["fogtechnikai labor","optika","kozmetikai szalon","szálláshely","fodrászat"],
   lakber:["lakberendezés","bútorüzlet","konyhastúdió","lámpabolt"],
@@ -2657,8 +2716,8 @@ const NICHES={
 };
 const SKIP_DEFAULT=["vendeglato","auto"];
 // Partnerszegmensek: ők kapnak 3D-s kéréseket az ügyfeleiktől, vagy maguk használnak egyedi alkatrészt, makettet, displayt.
-const FOCUS_PRESET=["nyomda","dekor","epitesz","lakber","ipar"];
-const FOCUS_WHY={nyomda:"partner: a nem nyomható 3D-s kéréseket továbbadhatja",dekor:"partner: egyedi tábla, display, reklámtárgy",epitesz:"partner: makett, egyedi lakberendezési elem",lakber:"partner: egyedi elem, kiegészítő a vevőinek",ipar:"saját használat: prototípus, pótalkatrész, sablon",joga:"kis stúdió, DM-re válaszol · szőnyegtartó, QR-kódos tábla, logós ajándék tagoknak",tanc:"kis stúdió, DM-re válaszol · logós érem, kulcstartó, ajtótábla, fellépés-kellék",fitnesz:"kis terem, DM-re válaszol · kulacs- és telefontartó, QR-kódos tábla, logós ajándék",terapia:"kis rendelő, DM-re válaszol · névtábla, QR-kódos pulttábla, kis tartók",ugyved:"iroda ügyfélforgalommal · ajtótábla, névjegytartó, logós ügyfélajándék"};
+const FOCUS_PRESET=["nyomda","dekor","epitesz","lakber","ipar","turizmus"];
+const FOCUS_WHY={nyomda:"partner: a nem nyomható 3D-s kéréseket továbbadhatja",dekor:"partner: egyedi tábla, display, reklámtárgy",epitesz:"partner: makett, egyedi lakberendezési elem",lakber:"partner: egyedi elem, kiegészítő a vevőinek",ipar:"saját használat: prototípus, pótalkatrész, sablon",turizmus:"partner: Tourinform, látogatóközpont · szuvenír, makett, tapintható térkép, logós ajándék",joga:"kis stúdió, DM-re válaszol · szőnyegtartó, QR-kódos tábla, logós ajándék tagoknak",tanc:"kis stúdió, DM-re válaszol · logós érem, kulcstartó, ajtótábla, fellépés-kellék",fitnesz:"kis terem, DM-re válaszol · kulacs- és telefontartó, QR-kódos tábla, logós ajándék",terapia:"kis rendelő, DM-re válaszol · névtábla, QR-kódos pulttábla, kis tartók",ugyved:"iroda ügyfélforgalommal · ajtótábla, névjegytartó, logós ügyfélajándék"};
 const focusList=()=>(settings.focus||[]).filter(k=>CATS[k]);
 const SEARCH_RULES=[
   "Minden olyan e-mail címet vegyél fel, amelyet a cég maga tesz közzé (weboldal Kapcsolat vagy Impresszum, Google Térkép adatlap, Facebook névjegy), nem csak info@ kezdetűt. Csak ténylegesen látott címet, soha ne tippelj.",
@@ -2667,8 +2726,10 @@ const SEARCH_RULES=[
   "Kis stúdiók (joga, tanc, fitnesz, terapia kategória): ha van Instagram- vagy Facebook-oldaluk, DM-kapcsolatként vedd fel őket akkor is, ha van e-mail címük (ezek a helyek e-mailre alig válaszolnak, privát üzenetre igen). A talált e-mail címet ilyenkor a note mezőbe írd. Ha nincs közösségi oldaluk, e-mail címmel vedd fel.",
   "Új rekord: status javasolt, cat, city, name, hook (egy mondat arról, mit csinálnak), source (az oldal URL-je és a dátum). Levente a pultban hagyja jóvá.",
   "Ha a tervben van focus lista, csak ezekben a kategóriákban vegyél fel címet. A hook mondja meg, mire használhatnák a 3D nyomtatást (például nyomdánál: a hozzájuk befutó, papírra nem nyomható kérések; belsőépítésznél: makett, egyedi elem).",
+  "Terület: csak a plan.cities listában szereplő településeken működő cégeket vedd fel, a címtár más városba eső találatait hagyd ki.",
+  "Egy keresésnél a címtár listaoldalán szereplő összes cégnevet nézd végig, ne csak az első néhányat, és addig haladj a targets listán, amíg el nem éred a perRun-t. Ha egy kulcsszó a kisebb városban üres, próbáld egy rövidebb vagy rokon szóval, majd Szegeden.",
   "Magánszemély címét ne vedd fel, és tartsd be a settings/blocklist tiltólistát meg a skill tiltólistáját.",
-  "Tartalék: ha a targets keresései együtt 0 új címet hoztak, végezd el a fallback.targets kereséseit is (fókusz nélkül szegedi éttermek, gyorséttermek, cat vendeglato; fókusz módban a fókusz-kategóriák szegedi cégei). Csak olyan helyet, ahová még nem ment levél vagy DM: ellenőrizd a contacts doc_id-t és domaint, az azonos nevű dm- kapcsolatot és a Gmail to: keresést. Pubot, bárt, szórakozóhelyet továbbra se.",
+  "Tartalék: ha a targets keresései együtt a perRun felénél kevesebb új címet hoztak, végezd el a fallback.targets kereséseit is (fókusz nélkül szegedi éttermek, gyorséttermek, cat vendeglato; fókusz módban a fókusz-kategóriák szegedi cégei). Csak olyan helyet, ahová még nem ment levél vagy DM: ellenőrizd a contacts doc_id-t és domaint, az azonos nevű dm- kapcsolatot és a Gmail to: keresést. Pubot, bárt, szórakozóhelyet továbbra se.",
   "Futás végén írd be a settings/search dokumentum lastRun mezőjébe: {date, found, fallbackUsed: true/false, empty: [azok a keresések, amelyekre nem volt új találat]}."];
 let searchDoc=null,planT=null,lastJRows=[];
 const areaN=()=>Math.min(AREAS.length,Math.max(1,+settings.area||1));
@@ -2691,9 +2752,10 @@ function buildPlan(){
   const {st,p}=catStats(),skip=skipSet(),cities=areaCities(),day=dayIdx();
   const E=k=>st[k]||{n:0,uj:0,jav:0,sent:0,rep:0,cust:0,city:{},rate:p,prio:p};
   const keys=Object.keys(CATS).filter(k=>k!=="egyeb"&&!skip.has(k));
-  const allCity={};for(const c of contacts.values()){const t=cityOf(c);if(t)allCity[t]=(allCity[t]||0)+1}
-  const need=(x,c)=>(POP[c]||10)/(1+(x.city[c]||0)+(allCity[c]||0)/10);
-  const citiesFor=(x,n)=>{const pool=[...cities].sort((a,b)=>need(x,b)-need(x,a)).slice(0,Math.max(n,3));
+  // Csak a kategória saját lefedettsége számít; a terület összes települése szóba jöhet.
+  const need=(x,c)=>(POP[c]||10)/(1+2*(x.city[c]||0));
+  const cpool=cities;
+  const citiesFor=(x,n)=>{const pool=[...cpool].sort((a,b)=>need(x,b)-need(x,a)).slice(0,Math.max(n,3));
     return [...new Set(Array.from({length:n},(_,i)=>pool[(day+i)%pool.length]))]};
   const niche=(k,i)=>{const L=NICHES[k]||[CATS[k]?.label||k];return L[(day+i)%L.length]};
   const ranked=keys.map(k=>[k,E(k)]).filter(([,x])=>x.sent>=3).sort((a,b)=>b[1].prio-a[1].prio).slice(0,4);
@@ -2709,8 +2771,8 @@ function buildPlan(){
   ranked.forEach(([k,x],ri)=>citiesFor(x,2).forEach((ct,i)=>T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,ri+i)+" "+ct,why:`${x.rep}/${x.sent} válaszolt (${Math.round(x.rep/x.sent*100)}%), ${x.uj+x.jav} cím vár kiküldésre`})));
   explore.forEach((k,i)=>{const ct=citiesFor(E(k),1)[0]||cities[0];T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,i)+" "+ct,why:"Még kipróbálatlan kategória"})});
   }
-  const FB=NICHES.vendeglato,fallback={when:"Ha a targets keresései együtt 0 új címet hoztak",targets:focus.length
-    ?focus.slice(0,3).map((k,i)=>({cat:k,label:CATS[k].label,city:"Szeged",q:niche(k,i+5)+" Szeged",why:"Tartalék: fókusz-kategória Szegeden, más kulcsszóval"}))
+  const FB=NICHES.vendeglato,fallback={when:"Ha a targets keresései együtt a perRun felénél kevesebb új címet hoztak",targets:focus.length
+    ?focus.map((k,i)=>({cat:k,label:CATS[k].label,city:"Szeged",q:niche(k,i+5)+" Szeged",why:"Tartalék: fókusz-kategória Szegeden, más kulcsszóval"}))
     :[0,1,2].map(i=>{const q=FB[(day*3+i)%FB.length];return {cat:"vendeglato",label:CATS.vendeglato.label,city:"Szeged",q:q+" Szeged",why:"Tartalék: szegedi vendéglátóhely, ahová még nem írtunk"}})};
   return {area:AREAS.slice(0,areaN()).map(a=>a.n).join(" + "),cities,...(focus.length?{focus}:{}),perRun:Math.max(5,Math.min(50,+settings.perRun||15)),skip:[...skip],targets:T,fallback,rules:SEARCH_RULES};
 }
@@ -2734,9 +2796,9 @@ function renderCov(){
   const fc=new Set(focusList()),isPreset=fc.size===FOCUS_PRESET.length&&FOCUS_PRESET.every(k=>fc.has(k));
   $("#cv-focus").innerHTML=`<button class="chip" type="button" data-focus="@partner" aria-pressed="${isPreset}">Partnerek (nyomda, reklám, belsőépítész…)</button><button class="chip" type="button" data-focus="@none" aria-pressed="${!fc.size}">Nincs fókusz</button>`+
     Object.keys(CATS).filter(k=>k!=="egyeb").map(k=>`<button class="chip" type="button" data-focus="${esc(k)}" aria-pressed="${fc.has(k)}">${esc(CATS[k].label)}</button>`).join("");
-  $("#cv-tgt").innerHTML=pl.targets.map(t=>`<div><span class="pill p-uj">${esc(t.city)}</span><span><b>${esc(t.q)}</b> · ${esc(t.label)}<br><span class="small">${esc(t.why)}</span></span></div>`).join("")+`<div><span class="pill p-fu">Tartalék</span><span><b>${esc(pl.fallback.targets.map(t=>t.q).join(" · "))}</b><br><span class="small">Csak ha a fenti keresések nem hoznak új címet. ${focusList().length?"A fókusz-kategóriák szegedi cégei, más kulcsszóval.":"Olyan éttermek és gyorséttermek, ahová még nem írtunk."}</span></span></div>`;
+  $("#cv-tgt").innerHTML=pl.targets.map(t=>`<div><span class="pill p-uj">${esc(t.city)}</span><span><b>${esc(t.q)}</b> · ${esc(t.label)}<br><span class="small">${esc(t.why)}</span></span></div>`).join("")+`<div><span class="pill p-fu">Tartalék</span><span><b>${esc(pl.fallback.targets.map(t=>t.q).join(" · "))}</b><br><span class="small">Ha a fenti keresések a napi keret felét sem hozzák. ${focusList().length?"A fókusz-kategóriák szegedi cégei, más kulcsszóval.":"Olyan éttermek és gyorséttermek, ahová még nem írtunk."}</span></span></div>`;
   const lr=searchDoc?.lastRun;
-  $("#cv-run").textContent=(searchDoc?.updated?"Terv mentve: "+searchDoc.updated+". ":"")+(lr?`Utolsó keresés: ${lr.date||"?"}, ${lr.found??"?"} új javaslat${lr.fallbackUsed?" (a tartalék éttermi keresésből is)":""}${lr.empty&&lr.empty.length?". Nem volt új találat: "+lr.empty.join(", "):""}.`:"A napi feladat még nem futott ezzel a tervvel.");
+  $("#cv-run").textContent=(searchDoc?.updated?"Terv mentve: "+searchDoc.updated+". ":"")+(lr?`Utolsó keresés: ${lr.date||"?"}, ${lr.found??"?"} új javaslat${lr.fallbackUsed?" (a tartalékból is)":""}${lr.empty&&lr.empty.length?". Nem volt új találat: "+lr.empty.join(", "):""}.`:"A napi feladat még nem futott ezzel a tervvel.");
   const Z={n:0,uj:0,jav:0,sent:0,rep:0,cust:0,city:{},prio:0};
   const keys=Object.keys(CATS).filter(k=>st[k]||k!=="egyeb").sort((a,b)=>((st[b]||Z).prio-(st[a]||Z).prio)||((st[b]||Z).n-(st[a]||Z).n));
   const maxP=Math.max(...keys.map(k=>(st[k]||Z).prio),1e-6),showC=cities.slice(0,12);
