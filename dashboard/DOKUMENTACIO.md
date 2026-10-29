@@ -107,11 +107,17 @@ Nincs küldő, másoló vagy jóváhagyó gomb, csak a „Tiltólistán, nem kü
 - Érvényes a gyors felvételre, a kézi pótlásra, a küldésre, a kijelölésre és a napi keresésre is.
 
 ## 8. Keresési terv (Lefedettség fül, `settings/search`)
-- **Terület:** Szeged + 50 km, 19 település. A keresés oda megy, ahol a lakossághoz képest kevés a cím.
-- **Fókusz** („Partnerek”): nyomda, reklám-dekor, építész-belsőépítész, lakberendezés, gyártás. Kategóriánként naponta két kulcsszó-város pár.
-- **Tartalék:** fókusz módban ugyanezek a kategóriák Szegeden, más kulcsszóval; fókusz nélkül szegedi vendéglátóhelyek.
-- **Mentés:** a pult minden betöltéskor újraszámolja és elmenti a tervet. A kézzel írt célokat ezért felülírja, kategóriát a Fókusz gombokkal adj hozzá.
-- **Visszajelzés:** a napi rutin a végén a `lastRun` mezőbe írja az eredményt, ez a „Keresési terv” kártya alján látszik.
+- **Ki használja:** a hétköznap 10:00-kor futó **címgyűjtő**. A 7:25-ös napi kör nem gyűjt címet, csak a visszapattanókat és a válaszokat kezeli.
+- **Terület:** `settings/main.area` egyetlen szám km-ben (50, 100 vagy 150, alapból 150). A Lefedettség fülön választható: Szeged + 50 km (19 település), + 100 km (33), + 150 km (45). A `plan.cities` ebből áll össze. A keresés előbb az 50 km-es kör azon településeire megy, ahol a kategóriának kevés címe van; a távolabbi körök és a már sűrű városok (pl. Szeged a nyomdáknál) csak utánuk jönnek. A régi 1–4-es sorszámot a pult km-ként értelmezi (1 = 50, 2 = 100, 3–4 = 150).
+- **Súlyozott keret:** a napi keresések száma (`perRun`, alapból 15) a kategóriák válaszaránya szerint oszlik el. Súly = (válasz + 1) / (kiküldött + 4). Minden fókuszkategória kap legalább 1 keresést; ahol már legalább 30 levél ment ki, és a válaszarány 5% alatt van, ott 1 marad („gyenge válasz, csak minta”). A maradék a súly négyzete arányában a legjobb kategóriákba megy. A válaszarány csak az érett levelekből számít: legalább 6 napos, nem visszapattant.
+- **Példa (október 29.):** nyomda 26/57, turisztika 1/4, reklám-dekor 1/37, gyártás 1/33, építész 0/23, lakber 0/7 → a 15 keresésből nyomda 8, turisztika 3, a többi 1–1.
+- **Nyomda kulcsszavak:** nyomda, digitális nyomda, reklámnyomda, fénymásoló, szitanyomás, címkenyomda, csomagolóanyag, molinó nyomtatás, gyorsnyomda, könyvkötészet. Naponta váltakoznak.
+- **Nem keres:** jóga, tánc, fitnesz, terápia (e-mailre 0% válasz). Ezek nem kerülnek a `targets` és a `fallback.targets` közé, a Fókusz gombok közül is kikerültek; a meglévő címek maradnak.
+- **Módszer (`plan.rules`):** Google Térkép listanézet (`<kulcsszó> <város>`), majd a cég saját oldala (Kapcsolat, Impresszum) vagy a Facebook-névjegy. Cylex és Arany Oldalak nem (403-at adnak).
+- **Tartalék:** fókusz módban a fókuszkategóriák Szegeden, más kulcsszóval; fókusz nélkül szegedi vendéglátóhelyek.
+- **Mentés:** a pult csak `update({plan, updated})`-tal ír, és csak akkor, ha a terv változott. A `lastRun`-hoz és minden más mezőhöz nem nyúl, így a címgyűjtő írása megmarad. Ha a `lastRun.date` mai, a mai kereséseket nem számolja újra: a terv a következő hétköznapra készül (`plan.for`).
+- **Kártyák:** a „Keresési terv” alján látszik, melyik napra szól a terv, és ki futtatta utoljára (`lastRun.by`: „címgyűjtő” vagy „napi kör”), mikor, hány új javaslattal. A „Kategóriák eredménye” kártya kategóriánként mutatja: kiküldve, válasz, arány (érett levelekből) és a mai keresések száma.
+- **Visszajelzés:** a címgyűjtő a végén `update`-tel a `lastRun` mezőbe írja: `{date, time, by, found, fallbackUsed, empty}`.
 
 ## 9. Adatmodell (`window.claude.use("db")`)
 | Gyűjtemény / dokumentum | Tartalom |
@@ -130,10 +136,23 @@ A pult jogosultságai: `db`, `downloads`, valamint `mcp` (Gmail: `send_message`,
 ## 10. Automatizmusok
 | Ütemezett feladat | Mikor | Mit csinál |
 |---|---|---|
-| **3D - Napi kör (értesítéssel)** | Hétköznap 7:25 | Visszapattanók rendezése, válaszok jelölése, új címek gyűjtése a terv szerint, értesítés csak újdonságnál. Levelet nem küld. |
+| **3D - Napi kör (értesítéssel)** | Hétköznap 7:25 | Visszapattanók rendezése, válaszok jelölése, értesítés csak újdonságnál. Új címet nem gyűjt (lásd lent). Levelet nem küld. |
+| **3D - Címgyűjtő (150 km, böngészős)** | Hétköznap 10:00 | Új címek a `settings/search` terve szerint, `javasolt` állapotban. A végén `lastRun`. |
 | **Heti mérföldkő-frissítés** | Vasárnap 18:35 | Heti számok a mérföldkő-tervbe. |
 | 3D - Ütemezés | **kikapcsolva** | A napi kör régi változata. |
 | 3D - Háttérküldő (pult sor) | **kikapcsolva** | Szerveroldali küldő; a jogosultság miatt nem működött. |
+
+### Javasolt módosítás a két feladatban (október 29., Levente dönt, még nincs átállítva)
+Egy gyűjtő, egy időpont: új címet csak a 10:00-s címgyűjtő gyűjt, és csak ő írja a `lastRun`-t.
+
+**3D - Napi kör (értesítéssel):** a 3. és 4. pont helyére:
+> 3. Új címet nem gyűjtesz: azt a hétköznap 10:00-kor futó címgyűjtő végzi. A settings/search dokumentumba ne írj.
+
+**3D - Címgyűjtő (150 km, böngészős):**
+- 0. pont: a cylex.hu és az aranyoldalak.hu tesztet hagyd el (403-at adnak), csak a Google Térkép-tesztet tartsd meg.
+- 2. pont helyére: „Települések és kulcsszavak: a plan.targets kereséseit végezd sorban (a pult a válaszarány szerint súlyozza, és belülről kifelé járja be a plan.cities területét). Ha elfogytak, és még kell cím, jöhet a plan.fallback.targets.”
+- 3. pont helyére: „Cégnevek: Google Térkép listanézet a q kifejezéssel (<kulcsszó> <város>), minden céget nézz végig.” A kulcsszólista és a cylex/aranyoldalak említése kimarad.
+- 8. pont helyére: „A végén update-tel, csak a lastRun mezőt írd: {date, time, by: "címgyűjtő", found, fallbackUsed, empty, errors, note}. A plan és az updated mezőhöz ne nyúlj.”
 
 A napi rutin szabályai a **levente3d-kampany** skillben vannak (`skill/levente3d-kampany/SKILL.md`, és ZIP-ben `skill/levente3d-kampany.zip`). A skill módosítása után a ZIP-et kézzel kell feltölteni a claude.ai-on: Beállítások → Skills. Előbb töröld a régit, utána töltsd fel az újat.
 
@@ -158,4 +177,5 @@ A napi rutin szabályai a **levente3d-kampany** skillben vannak (`skill/levente3
 | 10. 26. | Follow-up csak az új Gmail-címről küldött levelekhez. Csatornánkénti teendő-jelvények, „Itt vár munka” sáv, nagyobb gombok. |
 | 10. 27–28. | Instagram és Facebook külön csoport, új kategóriák (jóga, tánc, fitnesz, terápia, ügyvéd, szabadulószoba). Küldési sor; a háttérküldő helyett oldalról küldés folytatással. |
 | 10. 28. | UX-átnézés: „Mind kijelölése (N)”, sorállapotok, „Küldés bizonytalan” gombokkal, 44 px-es érintési felületek, megerősítés a sor elvetéséhez. Napi korlát 60 → 100. A „Ma elküldve” kártya a korláthoz mér. |
+| 10. 29. | Keresési terv a válaszarány szerint súlyozva, terület km-ben (50/100/150), a pult csak a `plan` mezőt írja, jóga/tánc/fitnesz/terápia kimarad, „Kategóriák eredménye” kártya. |
 | 10. 29. | **Érvénytelen** szűrő a pótlás nélküli visszapattanókhoz: új e-mail, DM, Google-keresés, lezárás ([ERVENYTELEN.md](ERVENYTELEN.md)). |

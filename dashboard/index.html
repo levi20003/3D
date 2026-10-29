@@ -389,9 +389,9 @@ table.lt tr.lr:hover td{background:var(--bg)}
     <div class="grid2" style="margin-bottom:14px">
       <div class="card">
         <h3>Keresési terv</h3>
-        <p class="hint">A napi automatikus feladat ez alapján keres új címeket. Fókusz nélkül oda irányítom, ahol eddig jól válaszoltak és kevés a még kiküldetlen cím, plusz minden nap két kipróbálatlan témát. A talált címek „Javasolt” állapotba kerülnek, te hagyod jóvá őket.</p>
+        <p class="hint">A címgyűjtő (hétköznap 10:00) ez alapján keres új címeket a Google Térképen. A napi keretet a válaszarány szerint osztom el: ahol többen válaszolnak, oda több keresés jut, a gyengén válaszoló kategóriák csak egy mintát kapnak. Előbb az 50 km-es kör, aztán a távolabbi települések. A talált címek „Javasolt” állapotba kerülnek, te hagyod jóvá őket.</p>
         <label class="field"><span>Keresési terület</span><select id="cv-area"></select></label>
-        <label class="field"><span>Napi új javaslat legfeljebb</span><input type="number" id="cv-per" min="5" max="50" value="15"></label>
+        <label class="field"><span>Napi keresések száma</span><input type="number" id="cv-per" min="5" max="50" value="15"></label>
         <div class="field"><span>Fókusz: ha kijelölsz kategóriát, a keresés csak ezekben gyűjt</span><div class="bar-tools" id="cv-focus" style="margin-top:6px"></div></div>
         <div id="cv-tgt" class="tgt"></div>
         <p class="small" id="cv-run" style="margin:0"></p>
@@ -403,6 +403,11 @@ table.lt tr.lr:hover td{background:var(--bg)}
         <h3 style="margin-top:10px">Még nem próbált kategóriák</h3>
         <div id="cv-untried" class="small"></div>
       </div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <h3>Kategóriák eredménye</h3>
+      <p class="hint">Csak a legalább 6 napos, nem visszapattant levelek számítanak. Ez alapján jut több vagy kevesebb keresés egy kategóriára.</p>
+      <div class="covwrap"><table class="cov" id="cv-cat"></table></div>
     </div>
     <div class="covwrap"><table class="cov" id="cv-table"></table></div>
     <p class="small" style="margin-top:8px">A cellára kattintva megnyílik az adott kategória és város címlistája. A „Keres” oszlopban kapcsolhatod ki azokat a kategóriákat, amelyekben ne keressen.</p>
@@ -2683,15 +2688,15 @@ document.addEventListener("click",e=>{
 });
 
 /* ---------- Lefedettség és keresési terv ---------- */
-const AREAS=[
-  {n:"Szeged + 50 km",c:["Szeged","Hódmezővásárhely","Makó","Szentes","Csongrád","Kistelek","Mórahalom","Sándorfalva","Algyő","Deszk","Mindszent","Kiskunmajsa","Szegvár","Domaszék","Kiszombor","Szatymaz","Zsombó","Ásotthalom","Balástya"]},
-  {n:"100 km-ig",c:["Kecskemét","Békéscsaba","Orosháza","Kiskunfélegyháza","Kiskunhalas","Szarvas","Gyula","Békés","Baja","Kiskőrös","Kunszentmárton","Jánoshalma","Mezőkovácsháza","Bácsalmás"]},
-  {n:"Alföld 150 km-ig",c:["Szolnok","Kalocsa","Mezőtúr","Törökszentmiklós","Karcag","Kunszentmiklós","Sarkad","Kunhegyes","Túrkeve","Dévaványa","Szeghalom","Füzesgyarmat"]},
-  {n:"Budapest",c:["Budapest"]}];
+// Gyűrűk Szegedtől: a terület egyetlen szám (km), a plan.cities ezekből áll össze, belülről kifelé.
+const RINGS=[
+  {km:50,c:["Szeged","Hódmezővásárhely","Makó","Szentes","Csongrád","Kistelek","Mórahalom","Sándorfalva","Algyő","Deszk","Mindszent","Kiskunmajsa","Szegvár","Domaszék","Kiszombor","Szatymaz","Zsombó","Ásotthalom","Balástya"]},
+  {km:100,c:["Kecskemét","Békéscsaba","Orosháza","Kiskunfélegyháza","Kiskunhalas","Szarvas","Gyula","Békés","Baja","Kiskőrös","Kunszentmárton","Jánoshalma","Mezőkovácsháza","Bácsalmás"]},
+  {km:150,c:["Szolnok","Kalocsa","Mezőtúr","Törökszentmiklós","Karcag","Kunszentmiklós","Sarkad","Kunhegyes","Túrkeve","Dévaványa","Szeghalom","Füzesgyarmat"]}];
 // Lakosság ezer főben: a város "telítettsége" = címek / lakosság, a legkevésbé lefedett városba megy a keresés.
 const POP={"Szeged":160,"Hódmezővásárhely":43,"Makó":22,"Szentes":27,"Csongrád":15,"Kistelek":7,"Mórahalom":6,"Sándorfalva":8,"Algyő":5,"Deszk":4,"Mindszent":6,"Kiskunmajsa":11,"Szegvár":4,"Domaszék":5,"Kiszombor":4,"Szatymaz":4,"Zsombó":4,"Ásotthalom":4,"Balástya":3,"Békéscsaba":57,"Orosháza":27,"Gyula":30,"Szarvas":16,"Békés":19,"Kecskemét":108,"Kiskunhalas":27,"Kiskunfélegyháza":29,"Baja":34,"Kiskőrös":13,"Kunszentmárton":8,"Jánoshalma":9,"Mezőkovácsháza":6,"Bácsalmás":6,"Szolnok":70,"Cegléd":35,"Nagykőrös":23,"Szekszárd":32,"Paks":19,"Kalocsa":16,"Mohács":17,"Mezőtúr":16,"Törökszentmiklós":20,"Karcag":20,"Kunszentmiklós":8,"Sarkad":9,"Kunhegyes":7,"Túrkeve":9,"Dévaványa":7,"Szeghalom":9,"Füzesgyarmat":5,"Budapest":1700};
 const NICHES={
-  nyomda:["nyomda","digitális nyomda","gyorsnyomda","címkenyomda","csomagolóanyag gyártó","könyvkötészet","szitanyomás","fénymásoló szalon"],
+  nyomda:["nyomda","digitális nyomda","reklámnyomda","fénymásoló","szitanyomás","címkenyomda","csomagolóanyag","molinó nyomtatás","gyorsnyomda","könyvkötészet"],
   dekor:["reklámügynökség","reklámstúdió","reklámajándék","gravírozás","lézervágás","matricázás","reklámtábla készítés","pólónyomás","dekorációs cég","display gyártás","promóciós termék","kirakatdekoráció"],
   ipar:["gépgyártó","műanyagipari cég","fémmegmunkálás","CNC megmunkálás","termékfejlesztés","formatervező","laboratórium","elektronikai gyártás"],
   epitoipar:["asztalos","villanyszerelő","lakatos","nyílászáró","burkoló","épületgépész"],
@@ -2715,71 +2720,97 @@ const NICHES={
   auto:["kerékpárbolt","motorosbolt"], vendeglato:["étterem","gyorsétterem","pizzéria","bisztró","hamburgerező","gyros","büfé","kifőzde"]
 };
 const SKIP_DEFAULT=["vendeglato","auto"];
+// E-mailre 0% válasz: a terv itt nem keres, a meglévő címek maradnak.
+const NO_SEARCH=["joga","tanc","fitnesz","terapia"];
+const MATURE_DAYS=6,WEAK_MIN=30,WEAK_RATE=.05;
 // Partnerszegmensek: ők kapnak 3D-s kéréseket az ügyfeleiktől, vagy maguk használnak egyedi alkatrészt, makettet, displayt.
 const FOCUS_PRESET=["nyomda","dekor","epitesz","lakber","ipar","turizmus"];
 const FOCUS_WHY={nyomda:"partner: a nem nyomható 3D-s kéréseket továbbadhatja",dekor:"partner: egyedi tábla, display, reklámtárgy",epitesz:"partner: makett, egyedi lakberendezési elem",lakber:"partner: egyedi elem, kiegészítő a vevőinek",ipar:"saját használat: prototípus, pótalkatrész, sablon",turizmus:"partner: Tourinform, látogatóközpont · szuvenír, makett, tapintható térkép, logós ajándék",joga:"kis stúdió, DM-re válaszol · szőnyegtartó, QR-kódos tábla, logós ajándék tagoknak",tanc:"kis stúdió, DM-re válaszol · logós érem, kulcstartó, ajtótábla, fellépés-kellék",fitnesz:"kis terem, DM-re válaszol · kulacs- és telefontartó, QR-kódos tábla, logós ajándék",terapia:"kis rendelő, DM-re válaszol · névtábla, QR-kódos pulttábla, kis tartók",ugyved:"iroda ügyfélforgalommal · ajtótábla, névjegytartó, logós ügyfélajándék"};
-const focusList=()=>(settings.focus||[]).filter(k=>CATS[k]);
+const focusList=()=>(settings.focus||[]).filter(k=>CATS[k]&&!NO_SEARCH.includes(k));
 const SEARCH_RULES=[
-  "Minden olyan e-mail címet vegyél fel, amelyet a cég maga tesz közzé (weboldal Kapcsolat vagy Impresszum, Google Térkép adatlap, Facebook névjegy), nem csak info@ kezdetűt. Csak ténylegesen látott címet, soha ne tippelj.",
+  "Módszer: Google Térkép listanézet, keresés „<kulcsszó> <város>” formában (a targets q mezője). A listában szereplő összes céget nézd végig, ne csak az első néhányat. Az e-mail címet a cég saját oldalán (Kapcsolat, Impresszum) vagy a Facebook-oldal névjegyében keresd. Cylexet, Arany Oldalakat és más címtárat ne használj.",
+  "Minden olyan e-mail címet vegyél fel, amelyet a cég maga tesz közzé, nem csak info@ kezdetűt. Csak ténylegesen látott címet, soha ne tippelj.",
   "Cégenként egy címet: ha több van, az általános vagy az értékesítési címet. Ha a domain vagy a doc_id már szerepel a contacts-ban (az elvetve állapotúakat is beleértve), hagyd ki.",
   "Ha a cégnek nincs e-mail címe, de van Facebook- vagy Instagram-oldala, DM-kapcsolatként vedd fel: doc_id dm-<név>-<város> (kisbetű, kötőjel), email mező ugyanez, channel: dm, fb vagy ig mező a profil linkjével.",
-  "Kis stúdiók (joga, tanc, fitnesz, terapia kategória): ha van Instagram- vagy Facebook-oldaluk, DM-kapcsolatként vedd fel őket akkor is, ha van e-mail címük (ezek a helyek e-mailre alig válaszolnak, privát üzenetre igen). A talált e-mail címet ilyenkor a note mezőbe írd. Ha nincs közösségi oldaluk, e-mail címmel vedd fel.",
   "Új rekord: status javasolt, cat, city, name, hook (egy mondat arról, mit csinálnak), source (az oldal URL-je és a dátum). Levente a pultban hagyja jóvá.",
   "Ha a tervben van focus lista, csak ezekben a kategóriákban vegyél fel címet. A hook mondja meg, mire használhatnák a 3D nyomtatást (például nyomdánál: a hozzájuk befutó, papírra nem nyomható kérések; belsőépítésznél: makett, egyedi elem).",
-  "Terület: csak a plan.cities listában szereplő településeken működő cégeket vedd fel, a címtár más városba eső találatait hagyd ki.",
-  "Egy keresésnél a címtár listaoldalán szereplő összes cégnevet nézd végig, ne csak az első néhányat, és addig haladj a targets listán, amíg el nem éred a perRun-t. Ha egy kulcsszó a kisebb városban üres, próbáld egy rövidebb vagy rokon szóval, majd Szegeden.",
+  "A joga, tanc, fitnesz és terapia kategóriában ne keress és ne vegyél fel új címet. A meglévő címeikhez ne nyúlj.",
+  "Terület: csak a plan.cities listában szereplő településeken működő cégeket vedd fel, a Térkép más városba eső találatait hagyd ki.",
+  "Haladj a targets listán sorban, amíg el nem éred a perRun-t. Ha egy kulcsszó a kisebb városban üres, próbáld egy rövidebb vagy rokon szóval, majd Szegeden.",
   "Magánszemély címét ne vedd fel, és tartsd be a settings/blocklist tiltólistát meg a skill tiltólistáját.",
-  "Tartalék: ha a targets keresései együtt a perRun felénél kevesebb új címet hoztak, végezd el a fallback.targets kereséseit is (fókusz nélkül szegedi éttermek, gyorséttermek, cat vendeglato; fókusz módban a fókusz-kategóriák szegedi cégei). Csak olyan helyet, ahová még nem ment levél vagy DM: ellenőrizd a contacts doc_id-t és domaint, az azonos nevű dm- kapcsolatot és a Gmail to: keresést. Pubot, bárt, szórakozóhelyet továbbra se.",
-  "Futás végén írd be a settings/search dokumentum lastRun mezőjébe: {date, found, fallbackUsed: true/false, empty: [azok a keresések, amelyekre nem volt új találat]}."];
+  "Tartalék: ha a targets keresései együtt a perRun felénél kevesebb új címet hoztak, végezd el a fallback.targets kereséseit is. Csak olyan helyet, ahová még nem ment levél vagy DM: ellenőrizd a contacts doc_id-t és domaint, az azonos nevű dm- kapcsolatot és a Gmail to: keresést. Pubot, bárt, szórakozóhelyet továbbra se.",
+  "A settings/search dokumentumba csak update-tel írj, és csak a lastRun mezőt: {date, time, by: \"címgyűjtő\", found, fallbackUsed: true/false, empty: [azok a keresések, amelyekre nem volt új találat]}. A plan mezőt a pult írja, ahhoz ne nyúlj."];
 let searchDoc=null,planT=null,lastJRows=[];
-const areaN=()=>Math.min(AREAS.length,Math.max(1,+settings.area||1));
-const areaCities=()=>AREAS.slice(0,areaN()).flatMap(a=>a.c);
-const skipSet=()=>new Set(settings.searchSkip||SKIP_DEFAULT);
+// settings.area km-ben (50/100/150). A régi 1–4-es sorszámot is értelmezi.
+const areaKm=()=>{const a=+settings.area;if(a>=1&&a<=4)return [50,100,150,150][a-1];return RINGS.some(r=>r.km===a)?a:150};
+const areaRings=()=>RINGS.filter(r=>r.km<=areaKm());
+const areaCities=()=>areaRings().flatMap(r=>r.c);
+const ringOf=c=>{const i=RINGS.findIndex(r=>r.c.includes(c));return i<0?RINGS.length:i};
+const skipSet=()=>new Set([...(settings.searchSkip||SKIP_DEFAULT),...NO_SEARCH]);
 function dayIdx(){const d=new Date();return Math.floor((d-new Date(d.getFullYear(),0,0))/864e5)}
 function catStats(){
   const st={};let S=0,R=0;
   for(const c of contacts.values()){const s=c.status||"uj";if(s==="elvetve")continue;const k=c.cat||"egyeb";
-    const x=st[k]||(st[k]={n:0,uj:0,jav:0,sent:0,rep:0,cust:0,city:{}});
+    const x=st[k]||(st[k]={n:0,uj:0,jav:0,sent:0,rep:0,ms:0,mr:0,cust:0,city:{}});
     const ct=cityOf(c)||"–";x.city[ct]=(x.city[ct]||0)+1;
     if(s==="javasolt"){x.jav++;continue}
     x.n++;if(s==="uj")x.uj++;
-    if(c.sentAt&&!c.bounced){x.sent++;S++;if(didReply(c)){x.rep++;R++}if(s==="ugyfel")x.cust++}}
+    if(c.sentAt&&!c.bounced){x.sent++;S++;const r=didReply(c);if(r){x.rep++;R++}if(s==="ugyfel")x.cust++
+      // Válaszarány csak az érett (legalább 6 napos) levelekből
+      if(daysSince(String(c.sentAt).slice(0,10))>=MATURE_DAYS){x.ms++;if(r)x.mr++}}}
   const p=(R+1)/(S+10),skip=skipSet();
   for(const [k,x] of Object.entries(st)){x.rate=(x.rep+5*p)/(x.sent+5);x.prio=skip.has(k)||k==="egyeb"?0:x.rate/(1+(x.uj+x.jav)/15)}
   return {st,p};
 }
+// Melyik napra szól a terv: ha a címgyűjtő ma már futott, a mai keresések maradnak, a terv a következő hétköznapra készül.
+function planDay(){const lr=searchDoc?.lastRun;if(String(lr?.date||"").slice(0,10)!==today())return {off:0,date:today()};
+  const d=new Date();let off=0;do{d.setDate(d.getDate()+1);off++}while(d.getDay()===0||d.getDay()===6);
+  return {off,date:d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}}
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+// Súlyozott keret: súly = (válasz+1)/(érett kiküldés+4). Mindenki kap 1 keresést; 30 levél fölött 5% alatt ennyi is marad,
+// a maradékot a súly négyzete arányában a legjobb kategóriák kapják.
+function allocPlan(keys,E,budget){
+  const L=keys.map(k=>{const x=E(k);return {k,x,w:(x.mr+1)/(x.ms+4),weak:x.ms>=WEAK_MIN&&x.mr/x.ms<WEAK_RATE,n:0}}).sort((a,b)=>b.w-a.w);
+  let left=budget;for(const o of L){if(left<=0)break;o.n=1;left--}
+  const open=L.filter(o=>o.n&&!o.weak),W=open.reduce((a,o)=>a+o.w*o.w,0);
+  if(left>0&&W>0){const sh=open.map(o=>({o,v:left*o.w*o.w/W}));let used=0;sh.forEach(z=>{const f=Math.floor(z.v);z.o.n+=f;used+=f});
+    sh.sort((a,b)=>(b.v%1)-(a.v%1)).slice(0,left-used).forEach(z=>z.o.n++)}
+  return L;
+}
 function buildPlan(){
-  const {st,p}=catStats(),skip=skipSet(),cities=areaCities(),day=dayIdx();
-  const E=k=>st[k]||{n:0,uj:0,jav:0,sent:0,rep:0,cust:0,city:{},rate:p,prio:p};
+  const {st,p}=catStats(),skip=skipSet(),cities=areaCities(),pd=planDay(),day=dayIdx()+pd.off;
+  const E=k=>st[k]||{n:0,uj:0,jav:0,sent:0,rep:0,ms:0,mr:0,cust:0,city:{},rate:p,prio:p};
   const keys=Object.keys(CATS).filter(k=>k!=="egyeb"&&!skip.has(k));
-  // Csak a kategória saját lefedettsége számít; a terület összes települése szóba jöhet.
+  const perRun=Math.max(5,Math.min(50,+settings.perRun||15));
+  // Előbb az 50 km-es kör, ahol a kategóriának kevés címe van, aztán a távolabbi körök; a már sűrű városok a végére.
   const need=(x,c)=>(POP[c]||10)/(1+2*(x.city[c]||0));
-  const cpool=cities;
-  const citiesFor=(x,n)=>{const pool=[...cpool].sort((a,b)=>need(x,b)-need(x,a)).slice(0,Math.max(n,3));
+  const full=(x,c)=>(x.city[c]||0)>=Math.max(2,Math.round((POP[c]||10)/10));
+  const citiesFor=(x,n)=>{const pool=[...cities].sort((a,b)=>(ringOf(a)+(full(x,a)?RINGS.length:0))-(ringOf(b)+(full(x,b)?RINGS.length:0))||need(x,b)-need(x,a)).slice(0,Math.max(n,3));
     return [...new Set(Array.from({length:n},(_,i)=>pool[(day+i)%pool.length]))]};
   const niche=(k,i)=>{const L=NICHES[k]||[CATS[k]?.label||k];return L[(day+i)%L.length]};
+  const T=[],focus=focusList();
+  if(focus.length){
+    allocPlan(focus,E,perRun).forEach(o=>{if(!o.n)return;const x=o.x;
+      const why=(x.ms?`${x.mr}/${x.ms} válasz (${pct(x.mr,x.ms)}%)`:"Még kevés érett levél")+(o.weak?" · gyenge válasz, csak minta":` · súly ${o.w.toFixed(2)}`)+(FOCUS_WHY[o.k]?" · "+FOCUS_WHY[o.k]:"");
+      citiesFor(x,o.n).forEach((ct,i)=>T.push({cat:o.k,label:CATS[o.k].label,city:ct,q:niche(o.k,i)+" "+ct,why}))});
+  }else{
   const ranked=keys.map(k=>[k,E(k)]).filter(([,x])=>x.sent>=3).sort((a,b)=>b[1].prio-a[1].prio).slice(0,4);
   const untried=keys.filter(k=>E(k).sent<3).sort((a,b)=>E(a).n-E(b).n);
   const explore=[...new Set([untried[day%(untried.length||1)],untried[(day+1)%(untried.length||1)]])].filter(Boolean);
-  const T=[],focus=focusList();
-  if(focus.length){
-    // Fókusz mód: csak a kijelölt kategóriák, kategóriánként több rés és több város naponta váltva
-    const per=Math.max(2,Math.ceil(10/focus.length));
-    focus.forEach((k,fi)=>{const x=E(k);citiesFor(x,per).forEach((ct,i)=>T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,fi+i)+" "+ct,
-      why:(x.sent?`${x.rep}/${x.sent} válaszolt (${Math.round(x.rep/x.sent*100)}%)`:"Még kevés adat")+(FOCUS_WHY[k]?" · "+FOCUS_WHY[k]:"")}))});
-  }else{
-  ranked.forEach(([k,x],ri)=>citiesFor(x,2).forEach((ct,i)=>T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,ri+i)+" "+ct,why:`${x.rep}/${x.sent} válaszolt (${Math.round(x.rep/x.sent*100)}%), ${x.uj+x.jav} cím vár kiküldésre`})));
+  ranked.forEach(([k,x],ri)=>citiesFor(x,2).forEach((ct,i)=>T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,ri+i)+" "+ct,why:`${x.rep}/${x.sent} válaszolt (${pct(x.rep,x.sent)}%), ${x.uj+x.jav} cím vár kiküldésre`})));
   explore.forEach((k,i)=>{const ct=citiesFor(E(k),1)[0]||cities[0];T.push({cat:k,label:CATS[k].label,city:ct,q:niche(k,i)+" "+ct,why:"Még kipróbálatlan kategória"})});
   }
   const FB=NICHES.vendeglato,fallback={when:"Ha a targets keresései együtt a perRun felénél kevesebb új címet hoztak",targets:focus.length
     ?focus.map((k,i)=>({cat:k,label:CATS[k].label,city:"Szeged",q:niche(k,i+5)+" Szeged",why:"Tartalék: fókusz-kategória Szegeden, más kulcsszóval"}))
     :[0,1,2].map(i=>{const q=FB[(day*3+i)%FB.length];return {cat:"vendeglato",label:CATS.vendeglato.label,city:"Szeged",q:q+" Szeged",why:"Tartalék: szegedi vendéglátóhely, ahová még nem írtunk"}})};
-  return {area:AREAS.slice(0,areaN()).map(a=>a.n).join(" + "),cities,...(focus.length?{focus}:{}),perRun:Math.max(5,Math.min(50,+settings.perRun||15)),skip:[...skip],targets:T,fallback,rules:SEARCH_RULES};
+  return {for:pd.date,area:"Szeged + "+areaKm()+" km",areaKm:areaKm(),cities,...(focus.length?{focus}:{}),perRun,skip:[...skip],targets:T,fallback,rules:SEARCH_RULES};
 }
+// A pult csak a plan és az updated mezőt írja (update), a lastRun-t és minden mást a címgyűjtő kezel.
 function maybeSavePlan(){if(!db||!contacts.size)return;clearTimeout(planT);planT=setTimeout(async()=>{
   const pl=buildPlan();if(searchDoc&&JSON.stringify(searchDoc.plan)===JSON.stringify(pl))return;
   const d=new Date(),upd=today()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
-  try{await db.doc("settings/search").set({...(searchDoc||{}),plan:pl,updated:upd})}catch(e){}},3000)}
+  const ref=db.doc("settings/search");
+  try{if(searchDoc)await ref.update({plan:pl,updated:upd});else await ref.set({plan:pl,updated:upd})}catch(e){}},3000)}
 const STOPW=new Set(["szeged","szegedi","hungary","magyar","magyarorszag","studio","center","centrum","company","group","szolgaltato","kereskedelmi","kozpont","gmail","freemail","citromail"]);
 function newCatIdeas(){
   const m=new Map();let n=0;
@@ -2791,14 +2822,19 @@ function newCatIdeas(){
 }
 function renderCov(){
   const {st}=catStats(),skip=skipSet(),cities=areaCities(),pl=buildPlan();
-  $("#cv-area").innerHTML=AREAS.map((a,i)=>`<option value="${i+1}"${i+1===areaN()?" selected":""}>${esc(AREAS.slice(0,i+1).map(x=>x.n).join(" + "))}</option>`).join("");
+  $("#cv-area").innerHTML=RINGS.map(r=>`<option value="${r.km}"${r.km===areaKm()?" selected":""}>Szeged + ${r.km} km (${RINGS.filter(x=>x.km<=r.km).reduce((a,x)=>a+x.c.length,0)} település)</option>`).join("");
   if(document.activeElement!==$("#cv-per"))$("#cv-per").value=pl.perRun;
   const fc=new Set(focusList()),isPreset=fc.size===FOCUS_PRESET.length&&FOCUS_PRESET.every(k=>fc.has(k));
   $("#cv-focus").innerHTML=`<button class="chip" type="button" data-focus="@partner" aria-pressed="${isPreset}">Partnerek (nyomda, reklám, belsőépítész…)</button><button class="chip" type="button" data-focus="@none" aria-pressed="${!fc.size}">Nincs fókusz</button>`+
-    Object.keys(CATS).filter(k=>k!=="egyeb").map(k=>`<button class="chip" type="button" data-focus="${esc(k)}" aria-pressed="${fc.has(k)}">${esc(CATS[k].label)}</button>`).join("");
+    Object.keys(CATS).filter(k=>k!=="egyeb"&&!NO_SEARCH.includes(k)).map(k=>`<button class="chip" type="button" data-focus="${esc(k)}" aria-pressed="${fc.has(k)}">${esc(CATS[k].label)}</button>`).join("");
   $("#cv-tgt").innerHTML=pl.targets.map(t=>`<div><span class="pill p-uj">${esc(t.city)}</span><span><b>${esc(t.q)}</b> · ${esc(t.label)}<br><span class="small">${esc(t.why)}</span></span></div>`).join("")+`<div><span class="pill p-fu">Tartalék</span><span><b>${esc(pl.fallback.targets.map(t=>t.q).join(" · "))}</b><br><span class="small">Ha a fenti keresések a napi keret felét sem hozzák. ${focusList().length?"A fókusz-kategóriák szegedi cégei, más kulcsszóval.":"Olyan éttermek és gyorséttermek, ahová még nem írtunk."}</span></span></div>`;
-  const lr=searchDoc?.lastRun;
-  $("#cv-run").textContent=(searchDoc?.updated?"Terv mentve: "+searchDoc.updated+". ":"")+(lr?`Utolsó keresés: ${lr.date||"?"}, ${lr.found??"?"} új javaslat${lr.fallbackUsed?" (a tartalékból is)":""}${lr.empty&&lr.empty.length?". Nem volt új találat: "+lr.empty.join(", "):""}.`:"A napi feladat még nem futott ezzel a tervvel.");
+  const lr=searchDoc?.lastRun,forTxt=pl.for===today()?"mai":"következő hétköznapi ("+huDate(pl.for)+")";
+  $("#cv-run").innerHTML=esc(`A ${forTxt} terv: ${pl.targets.length} keresés.`+(searchDoc?.updated?" Mentve: "+searchDoc.updated+".":""))+"<br>"+
+    (lr?`Utolsó futás: <b>${esc(lr.by||"ismeretlen")}</b>, ${esc(String(lr.date||"?")+(lr.time?" "+lr.time:""))} · ${esc(String(lr.found??"?"))} új javaslat${lr.fallbackUsed?" (a tartalékból is)":""}${lr.empty&&lr.empty.length?". Nem volt új találat: "+esc(lr.empty.join(", ")):""}.`:"A címgyűjtő még nem futott ezzel a tervvel.");
+  const nT={};pl.targets.forEach(t=>nT[t.cat]=(nT[t.cat]||0)+1);
+  const ck=[...new Set([...(pl.focus||[]),...Object.keys(nT)])].sort((a,b)=>(nT[b]||0)-(nT[a]||0));
+  $("#cv-cat").innerHTML=`<thead><tr><th>Kategória</th><th>Kiküldve</th><th>Válasz</th><th>Arány</th><th>${pl.for===today()?"Mai":"Holnapi"} keresés</th></tr></thead><tbody>`+ck.map(k=>{const x=st[k]||{ms:0,mr:0};const weak=x.ms>=WEAK_MIN&&x.mr/x.ms<WEAK_RATE;
+    return `<tr><td>${esc(CATS[k]?.label||k)}</td><td>${x.ms}</td><td>${x.mr}</td><td>${x.ms?pct(x.mr,x.ms)+"%":"–"}</td><td>${nT[k]||0}${weak?' <span class="small">minta</span>':""}</td></tr>`}).join("")+"</tbody>";
   const Z={n:0,uj:0,jav:0,sent:0,rep:0,cust:0,city:{},prio:0};
   const keys=Object.keys(CATS).filter(k=>st[k]||k!=="egyeb").sort((a,b)=>((st[b]||Z).prio-(st[a]||Z).prio)||((st[b]||Z).n-(st[a]||Z).n));
   const maxP=Math.max(...keys.map(k=>(st[k]||Z).prio),1e-6),showC=cities.slice(0,12);
@@ -2808,7 +2844,7 @@ function renderCov(){
     ["n","jav","sent","rep","cust"].forEach(f=>tot[f]+=x[f]);showC.forEach(c=>tot.city[c]=(tot.city[c]||0)+(x.city[c]||0));
     return `<tr class="${skip.has(k)?"skip":""}"><td>${esc(CATS[k].label)}</td><td><span class="prio" style="width:${Math.round(48*x.prio/maxP)}px"></span></td><td>${x.n}</td><td class="${x.jav?"":"c0"}">${x.jav||"·"}</td><td>${x.sent}</td><td>${x.sent?`${x.rep} · ${Math.round(x.rep/x.sent*100)}%`:"–"}</td><td class="${x.cust?"":"c0"}">${x.cust||"·"}</td>`+
       showC.map(c=>`<td class="cell${x.city[c]?"":" c0"}" data-cc="${esc(k)}|${esc(c)}">${x.city[c]||"·"}</td>`).join("")+
-      `<td class="cell${allN-inArea>0?"":" c0"}" data-cc="${esc(k)}|all">${Math.max(0,allN-inArea)||"·"}</td><td>${k==="egyeb"?"":`<input type="checkbox" data-cskip="${esc(k)}"${skip.has(k)?"":" checked"} aria-label="Keresés ebben a kategóriában">`}</td></tr>`}).join("")+
+      `<td class="cell${allN-inArea>0?"":" c0"}" data-cc="${esc(k)}|all">${Math.max(0,allN-inArea)||"·"}</td><td>${k==="egyeb"?"":NO_SEARCH.includes(k)?'<span class="small" title="E-mailre nem válaszoltak, a terv itt nem keres">nem</span>':`<input type="checkbox" data-cskip="${esc(k)}"${skip.has(k)?"":" checked"} aria-label="Keresés ebben a kategóriában">`}</td></tr>`}).join("")+
     `<tr><td><b>Összesen</b></td><td></td><td><b>${tot.n}</b></td><td>${tot.jav}</td><td>${tot.sent}</td><td>${tot.sent?`${tot.rep} · ${Math.round(tot.rep/tot.sent*100)}%`:"–"}</td><td>${tot.cust}</td>${showC.map(c=>`<td>${tot.city[c]||"·"}</td>`).join("")}<td></td><td></td></tr></tbody>`;
   const ni=newCatIdeas();
   $("#cv-new").innerHTML=ni.ideas.length?ni.ideas.map(e=>`<div class="bar-tools" style="margin:6px 0"><span style="flex:1"><b>${esc(e.w.charAt(0).toUpperCase()+e.w.slice(1))}</b> <span class="small">· ${e.ids.size} cím az Egyébben</span></span><button class="btn" type="button" data-newcat="${esc(e.w)}">Kategória létrehozása</button></div>`).join(""):`<p class="small" style="margin:0">Most nincs ismétlődő téma az Egyéb címek között (${ni.n} cím). Ha egy cégtípusból legalább 3 összegyűlik, itt megjelenik.</p>`;
@@ -2816,7 +2852,7 @@ function renderCov(){
   $("#cv-untried").innerHTML=untried.length?untried.map(k=>`${esc(CATS[k].label)} <span style="color:var(--silver)">(${(st[k]||Z).n+(st[k]||Z).jav} cím)</span>`).join(" · ")+`<br>A terv naponta kettőt kipróbál, kis témákra bontva (pl. ${esc((NICHES[untried[0]]||[]).slice(0,3).join(", "))}).`:"Minden kategóriát kipróbáltál már legalább 3 levéllel.";
 }
 async function saveSettings(msg){try{await db?.doc("settings/main").set(settings);if(msg)toast(msg)}catch(e){toast("Mentés nem sikerült")}}
-$("#cv-area").addEventListener("change",e=>{settings.area=+e.target.value;renderCov();saveSettings("Keresési terület: "+AREAS.slice(0,areaN()).map(a=>a.n).join(" + "));maybeSavePlan()});
+$("#cv-area").addEventListener("change",e=>{settings.area=+e.target.value;renderCov();saveSettings("Keresési terület: Szeged + "+areaKm()+" km");maybeSavePlan()});
 $("#cv-focus").addEventListener("click",e=>{const b=e.target.closest("[data-focus]");if(!b)return;const k=b.dataset.focus;let f=new Set(focusList());
   if(k==="@partner")f=new Set(FOCUS_PRESET);else if(k==="@none")f=new Set();else f.has(k)?f.delete(k):f.add(k);
   settings.focus=[...f];renderCov();saveSettings(f.size?"Fókusz: "+[...f].map(x=>CATS[x].label).join(", "):"Fókusz kikapcsolva, minden kategóriában keres");maybeSavePlan()});
