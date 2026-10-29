@@ -7,17 +7,17 @@
 /* Layout: sticky stat strip, then a work queue of contact rows; templates and import live in tabs. Brand: olive, sand and off-white (same as the business card). */
 :root{
   --bg:#f2f1ea; --panel:#fbfaf6; --ink:#23251a; --muted:#66675a; --line:#dfddd2; --silver:#b9b6a3; --tan:#c1a37d; --on-accent:#fbfaf6; --shadow:0 1px 2px rgba(35,37,26,.05),0 6px 20px rgba(35,37,26,.05); --rev2:#c1a37d;
-  --accent:#5f6239; --accent-soft:#e7e8d5; --ok:#1f7a4d; --ok-soft:#e1f3e9; --warn:#a15c00; --warn-soft:#fdf0d9; --info:#2d5fa8; --info-soft:#e4ecf8;
+  --accent:#5f6239; --accent-soft:#e7e8d5; --ok:#1f7a4d; --ok-soft:#e1f3e9; --warn:#a15c00; --warn-soft:#fdf0d9; --info:#2d5fa8; --info-soft:#e4ecf8; --bad:#b42318; --bad-soft:#fde8e6;
   --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
   --f-ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#14150f; --panel:#1d1f16; --ink:#edece4; --muted:#a8a794; --line:#303224; --silver:#55574a; --tan:#c9ab84; --on-accent:#14150f; --shadow:0 1px 2px rgba(0,0,0,.3); --rev2:#c9ab84;
-  --accent:#c3c78f; --accent-soft:#2c2f1e; --ok:#5fd39a; --ok-soft:#173326; --warn:#f2b45a; --warn-soft:#3a2a12; --info:#86aef0; --info-soft:#1a2740; color-scheme:dark}}
+  --accent:#c3c78f; --accent-soft:#2c2f1e; --ok:#5fd39a; --ok-soft:#173326; --warn:#f2b45a; --warn-soft:#3a2a12; --info:#86aef0; --info-soft:#1a2740; --bad:#f08a80; --bad-soft:#3a1714; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#14150f; --panel:#1d1f16; --ink:#edece4; --muted:#a8a794; --line:#303224; --silver:#55574a; --tan:#c9ab84; --on-accent:#14150f; --shadow:0 1px 2px rgba(0,0,0,.3); --rev2:#c9ab84;
-  --accent:#c3c78f; --accent-soft:#2c2f1e; --ok:#5fd39a; --ok-soft:#173326; --warn:#f2b45a; --warn-soft:#3a2a12; --info:#86aef0; --info-soft:#1a2740; color-scheme:dark}
+  --accent:#c3c78f; --accent-soft:#2c2f1e; --ok:#5fd39a; --ok-soft:#173326; --warn:#f2b45a; --warn-soft:#3a2a12; --info:#86aef0; --info-soft:#1a2740; --bad:#f08a80; --bad-soft:#3a1714; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.45}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--panel)}
@@ -62,6 +62,18 @@ h1 .bt{font-weight:500;color:var(--muted)}
 .qline .small{flex:1 1 200px}
 .unsure-n{color:var(--warn);font-weight:600}
 .row.inv-row{opacity:1;border-left-color:var(--warn)}
+.pool{display:grid;gap:6px}
+.pool .pn{font-family:var(--f-display);font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.pool .bar{height:7px;background:var(--line);border-radius:4px;overflow:hidden}
+.pool .bar i{display:block;height:100%;background:var(--accent)}
+.pool.lv-warn{border-color:var(--warn);background:var(--warn-soft)} .pool.lv-warn .bar i{background:var(--warn)} .pool.lv-warn .pn{color:var(--warn)}
+.pool.lv-bad{border-color:var(--bad);background:var(--bad-soft)} .pool.lv-bad .bar i{background:var(--bad)} .pool.lv-bad .pn{color:var(--bad)}
+#poolWrap{display:grid;gap:10px;margin-bottom:12px}
+.btn.jb{min-height:44px;font-size:15px;padding:10px 18px;border-radius:10px}
+.jmeta{font-size:13px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.jmeta a{color:var(--accent);font-weight:600}
+.jwarn{margin-top:6px;font-size:13px;font-weight:600;color:var(--warn)}
+.jwhy{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px dashed var(--line);padding-top:8px}
 .inv{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
 .inv label{display:grid;gap:4px;font-size:12px;color:var(--muted);min-width:0}
 .inv input{width:100%;min-width:0}
@@ -374,6 +386,7 @@ table.lt tr.lr:hover td{background:var(--bg)}
   </div>
 
   <section id="p-queue" hidden>
+    <div id="poolWrap"><div class="card pool" id="q-pool"></div><div id="poolNote"></div></div>
     <div class="bar-tools grp" id="groupChips"></div>
     <div class="bar-tools" id="statusChips"></div>
     <div id="nextBar"></div>
@@ -537,6 +550,7 @@ table.lt tr.lr:hover td{background:var(--bg)}
 
   <section id="p-todo">
     <div class="ov">
+      <div class="card pool" id="ov-pool"></div>
       <div class="card wide" id="ov-rev"></div>
       <div class="card" id="ov-rate"></div>
       <div class="card" id="ov-donut"></div>
@@ -1789,13 +1803,16 @@ function renderList(){
   rows.sort((a,b)=>{const o=["javasolt","fu","uj","valaszolt","ugyfel","elkuldve","lezarva","elvetve"];return o.indexOf(effStatus(a))-o.indexOf(effStatus(b))||catRank(a)-catRank(b)||(b.sentAt||"").localeCompare(a.sentAt||"")||displayName(a).localeCompare(displayName(b),"hu")});
   if(!contacts.size){$("#list").innerHTML=`<div class="empty">${db?"Még nincs cím. Az „Új címek” fülön adhatsz hozzá.":"Az adatbázis ebben a nézetben nem érhető el. Nyisd meg az oldalt a claude.ai-on bejelentkezve."}</div>`;return}
   if(!rows.length){$("#list").innerHTML=`<div class="empty">Ebben a szűrésben nincs cím.<br><span class="small">${q?"Töröld a keresőmezőt, vagy ":""}válassz fent másik állapotot vagy csatornát, illetve vegyél fel új címet a Gyors felvétellel.</span></div>`;return}
-  const total=rows.length;const jRows=fStatus==="javasolt"?rows.filter(c=>!isBlocked(c)).map(c=>c.email):[];lastJRows=jRows;rows=rows.slice(0,listLimit);
-  $("#list").innerHTML=(jRows.length?`<div class="bulkbar"><span><b>${jRows.length} javasolt cím</b> a napi keresésből. Nézd meg a forrást, és hagyd jóvá, amit érdemes megkeresni. Az elvetettek nem jönnek vissza.</span><button class="btn primary" type="button" data-jall="1">Mind jóváhagyása (${jRows.length})</button></div>`:"")+rows.map(c=>{
+  const total=rows.length;const jAll=fStatus==="javasolt"?rows.filter(c=>c.status==="javasolt"):[],jRows=jAll.filter(c=>!isBlocked(c)&&!jvDup(c)).map(c=>c.email);lastJRows=jRows;rows=rows.slice(0,listLimit);
+  const jDup=jAll.filter(c=>!isBlocked(c)&&jvDup(c)).length,jBlk=jAll.filter(isBlocked).length,jSkip=jDup+jBlk;
+  const jSkipTxt=jSkip?`${jSkip} kihagyva: `+[jDup?`${jDup} már szerepel`:"",jBlk?`${jBlk} tiltólistás`:""].filter(Boolean).join(", "):"";
+  if(!jRows.length)jallAsk=false;
+  $("#list").innerHTML=(jAll.length?`<div class="bulkbar"><span><b>${jAll.length} javasolt cím</b> a napi keresésből. Nézd meg a forrást, és hagyd jóvá, amit érdemes megkeresni. Az elvetettek nem jönnek vissza.${jSkipTxt?`<br><span class="small">${jSkipTxt}. Ezeket a „Mind jóváhagyása” kihagyja.</span>`:""}</span>${!jRows.length?"":jallAsk?`<button class="btn primary jb" type="button" data-jall="2">Igen, ${jRows.length} cím jóváhagyása</button><button class="btn jb" type="button" data-jall="0">Mégse</button>`:`<button class="btn primary jb" type="button" data-jall="1">Mind jóváhagyása (${jRows.length})</button>`}</div>`:"")+rows.map(c=>{
     const s=effStatus(c);const id=esc(c.email);
     const via=(c.channel==="dm"?" · DM":"")+(c.sentAt&&!fuEligible(c)?" · régi címről, nincs follow-up":"");const when=(c.followup2At?`2. follow-up: ${huDate(c.followup2At)}`:c.followupAt?`1. follow-up: ${huDate(c.followupAt)}`:c.sentAt?`Küldve: ${huDate(c.sentAt)} (${daysSince(c.sentAt)} napja)`:"")+(c.sentAt?via:"");
     let main="";const canSend=!!mcpNs, pend=pendingSend===c.email, busy=sending.has(c.email);const srcUrl=((c.source||"").match(/https?:\/\/[^\s,]+/)||[])[0];
-    if(isBlocked(c))main=`<span class="pill p-fu">Tiltólistán, nem küldünk neki</span>`;
-    else if(s==="javasolt")main=`<button class="btn primary" data-act="approve" data-id="${id}">Jóváhagyás</button><button class="btn" data-act="reject" data-id="${id}">Elvetés</button>${srcUrl?`<a class="btn ghost" href="${esc(srcUrl)}" target="_blank" rel="noopener">Forrás</a>`:""}`;
+    if(isBlocked(c))main=`<span class="pill p-fu">Tiltólistán, nem küldünk neki</span>`+(s==="javasolt"?`<button class="btn jb" data-act="rejectwhy" data-v="tiltólistás" data-id="${id}">Elvetem</button>`:"");
+    else if(s==="javasolt")main=jvDup(c)?`<button class="btn jb" data-act="reject" data-id="${id}">Elvetem</button>`:`<button class="btn primary jb" data-act="approve" data-id="${id}">Jóváhagyom</button><button class="btn jb" data-act="reject" data-id="${id}">Elvetem</button>`;
     else if(s==="elvetve")main=`<button class="btn" data-act="approve" data-id="${id}">Mégis jóváhagyom</button>`;
     else if(s==="uj"&&isDM(c))main=`<button class="btn primary" data-act="copydm" data-id="${id}">DM szöveg másolása</button>${dmLinks(c)}<button class="btn" data-act="dmsent" data-id="${id}">Elküldtem DM-ben</button>`;
     else if(s==="fu"&&isDM(c))main=`<button class="btn primary" data-act="copydmfu" data-id="${id}">Emlékeztető másolása</button>${dmLinks(c)}<button class="btn" data-act="fusent" data-id="${id}">Emlékeztető elküldve</button>`;
@@ -1823,7 +1840,7 @@ function renderList(){
         <div class="acts" style="justify-content:center"><button class="btn ghost" data-act="open" data-id="${id}" aria-label="Részletek bezárása">▲ Bezárás</button></div>
       </div>`:"";
     return `<div class="row s-${s}${isInv(c)?" inv-row":""}">
-      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)&&!sqHas(c.email)&&!isUnsure(c)&&!isBlocked(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${(n=>n?`<div class="note">${esc(n)}</div>`:"")(String(c.note||"").replace(UNSURE_RE,"").replace(/^\s*·\s*/,""))}${(x=>{if(!x)return"";const [cl,lb,why]=sqLabel(x);return `<div class="qline"><span class="pill ${cl}">${lb}</span>${why?`<span class="small">${why}</span>`:""}</div>`})(sqOpen().find(x=>x.email===c.email))}${isUnsure(c)&&!sqHas(c.email)?`<div class="qline"><span class="pill p-fu">Küldés bizonytalan</span><span class="small">A Gmail nem jelezte vissza, elment-e. Nézd meg az Elküldött mappát, és jelöld.</span></div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
+      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)&&!sqHas(c.email)&&!isUnsure(c)&&!isBlocked(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"?jvMeta(c,srcUrl):""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${(n=>n?`<div class="note">${esc(n)}</div>`:"")(String(c.note||"").replace(UNSURE_RE,"").replace(/^\s*·\s*/,""))}${(x=>{if(!x)return"";const [cl,lb,why]=sqLabel(x);return `<div class="qline"><span class="pill ${cl}">${lb}</span>${why?`<span class="small">${why}</span>`:""}</div>`})(sqOpen().find(x=>x.email===c.email))}${isUnsure(c)&&!sqHas(c.email)?`<div class="qline"><span class="pill p-fu">Küldés bizonytalan</span><span class="small">A Gmail nem jelezte vissza, elment-e. Nézd meg az Elküldött mappát, és jelöld.</span></div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
       <div class="meta cat">${esc(CATS[c.cat]?.label||c.cat)}<br>${esc(c.city||"")}</div>
       <div class="meta"><span class="pill p-${s}">${s==="fu"?fuStage(c)+". follow-up esedékes":c.bounced?"Visszapattant":STATUS[s]}</span><br>${when}</div>
       <div class="acts">${main}<button class="btn ghost" data-act="open" data-id="${id}" aria-expanded="${openId===c.email}">${openId===c.email?"▲ Bezár":"Részletek ▼"}</button>
@@ -1834,13 +1851,60 @@ function renderList(){
           ${["valaszolt","ugyfel","elkuldve","lezarva"].map(k=>`<button data-act="set" data-v="${k}" data-id="${id}">${STATUS[k]} állapotra</button>`).join("")}
           <button data-act="cat" data-id="${id}">Kategória váltása</button>
           <button data-act="del" data-id="${id}">Törlés…</button></div>`:""}</span>
-      </div>${isInv(c)?invBox(c,id):""}${detail}</div>`;
+      </div>${isInv(c)?invBox(c,id):""}${rejId===c.email&&s==="javasolt"?`<div class="jwhy"><span class="small">Miért?</span>${REJ_WHY.map(w=>`<button class="btn" data-act="rejectwhy" data-v="${w}" data-id="${id}">${w}</button>`).join("")}<button class="btn" data-act="rejectwhy" data-v="" data-id="${id}">Ok nélkül</button><button class="btn ghost" data-act="rejectno" data-id="${id}">Mégse</button></div>`:""}${detail}</div>`;
   }).join("")+(total>rows.length?`<button class="btn" type="button" data-more="1" style="justify-self:center;margin-top:6px">Továbbiak mutatása (még ${total-rows.length})</button>`:"");
 }
+/* ---------- Címkészlet, gyors jóváhagyás, settings/summary ---------- */
+const POOL_TARGET=60,WEEK_TARGET=50,REJ_WHY=["nem célcsoport","magánszemély","rossz cím","tiltólistás"];
+let rejId=null,jallAsk=false;
+function weekStart(){const d=new Date();d.setDate(d.getDate()-(d.getDay()+6)%7);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+// Felvétel dátuma: addedAt, ha nincs, a source utolsó dátuma (2026-10-29 vagy „10. 29.”)
+function addedOf(c){if(c.addedAt)return String(c.addedAt).slice(0,10);const t=String(c.source||"");
+  let m=[...t.matchAll(/(20\d\d)[-.]\s?(\d{1,2})[-.]\s?(\d{1,2})/g)].pop();if(m)return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+  m=[...t.matchAll(/(?:^|[\s,])(\d{1,2})\.\s?(\d{1,2})\.(?!\d)/g)].pop();if(m)return today().slice(0,4)+"-"+m[1].padStart(2,"0")+"-"+m[2].padStart(2,"0");return ""}
+function poolStats(){let uj=0,jav=0,added=0;const ws=weekStart();
+  for(const c of contacts.values()){if(isBlocked(c))continue;const s=c.status||"uj";if(s==="uj"&&!c.bounced)uj++;else if(s==="javasolt")jav++;if(s!=="elvetve"&&addedOf(c)>=ws)added++}
+  return {uj,javasolt:jav,total:uj+jav,target:POOL_TARGET,added}}
+function poolHTML(p,go){const lv=p.total<30?"lv-bad":p.total<POOL_TARGET?"lv-warn":"";
+  return [lv,`<div class="ovh"><h3>Címkészlet</h3>${go&&p.javasolt?`<button class="btn ghost" type="button" data-go="javasolt">Jóváhagyás</button>`:""}</div>
+    <div class="pn">${p.total} / ${POOL_TARGET}</div><div class="bar"><i style="width:${Math.min(100,p.total/POOL_TARGET*100)}%"></i></div>
+    <div class="small">${p.uj} kiküldhető · ${p.javasolt} jóváhagyásra vár</div>
+    <div class="small">Ezen a héten bekerült: <b>${p.added} / ${WEEK_TARGET}</b></div>`]}
+function renderPool(){const p=poolStats();
+  for(const [id,go] of [["#ov-pool",true],["#q-pool",false]]){const el=$(id);if(!el)continue;const [lv,h]=poolHTML(p,go);el.className="card pool "+lv;el.innerHTML=h}
+  const n=$("#poolNote");if(n)n.innerHTML=p.total<POOL_TARGET&&p.javasolt>10&&fStatus!=="javasolt"?`<div class="nextbar"><span>${p.javasolt} cím vár jóváhagyásra, 2 perc az egész</span><button class="btn primary jb" type="button" data-go="javasolt">Jóváhagyás most</button></div>`:""}
+// Duplikált javaslat: ugyanaz a doc_id vagy (nem freemail) domain már szerepel egy másik címnél, bármilyen állapotban
+let jvIdx=null,jvOf=null,jvN=-1;
+function jvIndex(){if(jvOf===contacts&&jvN===contacts.size)return jvIdx;const dom=new Map(),nm=new Map();
+  for(const c of contacts.values()){const k=c.email||"";if(k.includes("@")){const d=k.split("@")[1];if(!FREEMAIL.has(d))(dom.get(d)||dom.set(d,[]).get(d)).push(k)}
+    const n=deacc(String(displayName(c)).toLowerCase()).replace(/[^a-z0-9]+/g," ").trim();if(n.length>3)(nm.get(n)||nm.set(n,[]).get(n)).push(k)}
+  jvIdx={dom,nm};jvOf=contacts;jvN=contacts.size;return jvIdx}
+function jvDup(c){const I=jvIndex(),k=c.email||"";let o=null;
+  if(k.includes("@")){const d=k.split("@")[1];o=(I.dom.get(d)||[]).find(x=>x!==k)}
+  if(!o&&isDM(c)){const n=deacc(String(displayName(c)).toLowerCase()).replace(/[^a-z0-9]+/g," ").trim();o=(I.nm.get(n)||[]).find(x=>x!==k)}
+  return o?contacts.get(o):null}
+function jvMeta(c,src){const d=String(c.email||"").includes("@")?c.email.split("@")[1]:isDM(c)?(c.ig?"Instagram":c.fb?"Facebook":"DM"):"";const o=jvDup(c);
+  return `<div class="jmeta">${[esc(c.city||"?"),esc(CATS[c.cat]?.label||c.cat||""),esc(d)].filter(Boolean).join(" · ")}${src?` · <a href="${esc(src)}" target="_blank" rel="noopener">Forrás</a>`:""}</div>`+
+    (o?`<div class="jwarn">Már szerepel: ${esc(displayName(o))} (${esc(o.email)}, ${esc(STATUS[o.status||"uj"]||o.status)}). Nem hagyható jóvá.</div>`:"")}
+// settings/summary: a Claude-ok előbb ezt olvassák. Csak update, csak ha változott, 10 mp-es késleltetéssel.
+let sumT=null,sumLast="";
+function buildSummary(){const all=[...contacts.values()],ws=weekStart(),td=today(),C={total:all.length,dmQueue:0,fu:0};
+  const W={from:ws,added:0,sent:0,followups:0,replies:0,newClients:0},T={sent:0,followups:0};let f1=0,f2=0,inv=0;
+  for(const c of all){const s=c.status||"uj";C[s]=(C[s]||0)+1;const fs=fuStage(c);if(fs){C.fu++;fs===1?f1++:f2++}if(isDM(c)&&(s==="uj"||fs))C.dmQueue++;if(isInv(c))inv++;
+    if(s!=="elvetve"&&!isBlocked(c)&&addedOf(c)>=ws)W.added++;
+    if(c.sentAt&&c.sentAt>=ws)W.sent++;if(c.followupAt>=ws)W.followups++;if(c.followup2At>=ws)W.followups++;
+    if(c.repliedAt>=ws)W.replies++;if(c.clientAt>=ws)W.newClients++;
+    if(c.sentAt===td)T.sent++;if(c.followupAt===td)T.followups++;if(c.followup2At===td)T.followups++}
+  const p=poolStats(),R={};for(const [k,x] of Object.entries(catStats().st))if(x.ms)R[k]={sent:x.ms,replied:x.mr,rate:Math.round(x.mr/x.ms*100)};
+  return {contacts:C,pool:{uj:p.uj,javasolt:p.javasolt,total:p.total,target:POOL_TARGET},week:W,today:T,followupDue:f1+f2,followupDue1:f1,followupDue2:f2,invalid:inv,replyRateByCat:R}}
+function maybeSaveSummary(){if(!db||!contacts.size||sumT)return;sumT=setTimeout(async()=>{sumT=null;
+  const sm=buildSummary(),key=JSON.stringify(sm);if(key===sumLast)return;
+  const d=new Date(),upd=today()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"),ref=db.doc("settings/summary");
+  try{const g=await ref.get();if(g.exists)await ref.update({...sm,updated:upd});else await ref.set({...sm,updated:upd});sumLast=key}catch(e){}},10000)}
 const LIST_STEP=150;let listLimit=LIST_STEP,qT,rafR=0;
 function scheduleRender(){if(rafR)return;rafR=requestAnimationFrame(()=>{rafR=0;renderAll()})}
 document.addEventListener("click",e=>{if(e.target.dataset?.more){listLimit+=LIST_STEP;renderList()}});
-function renderAll(){renderStats();renderChips();renderList();try{maybeSavePlan();if(!$("#p-cov").hidden)renderCov()}catch(e){};try{renderBulk()}catch(e){};try{renderGoals()}catch(e){};if(typeof renderInbox==="function"&&$("#tInbox"))try{renderInbox()}catch(e){}}
+function renderAll(){renderStats();renderChips();renderList();try{renderPool();maybeSaveSummary()}catch(e){};try{maybeSavePlan();if(!$("#p-cov").hidden)renderCov()}catch(e){};try{renderBulk()}catch(e){};try{renderGoals()}catch(e){};if(typeof renderInbox==="function"&&$("#tInbox"))try{renderInbox()}catch(e){}}
 
 // Érvénytelen cím kézi rendezése: új e-mail, átrakás DM-be, vagy lezárás
 function invBox(c,id){
@@ -1869,7 +1933,7 @@ async function invAction(a,c,b){
     if(em===id){toast("Ez ugyanaz a cím, ami visszapattant");return}
     if(contacts.has(em)){toast("Ez a cím már szerepel a címlistán");return}
     if(isBlocked({email:em,name:c.name})){toast("Ez a cím tiltólistán van, nem mentem el");return}
-    doc={email:em,name:c.name||"",cat:c.cat||"egyeb",city:c.city||"",hook:c.hook||"",status:"uj",sentAt:"",replaces:id,
+    doc={email:em,name:c.name||"",cat:c.cat||"egyeb",city:c.city||"",hook:c.hook||"",status:"uj",sentAt:"",addedAt:today(),replaces:id,
       note:`A visszapattant ${id} helyett.`,source:[c.source,"kézzel pótolva "+stamp].filter(Boolean).join(" · ")};
     if(c.catLabel)doc.catLabel=c.catLabel;
   }else{
@@ -1880,7 +1944,7 @@ async function invAction(a,c,b){
     const did="dm-"+[dmSlug(displayName(c)),dmSlug(c.city)].filter(Boolean).join("-");
     if(contacts.has(did)){toast("Ehhez a céghez már van privát üzenetes rekord");return}
     if(isBlocked({email:did,name:c.name,ig:ig?link:"",fb:fb?link:""})){toast("Ez a cég tiltólistán van");return}
-    doc={email:did,name:c.name||displayName(c),cat:c.cat||"egyeb",city:c.city||"",hook:c.hook||"",status:"uj",sentAt:"",channel:"dm",replaces:id,
+    doc={email:did,name:c.name||displayName(c),cat:c.cat||"egyeb",city:c.city||"",hook:c.hook||"",status:"uj",sentAt:"",addedAt:today(),channel:"dm",replaces:id,
       note:"Az e-mail visszapattant, ezért DM.",source:[c.source,"kézzel pótolva "+stamp].filter(Boolean).join(" · ")};
     if(ig)doc.ig=link;else doc.fb=link;
     if(c.catLabel)doc.catLabel=c.catLabel;
@@ -1938,9 +2002,11 @@ document.addEventListener("click",async e=>{
   if(a==="unfu"){await save(c,c.followup2At?{followup2At:""}:{followupAt:""});toast("Follow-up visszavonva",undo)}
   if(a==="copydm")return copy(fill(tplFor(dmKey(c)).body,c),"DM szöveg kimásolva");
   if(a==="copydmfu")return copy(fill(tplFor("dm_fu").body,c),"Emlékeztető kimásolva");
-  if(a==="approve"){await save(c,{status:"uj",approvedAt:today()});toast("Jóváhagyva: "+displayName(c),undo);return}
-  if(a==="reject"){await save(c,{status:"elvetve",rejectedAt:today()});toast("Elvetve: "+displayName(c),undo);return}
-  if(a==="set"){const v=b.dataset.v;const p={status:v};if(v==="uj"){p.sentAt="";p.followupAt=""}if(v==="elkuldve"&&!c.sentAt)p.sentAt=today();await save(c,p);toast(STATUS[v]+" állapotra állítva")}
+  if(a==="approve"){if(c.status==="javasolt"&&jvDup(c)){toast("Ez a cég már szerepel a pultban, nem hagyható jóvá");return}const y=scrollY;await save(c,{status:"uj",approvedAt:today()});scrollTo(0,y);toast("Jóváhagyva: "+displayName(c),undo);return}
+  if(a==="reject"){if(c.status==="javasolt"){rejId=rejId===c.email?null:c.email;return renderList()}await save(c,{status:"elvetve",rejectedAt:today()});toast("Elvetve: "+displayName(c),undo);return}
+  if(a==="rejectno"){rejId=null;return renderList()}
+  if(a==="rejectwhy"){rejId=null;const y=scrollY,v=b.dataset.v||"";await save(c,{status:"elvetve",rejectedAt:today(),...(v?{rejectReason:v}:{})});scrollTo(0,y);toast("Elvetve: "+displayName(c)+(v?" ("+v+")":""),undo);return}
+  if(a==="set"){const v=b.dataset.v;const p={status:v};if(v==="valaszolt"&&!c.repliedAt)p.repliedAt=today();if(v==="ugyfel"&&!c.clientAt)p.clientAt=today();if(v==="uj"){p.sentAt="";p.followupAt=""}if(v==="elkuldve"&&!c.sentAt)p.sentAt=today();await save(c,p);toast(STATUS[v]+" állapotra állítva")}
   if(a==="cat"){openId=c.email;renderList();document.getElementById("cs-"+c.email)?.focus();return}
   if(a==="del"){if(b.dataset.sure){contacts.delete(c.email);renderAll();try{await db?.collection("contacts").doc(c.email).delete();toast("Törölve")}catch(e){toast("Törlés nem sikerült")}}else{menuId=c.email;renderList();const x=document.querySelector(`.menu [data-act="del"][data-id="${CSS.escape(c.email)}"]`);if(x){x.dataset.sure="1";x.textContent="Biztosan törlöd? Kattints újra"}}}
 });
@@ -1971,7 +2037,7 @@ function checkEmail(email){
 async function addContact(d){
   const email=normEmail(d.email);
   const r=checkEmail(email);if(r!=="ok")return r;
-  const c={email,name:d.name||"",...resolveCat(d.cat),city:(d.city||"").trim(),hook:d.hook||"",note:d.note||"",status:"uj",sentAt:"",source:(d.source||"Kézi felvitel")+", "+huDate(today())};
+  const c={email,name:d.name||"",...resolveCat(d.cat),city:(d.city||"").trim(),hook:d.hook||"",note:d.note||"",status:"uj",sentAt:"",addedAt:today(),source:(d.source||"Kézi felvitel")+", "+huDate(today())};
   const T=takenDomains();contacts.set(email,c);T.add(email.split("@")[1]);domIdxN=contacts.size;
   if(db){try{await db.collection("contacts").doc(email).set(c)}catch(e){contacts.delete(email);domIdxOf=null;return "hiba"}}
   return "ok";
@@ -2732,7 +2798,7 @@ const SEARCH_RULES=[
   "Minden olyan e-mail címet vegyél fel, amelyet a cég maga tesz közzé, nem csak info@ kezdetűt. Csak ténylegesen látott címet, soha ne tippelj.",
   "Cégenként egy címet: ha több van, az általános vagy az értékesítési címet. Ha a domain vagy a doc_id már szerepel a contacts-ban (az elvetve állapotúakat is beleértve), hagyd ki.",
   "Ha a cégnek nincs e-mail címe, de van Facebook- vagy Instagram-oldala, DM-kapcsolatként vedd fel: doc_id dm-<név>-<város> (kisbetű, kötőjel), email mező ugyanez, channel: dm, fb vagy ig mező a profil linkjével.",
-  "Új rekord: status javasolt, cat, city, name, hook (egy mondat arról, mit csinálnak), source (az oldal URL-je és a dátum). Levente a pultban hagyja jóvá.",
+  "Új rekord: status javasolt, cat, city, name, hook (egy mondat arról, mit csinálnak), source (az oldal URL-je és a dátum), addedAt (a mai dátum, YYYY-MM-DD). Levente a pultban hagyja jóvá.",
   "Ha a tervben van focus lista, csak ezekben a kategóriákban vegyél fel címet. A hook mondja meg, mire használhatnák a 3D nyomtatást (például nyomdánál: a hozzájuk befutó, papírra nem nyomható kérések; belsőépítésznél: makett, egyedi elem).",
   "A joga, tanc, fitnesz és terapia kategóriában ne keress és ne vegyél fel új címet. A meglévő címeikhez ne nyúlj.",
   "Terület: csak a plan.cities listában szereplő településeken működő cégeket vedd fel, a Térkép más városba eső találatait hagyd ki.",
@@ -2861,9 +2927,13 @@ document.addEventListener("change",e=>{const k=e.target.dataset?.cskip;if(!k)ret
 document.addEventListener("click",async e=>{
   const cc=e.target.closest?.("[data-cc]");
   if(cc){const [k,ct]=cc.dataset.cc.split("|");fGroup="email";fStatus="all";fCat=k;fCity=ct==="all"?"all":ct;listLimit=LIST_STEP;$("#t-queue").click();renderAll();return}
-  if(e.target.dataset?.jall){const ids=lastJRows.slice();e.target.disabled=true;
-    for(let i=0;i<ids.length;i+=8)await Promise.all(ids.slice(i,i+8).map(async id=>{const c=contacts.get(id);if(!c||c.status!=="javasolt")return;const nx={...c,status:"uj",approvedAt:today()};contacts.set(id,nx);try{await db?.collection("contacts").doc(id).set(nx)}catch(err){}}));
-    fStatus="uj";renderAll();toast(ids.length+" cím jóváhagyva, bekerültek a kiküldendők közé");return}
+  const ja=e.target.dataset?.jall;
+  if(ja==="1"||ja==="0"){jallAsk=ja==="1";renderList();return}
+  if(ja==="2"){const ids=lastJRows.slice();jallAsk=false;e.target.disabled=true;let n=0,skip=0;
+    // Egyenként, várakozva; közben újra ellenőrzi a tiltólistát és a duplikációt
+    for(const id of ids){const c=contacts.get(id);if(!c||c.status!=="javasolt")continue;if(isBlocked(c)||jvDup(c)){skip++;continue}
+      const nx={...c,status:"uj",approvedAt:today()};contacts.set(id,nx);n++;try{await db?.collection("contacts").doc(id).set(nx)}catch(err){contacts.set(id,c);n--}}
+    renderAll();toast(`${n} cím jóváhagyva, bekerültek a kiküldendők közé`+(skip?`, ${skip} kihagyva`:""));return}
   const w=e.target.dataset?.newcat;
   if(w){const idea=newCatIdeas().ideas.find(x=>x.w===w);if(!idea)return;const r=resolveCat(w.charAt(0).toUpperCase()+w.slice(1));
     const patch={cat:r.cat,catLabel:CATS[r.cat].label};e.target.disabled=true;

@@ -12,7 +12,7 @@ Levente Claude Pro előfizetéssel dolgozik, ezért **minden lépésnél a lehet
   - Kollekciók: `contacts` (doc_id = kisbetűs e-mail, DM-nél dm-<név>-<város>; status javasolt|uj|elkuldve|valaszolt|ugyfel|lezarva|elvetve), `todos`, `orders`, `ledger` (bevétel/kiadás), `templates`, `settings` (`main`, `blocklist`, `summary`, `search`).
   - A pultban van 3D-generátor fül is (szöveg → névtábla/kulcstartó STL, ZIP-ben tölthető le).
 - Weboldal: https://claude.ai/artifact/WZLdSDK19twEH9KM9WbH56
-- Napi automatikus feladat: hétköznap 7:19, frissíti a pultot és a `settings/summary` dokumentumot.
+- A `settings/summary` dokumentumot a pult frissíti minden megnyitáskor (címkészlet `pool`, heti számok `week`, mai küldés, esedékes follow-upok, válaszarány kategóriánként). Ne írd felül; ha valamit hozzáteszel (pl. `needReply`, `note`), `update`-tel írd.
 - Névjegy forrásfájlok: card2.py (reportlab), olajzöld #777A4B, homok #C1A37D, törtfehér #E9E8DF; logó = rétegzett L, a LEVENTE első betűje.
 
 ## Takarékossági szabályok
@@ -39,7 +39,7 @@ Levente Claude Pro előfizetéssel dolgozik, ezért **minden lépésnél a lehet
 - **Bármilyen e-mail címet felvehetsz, amit a cég maga tesz közzé, nem csak `info@`-t.** Csak ténylegesen látott címet, soha ne tippelj. Cégenként egy cím (az általános vagy az értékesítési).
 - Ha nincs e-mail, de van Facebook- vagy Instagram-oldal: DM-kapcsolat (`doc_id` és `email` = `dm-<név>-<város>`, `channel: "dm"`, `fb` vagy `ig` mező).
 - Duplikáció-ellenőrzés: `contacts` doc_id és domain (az `elvetve` állapotúakat is beleértve), Gmail `to:` keresés, tiltólista. Az `elvetve` állapotú cégeket soha ne vedd fel újra.
-- Új rekord: **status `javasolt`** (Levente a pultban hagyja jóvá), `cat`, `city`, `name`, rövid `hook` (egy mondat arról, mit csinálnak), `source` = az oldal URL-je és a dátum.
+- Új rekord: **status `javasolt`** (Levente a pultban hagyja jóvá), `cat`, `city`, `name`, rövid `hook` (egy mondat arról, mit csinálnak), `source` = az oldal URL-je és a dátum, `addedAt` = a mai dátum (YYYY-MM-DD). Olyan domaint, ami már szerepel a pultban, ne javasolj: a pult az ilyen javaslatot nem engedi jóváhagyni.
 - Futás végén `update`-tel írd a `settings/search` dokumentumba, csak ezt a mezőt: `lastRun: {date, time, by: "címgyűjtő", found, fallbackUsed, empty: [azok a q-k, amelyekre nem volt új találat]}`. A `plan` és az `updated` mezőt a pult írja, ahhoz ne nyúlj.
 - **Tartalék:** ha a `plan.targets` keresései együtt 0 új címet hoztak, végezd el a `plan.fallback.targets` kereséseit is (szegedi éttermek, gyorséttermek, `cat: vendeglato`). Csak olyan helyet vegyél fel, ahová még nem ment levél vagy DM: contacts doc_id és domain, azonos nevű `dm-` kapcsolat, Gmail `to:`. A `lastRun`-ba írd be: `fallbackUsed: true`.
 - Ha így sem sikerül elég címet találni, ne erőltesd.

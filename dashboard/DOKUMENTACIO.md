@@ -65,6 +65,8 @@ A pult a claude.ai-on, bejelentkezve működik. Ha helyben nyitod meg (`file://`
 | Érvénytelen | Visszapattant, nincs pótlása, kézzel kell rendezni ([ERVENYTELEN.md](ERVENYTELEN.md)) |
 
 ### Kártyák
+- **Címkészlet** (Áttekintés és Címlista): kiküldhető (`uj`) + jóváhagyásra váró (`javasolt`) cím, e-mail és DM együtt, tiltólistás nélkül, a 60-as célhoz mérve. 60 alatt sárga, 30 alatt piros. Alatta: „Ezen a héten bekerült: X / 50” (hétfőtől, a felvétel dátuma szerint: `addedAt`, ha nincs, a `source` utolsó dátuma). Ugyanez a szám kerül a `settings/summary.pool` mezőbe.
+- **Értesítő sáv** a Címlista tetején: ha a készlet 60 alatt van és 10-nél több javaslat vár, „N cím vár jóváhagyásra, 2 perc az egész”, gombbal a Javaslatok szűrőre.
 - **Kiküldendő** és **Follow-up esedékes:** az összes csatorna együtt, alatta bontás, például „E-mail 18 · Instagram 29”.
 - **Ma elküldve:** a mai darabszám. Alatta: „cél 30 · még X mehet (napi 100)”. A sáv a napi korláthoz mér.
 
@@ -75,6 +77,12 @@ A pult a claude.ai-on, bejelentkezve működik. Ha helyben nyitod meg (`file://`
 | Épp most megy ki | Küldés alatt |
 | Ellenőrzésre vár | A küldés megszakadt (15 percnél régebben). Folytatáskor a Gmail Elküldött mappája dönt, hogy kell-e még küldeni. |
 | Küldés bizonytalan | A Gmail nem jelezte vissza, elment-e. Döntsd el az „Elment” vagy „Nem ment el” gombbal; addig nem küldhető. |
+
+### Gyors jóváhagyás (Javaslatok szűrő)
+- Soronként: név, város · kategória · e-mail domain (DM-nél Instagram/Facebook) · **Forrás** link, alatta a hook.
+- Két nagy gomb (44 px): **Jóváhagyom** (`status: "uj"`, `approvedAt`) és **Elvetem**. Elvetésnél opcionális ok: „nem célcsoport”, „magánszemély”, „rossz cím”, „tiltólistás”, vagy „Ok nélkül” (`status: "elvetve"`, `rejectedAt`, `rejectReason`). A sor animáció nélkül tűnik el, az oldal nem ugrik a tetejére.
+- **Duplikált javaslat:** ha a doc_id vagy a (nem freemail) domain már szerepel egy másik címnél bármilyen állapotban (az elvetettet is beleértve), illetve DM-nél azonos cégnév, a sor figyelmeztetést kap („Már szerepel: …”), és nem hagyható jóvá, csak elvethető.
+- **Mind jóváhagyása (N):** megerősítést kér, egyenként ír, és kihagyja a tiltólistás és a duplikált sorokat. A sáv kiírja: „3 kihagyva: 2 már szerepel, 1 tiltólistás”. Jóváhagyás után sem megy ki semmi magától.
 
 ### Tiltott cég
 Nincs küldő, másoló vagy jóváhagyó gomb, csak a „Tiltólistán, nem küldünk neki” felirat.
@@ -122,13 +130,14 @@ Nincs küldő, másoló vagy jóváhagyó gomb, csak a „Tiltólistán, nem kü
 ## 9. Adatmodell (`window.claude.use("db")`)
 | Gyűjtemény / dokumentum | Tartalom |
 |---|---|
-| `contacts/{doc_id}` | doc_id: kisbetűs e-mail, DM-nél `dm-<név>-<város>`. Fő mezők: `email`, `name`, `cat` (`catLabel`), `city`, `hook`, `note`, `source`, `status`, `sentAt`, `followupAt`, `followup2At`, `threadId`, `acct`, `channel` (`dm`), `ig`/`fb`, `dmVia`, `bounced`, `bouncedAt`, `replaceDone`, `replacedBy`, `replaces`, `invalidDone`, `sendUnsure`, `approvedAt` |
+| `contacts/{doc_id}` | doc_id: kisbetűs e-mail, DM-nél `dm-<név>-<város>`. Fő mezők: `email`, `name`, `cat` (`catLabel`), `city`, `hook`, `note`, `source`, `status`, `sentAt`, `followupAt`, `followup2At`, `threadId`, `acct`, `channel` (`dm`), `ig`/`fb`, `dmVia`, `bounced`, `bouncedAt`, `replaceDone`, `replacedBy`, `replaces`, `invalidDone`, `sendUnsure`, `approvedAt`, `addedAt` (felvétel napja), `rejectedAt`, `rejectReason`, `repliedAt`, `clientAt` (a kézi „Válaszolt” / „Ügyfél” állapotváltáskor) |
 | `sendqueue/{id}` | id: `uj-<email>` vagy `fu1-`/`fu2-<email>`. Mezők: `email`, `name`, `kind`, `stage`, `args {to, subject, body, replyThreadId?}`, `patch` (benne `"{MA}"` = küldés napja), `state` (`var`, `kuld`, `kesz`, `kihagyva`, `hiba`, `megszakitva`), `queuedAt`, `claimedAt`, `sentAt`, `error` |
 | `templates/{kulcs}` | A Sablonok fülön módosított levelek (a beépített alapokat írják felül) |
 | `orders`, `ledger`, `todos` | Rendelések, bevétel és kiadás, növekedési lépések |
 | `settings/main` | `goal` (napi cél, 30), `fuDays`, `fu2Days`, `sig`, `link`, `area`, `focus`, `perRun`, `searchSkip`, `goals`, `rates`, `fuSince` |
 | `settings/search` | `plan` (`targets`, `fallback`, `rules`, `focus`, `cities`), `updated`, `lastRun` |
 | `settings/blocklist` | `domains`, `emails`, `keywords`, `rule` |
+| `settings/summary` | A Claude-ok előbb ezt olvassák. A pult minden betöltéskor és küldési kör után frissíti (10 mp késleltetéssel, csak ha változott, `update`-tel, a más által írt mezőket, pl. `needReply`, `finance`, `note`, meghagyja): `updated`, `contacts` (állapotonként, plusz `total`, `fu`, `dmQueue`), `pool {uj, javasolt, total, target: 60}`, `week {from, added, sent, followups, replies, newClients}` (hétfőtől), `today {sent, followups}`, `followupDue`, `followupDue1`, `followupDue2`, `invalid`, `replyRateByCat` (`{kat: {sent, replied, rate}}`, érett levelekből). A `week.replies` és `newClients` csak a `repliedAt` / `clientAt` mezős címeket számolja. |
 | `settings/senderlock` | Küldési zár (`acquire`, 90 másodperces bérlet) |
 
 A pult jogosultságai: `db`, `downloads`, valamint `mcp` (Gmail: `send_message`, `search_threads`).
@@ -177,5 +186,6 @@ A napi rutin szabályai a **levente3d-kampany** skillben vannak (`skill/levente3
 | 10. 26. | Follow-up csak az új Gmail-címről küldött levelekhez. Csatornánkénti teendő-jelvények, „Itt vár munka” sáv, nagyobb gombok. |
 | 10. 27–28. | Instagram és Facebook külön csoport, új kategóriák (jóga, tánc, fitnesz, terápia, ügyvéd, szabadulószoba). Küldési sor; a háttérküldő helyett oldalról küldés folytatással. |
 | 10. 28. | UX-átnézés: „Mind kijelölése (N)”, sorállapotok, „Küldés bizonytalan” gombokkal, 44 px-es érintési felületek, megerősítés a sor elvetéséhez. Napi korlát 60 → 100. A „Ma elküldve” kártya a korláthoz mér. |
+| 10. 29. | Címkészlet-kártya (60-as cél, heti 50 új), gyors jóváhagyás a Javaslatok szűrőben (duplikáció-figyelés, elvetési ok, megerősített „Mind jóváhagyása”), `settings/summary` frissítése a pultból. |
 | 10. 29. | Keresési terv a válaszarány szerint súlyozva, terület km-ben (50/100/150), a pult csak a `plan` mezőt írja, jóga/tánc/fitnesz/terápia kimarad, „Kategóriák eredménye” kártya. |
 | 10. 29. | **Érvénytelen** szűrő a pótlás nélküli visszapattanókhoz: új e-mail, DM, Google-keresés, lezárás ([ERVENYTELEN.md](ERVENYTELEN.md)). |
