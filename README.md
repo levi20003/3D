@@ -28,4 +28,5 @@ levente3d.szeged@gmail.com · +36 70 596 1640 · Szeged
 
 - **`befektetes/`**: a portfóliókövető PWA. Élő: https://levi20003.github.io/3D/befektetes/ (demó: `?demo=1`). Minden adat a készüléken marad, a repóban nincs pénzügyi adat.
 - **`befektetes/store/`**: Play Áruház-anyagok mintaadatokból (ikon, kiemelt grafika, képernyőképek) és a lépésről lépésre útmutató: `PLAY-STORE.md`.
+- **`befektetes/docs/PROJEKT-DOKUMENTACIO.md`**: teljes projektdokumentáció (technikai, IT, marketing, jog, roadmap).
 - **`portfolio-lens/`**: egyoldalas weboldal (EN/HU) és adatvédelmi tájékoztató. Élő: https://levi20003.github.io/3D/portfolio-lens/
