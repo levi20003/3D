@@ -73,6 +73,7 @@ h1 .bt{font-weight:500;color:var(--muted)}
 .jmeta{font-size:13px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
 .jmeta a{color:var(--accent);font-weight:600}
 .jwarn{margin-top:6px;font-size:13px;font-weight:600;color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)} .p-okb{background:var(--ok-soft);color:var(--ok)}
 .jwhy{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px dashed var(--line);padding-top:8px}
 .inv{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
 .inv label{display:grid;gap:4px;font-size:12px;color:var(--muted);min-width:0}
@@ -1840,7 +1841,7 @@ function renderList(){
         <div class="acts" style="justify-content:center"><button class="btn ghost" data-act="open" data-id="${id}" aria-label="Részletek bezárása">▲ Bezárás</button></div>
       </div>`:"";
     return `<div class="row s-${s}${isInv(c)?" inv-row":""}">
-      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)&&!sqHas(c.email)&&!isUnsure(c)&&!isBlocked(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"?jvMeta(c,srcUrl):""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${(n=>n?`<div class="note">${esc(n)}</div>`:"")(String(c.note||"").replace(UNSURE_RE,"").replace(/^\s*·\s*/,""))}${(x=>{if(!x)return"";const [cl,lb,why]=sqLabel(x);return `<div class="qline"><span class="pill ${cl}">${lb}</span>${why?`<span class="small">${why}</span>`:""}</div>`})(sqOpen().find(x=>x.email===c.email))}${isUnsure(c)&&!sqHas(c.email)?`<div class="qline"><span class="pill p-fu">Küldés bizonytalan</span><span class="small">A Gmail nem jelezte vissza, elment-e. Nézd meg az Elküldött mappát, és jelöld.</span></div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
+      <div class="who">${(s==="uj"||s==="fu")&&mcpNs&&!isDM(c)&&!sqHas(c.email)&&!isUnsure(c)&&!isBlocked(c)?`<label class="selbox"><input type="checkbox" data-sel="${id}"${sel.has(c.email)?" checked":""} aria-label="Kijelölés"></label>`:""}<b>${esc(displayName(c))}</b><button class="mail" data-act="copymail" data-id="${id}" title="${isDM(c)?"Profil linkjének másolása":"E-mail cím másolása"}">${isDM(c)?[c.fb?"Facebook":"",c.ig?"Instagram":""].filter(Boolean).join(" · ")||"DM":id}</button>${isDM(c)&&c.ig&&c.fb?` <button class="mail" data-act="via" data-id="${id}" title="Ezen a felületen írunk neki">Itt írunk: ${platOf(c)==="ig"?"Instagram":"Facebook"} · átteszem</button>`:""}${s==="javasolt"?jvMeta(c,srcUrl):""}${c.pultReplyAt&&daysSince(c.pultReplyAt)<=7?`<div class="qline"><span class="pill p-okb">Közben válaszolt</span></div>`:""}${c.bounced&&c.bouncedAt===today()?`<div class="qline"><span class="pill p-bad">Visszapattant ma</span></div>`:""}${s==="javasolt"&&c.hook?`<div class="note">${esc(c.hook)}</div>`:""}${(n=>n?`<div class="note">${esc(n)}</div>`:"")(String(c.note||"").replace(UNSURE_RE,"").replace(/^\s*·\s*/,""))}${(x=>{if(!x)return"";const [cl,lb,why]=sqLabel(x);return `<div class="qline"><span class="pill ${cl}">${lb}</span>${why?`<span class="small">${why}</span>`:""}</div>`})(sqOpen().find(x=>x.email===c.email))}${isUnsure(c)&&!sqHas(c.email)?`<div class="qline"><span class="pill p-fu">Küldés bizonytalan</span><span class="small">A Gmail nem jelezte vissza, elment-e. Nézd meg az Elküldött mappát, és jelöld.</span></div>`:""}${c.bounced?`<div class="note"><b>${c.replacedBy?(String(c.replacedBy).startsWith("dm-")?"Átkerült a DM-ek közé":"Pótolva: "+esc(c.replacedBy)):c.replaceDone?"Nincs más elérhetősége":"Pótlás keresése: a következő napi futás keres neki másik elérhetőséget"}</b></div>`:""}</div>
       <div class="meta cat">${esc(CATS[c.cat]?.label||c.cat)}<br>${esc(c.city||"")}</div>
       <div class="meta"><span class="pill p-${s}">${s==="fu"?fuStage(c)+". follow-up esedékes":c.bounced?"Visszapattant":STATUS[s]}</span><br>${when}</div>
       <div class="acts">${main}<button class="btn ghost" data-act="open" data-id="${id}" aria-expanded="${openId===c.email}">${openId===c.email?"▲ Bezár":"Részletek ▼"}</button>
@@ -2502,6 +2503,8 @@ async function sendOne(c,kind,fromQueue){
   if(!fromQueue&&isUnsure(cur)){toast("Előbb nézd meg a Gmail Elküldött mappáját, és jelöld: elment vagy nem");return false}
   if(kind!=="fu"&&cur.status!=="uj"){toast("Ennek a címnek már ment levél");return false}
   if(sentTodayCount()>=DAILY_LIMIT){toast(`Ma már ${DAILY_LIMIT} levél ment el. A Gmail védelme miatt holnap folytasd.`);return false}
+  if(!fromQueue){sending.add(c.email);renderList();const pc=await preCheck([cur]);sending.delete(c.email);
+    if(!pc.ok.length){renderList();toast(pc.msg||"Nem küldtem el");return false}}
   const st=kind==="fu"?(fuStage(cur)||1):0;const m=compose(cur,kind);
   sending.add(c.email);renderList();
   try{
@@ -2575,12 +2578,70 @@ const UNSURE_RE=/\s*·?\s*Küldés bizonytalan \([^)]*\), nézd meg az Elküldö
 const isUnsure=c=>!!c.sendUnsure||/Küldés bizonytalan/.test(c.note||"");
 function sqDoneToday(){return [...sq.values()].filter(x=>x.state==="kesz"&&x.sentAt&&today()===isoDay(x.sentAt)).length}
 function isoDay(iso){const d=new Date(iso);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+/* ---------- Gmail-ellenőrzés küldés előtt ----------
+   Follow-up előtt: válaszolt-e közben (from:), visszapattant-e (mailer-daemon/postmaster). Új levél előtt: ment-e már neki levél (to:, 90 nap).
+   Csak metaadat és a Gmail rövid előnézete (snippet) kell, levéltörzset nem olvasunk. Csomagonként 10 cím egy keresésben. */
+const GM_BATCH=10,FU_CHECK_MIN=30;
+const mailOf=s=>{const m=String(s||"").toLowerCase().match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/);return m?m[0]:""};
+const domOf=e=>String(e).split("@")[1]||"";
+const gDate=d=>String(d||"").slice(0,10).replace(/-/g,"/");
+const chunk=(a,n)=>Array.from({length:Math.ceil(a.length/n)},(_,i)=>a.slice(i*n,i*n+n));
+async function gSearch(query,view){const r=await mcpNs.callTool("Gmail","search_threads",{query,view:view||"THREAD_VIEW_METADATA_ONLY",pageSize:50});
+  return ((r&&r.payload&&r.payload.threads)||[]).flatMap(t=>(t.messages||[]).map(m=>({...m,threadId:m.threadId||t.id})))}
+// Válaszok: a címtől vagy (nem freemail esetén) a domainjéről jött levél a legkorábbi küldés óta. Visszaadja a válaszolók halmazát.
+async function gReplies(cs){const out=new Set();
+  for(const g of chunk(cs,GM_BATCH)){const keys=[...new Set(g.map(c=>FREEMAIL.has(domOf(c.email))?c.email:domOf(c.email)))];
+    const since=g.map(c=>c.sentAt).filter(Boolean).sort()[0];
+    const msgs=await gSearch(`{${keys.map(k=>"from:"+k).join(" ")}} `+(since?"after:"+gDate(since):"newer_than:30d"));
+    for(const m of msgs){const f=mailOf(m.sender);if(!f||/mailer-daemon|postmaster/.test(f))continue;
+      for(const c of g)if(f===c.email||(!FREEMAIL.has(domOf(c.email))&&domOf(f)===domOf(c.email)))out.add(c.email)}}
+  return out}
+// Visszapattanás: a hibaüzenet előnézetében vagy tárgyában szerepel a cím. Ha egy találat nem azonosítható, felezve keresünk tovább.
+async function gBounces(cs,days){const out=new Set();
+  const run=async g=>{const msgs=await gSearch(`{from:mailer-daemon from:postmaster} newer_than:${days}d {${g.map(c=>'"'+c.email+'"').join(" ")}}`,"THREAD_VIEW_MINIMAL");
+    if(!msgs.length)return;let hit=false;
+    for(const m of msgs){const t=String((m.snippet||"")+" "+(m.subject||"")).toLowerCase();for(const c of g)if(t.includes(c.email)){out.add(c.email);hit=true}}
+    if(!hit){if(g.length===1)out.add(g[0].email);else{const h=Math.ceil(g.length/2);await run(g.slice(0,h));await run(g.slice(h))}}};
+  for(const g of chunk(cs,GM_BATCH))await run(g);
+  return out}
+// Már ment neki levél az elmúlt 90 napban (ebből a fiókból)
+async function gSent(cs){const out=new Set();
+  for(const g of chunk(cs,GM_BATCH)){const msgs=await gSearch(`in:sent newer_than:90d {${g.map(c=>"to:"+c.email).join(" ")}}`);
+    for(const m of msgs)for(const r of (m.toRecipients||[]).map(mailOf))if(g.some(c=>c.email===r))out.add(r)}
+  return out}
+async function markReplied(c){const n=String(c.note||"");await save(contacts.get(c.email)||c,{status:"valaszolt",repliedAt:c.repliedAt||today(),pultReplyAt:today(),note:(n?n+" · ":"")+"Válaszolt (a pult küldés előtt észlelte)."})}
+async function markBounced(c,why){const n=String(c.note||"");await save(contacts.get(c.email)||c,{bounced:true,bouncedAt:today(),note:(n?n+" · ":"")+(why||"Visszapattant (a pult küldés előtt észlelte).")})}
+// Ellenőrzés a sorba tétel előtt. ok: mehet; rep/bnc/dup: kimarad és jelölve; err: nem tudtam ellenőrizni.
+async function preCheck(cs){const fu=cs.filter(c=>effStatus(c)==="fu"),uj=cs.filter(c=>effStatus(c)!=="fu");const R={ok:[],rep:[],bnc:[],dup:[],err:[]};
+  const one=async(list,fn)=>{try{return await fn(list)}catch(e){return null}};
+  if(fu.length){const rep=await one(fu,gReplies),bnc=rep?await one(fu.filter(c=>!rep.has(c.email)),cs=>gBounces(cs,14)):null;
+    for(const c of fu){if(rep&&rep.has(c.email))R.rep.push(c);else if(!rep||!bnc)R.err.push(c);else if(bnc.has(c.email))R.bnc.push(c);else R.ok.push(c)}}
+  if(uj.length){const snt=await one(uj,gSent);for(const c of uj){if(!snt)R.err.push(c);else if(snt.has(c.email))R.dup.push(c);else R.ok.push(c)}}
+  for(const c of R.rep)await markReplied(c);for(const c of R.bnc)await markBounced(c);
+  const msg=[R.rep.length?`${R.rep.length} cím közben válaszolt, nekik nem megy follow-up`:"",R.bnc.length?`${R.bnc.length} cím visszapattant, átkerült az Érvénytelenek közé`:"",
+    R.dup.length?`${R.dup.length} címnek az elmúlt 90 napban már ment levél, kimaradt (${R.dup.slice(0,3).map(displayName).join(", ")}${R.dup.length>3?"…":""})`:"",
+    R.err.length?`Nem tudtam ellenőrizni, ezért ${R.err.length} ${R.err.some(c=>effStatus(c)!=="fu")?"levél":"follow-up"} kimaradt. Próbáld újra`:""].filter(Boolean);
+  R.msg=msg.join(". ")+(msg.length?".":"");return R}
+// Visszapattanók söprése: küldési kör végén és megnyitáskor (legfeljebb óránként)
+let lastSweep=0;
+async function bounceSweep(force){if(!mcpNs||!contacts.size)return;const now=Date.now();
+  if(!force){try{lastSweep=Math.max(lastSweep,+localStorage.getItem("l3d-sweep")||0)}catch(e){}if(now-lastSweep<36e5)return}
+  lastSweep=now;try{localStorage.setItem("l3d-sweep",String(now))}catch(e){}
+  let msgs;try{msgs=await gSearch("{from:mailer-daemon from:postmaster} newer_than:1d","THREAD_VIEW_MINIMAL")}catch(e){return}
+  const t=msgs.map(m=>String((m.snippet||"")+" "+(m.subject||"")).toLowerCase()).join(" ");let n=0;
+  for(const c of [...contacts.values()])if(!isDM(c)&&c.sentAt&&!c.bounced&&t.includes(String(c.email).toLowerCase())){await markBounced(c,"Visszapattant (a pult a küldés után észlelte).");n++}
+  if(n)toast(`${n} cím visszapattant, átkerült az Érvénytelenek közé`)}
 const qid=(email,kind,st)=>(kind==="fu"?"fu"+st:"uj")+"-"+email.replace(/[^A-Za-z0-9_\-.~:@+]/g,"_");
 async function enqueue(ids){
   if(!db){toast("Nincs adatbázis, nem tudom sorba állítani");return 0}
-  let n=0,skip=0;
+  if(!mcpNs){toast("A Gmail nem érhető el, ezért nem tudom ellenőrizni és sorba állítani");return 0}
+  let n=0,skip=0;const cand=[];
   for(const id of ids){const c=contacts.get(id);
     if(!c||isDM(c)||isBlocked(c)||sqHas(c.email)||isUnsure(c)){skip++;continue}
+    if(effStatus(c)!=="fu"&&c.status!=="uj"){skip++;continue}cand.push(c)}
+  toast("Ellenőrzöm a Gmailt: válasz, visszapattanás, korábbi levél…");
+  const pc=await preCheck(cand);
+  for(const c0 of pc.ok){const c=contacts.get(c0.email)||c0;
     const kind=effStatus(c)==="fu"?"fu":"";if(kind!=="fu"&&c.status!=="uj"){skip++;continue}
     const st=kind==="fu"?(fuStage(c)||1):0,m=compose(c,kind);
     const args={to:[c.email],subject:m.subject,body:m.body};if(kind==="fu"&&threadOk(c))args.replyThreadId=c.threadId;
@@ -2591,7 +2652,8 @@ async function enqueue(ids){
     try{await db.collection("sendqueue").doc(qi).set(x);n++}catch(e){sq.delete(qi);skip++}
   }
   renderList();renderBulk();
-  if(skip)toast(`${skip} címet kihagytam (már sorban van, már ment neki levél, vagy tiltólistás)`);
+  const m=[pc.msg,skip?`${skip} címet kihagytam (már sorban van, már ment neki levél, vagy tiltólistás).`:""].filter(Boolean).join(" ");
+  if(m)toast(m);
   return n;
 }
 async function stopQueue(){
@@ -2631,6 +2693,9 @@ async function runLocal(){
     // a cím állapota azóta változhatott (válaszolt, már ment neki levél): ilyenkor nem küldjük
     const still=it.kind==="fu"?(effStatus(c)==="fu"&&fuStage(c)===it.stage):(c.status||"uj")==="uj";
     if(!still||isBlocked(c)){await ref.update({state:"kihagyva",error:isBlocked(c)?"Tiltólistán van":"Már nem esedékes"}).catch(()=>{});bulk.done++;renderBulk();continue}
+    if(it.kind==="fu"&&(Date.now()-new Date(it.queuedAt||0).getTime())/6e4>=FU_CHECK_MIN){let rp=null;try{rp=await gReplies([c])}catch(e){}
+      if(!rp){bulk.unchecked=(bulk.unchecked||0)+1;bulk.done++;renderBulk();continue}
+      if(rp.has(c.email)){await markReplied(c);await ref.update({state:"kihagyva",error:"közben válaszolt"}).catch(()=>{});bulk.replied=(bulk.replied||0)+1;bulk.done++;renderBulk();continue}}
     try{await ref.update({state:"kuld",claimedAt:new Date().toISOString(),claimedBy:"pult"})}catch(e){continue}
     const ok=await sendOne(c,it.kind==="fu"?"fu":"",true);
     const after=contacts.get(it.email)||{};
@@ -2641,7 +2706,9 @@ async function runLocal(){
     if(!bulk.stop)await new Promise(r=>setTimeout(r,4000+Math.random()*3000))
   }
   try{await wl?.release()}catch(e){}
-  const d=bulk.done;bulk.running=false;renderList();renderBulk();toast(`${d} levél feldolgozva`);
+  const d=bulk.done,rp=bulk.replied||0,un=bulk.unchecked||0;bulk.running=false;renderList();renderBulk();
+  toast(`${d} levél feldolgozva`+(rp?`, ${rp} cím közben válaszolt, nekik nem ment follow-up`:"")+(un?`. ${un} follow-up-ot nem tudtam ellenőrizni, ezek a sorban maradtak`:""));
+  bounceSweep(true);
 }
 
 /* ---------- Pénzügy (ledger) ---------- */
@@ -3005,7 +3072,7 @@ $("#gsearch").addEventListener("submit",e=>{e.preventDefault();$("#q").value=$("
 
 renderTpl();renderSettings();renderAll();renderOrders();renderLedger();renderRates();renderCalc();renderPlan();renderTodos();renderGoals();
 (async()=>{
-  window.claude?.use?.("mcp").then(m=>{mcpNs=m||null;renderList();renderBulk()}).catch(()=>{});
+  window.claude?.use?.("mcp").then(m=>{mcpNs=m||null;renderList();renderBulk();setTimeout(()=>bounceSweep(false),8000)}).catch(()=>{});
   db=await window.claude?.use?.("db").catch(()=>null) ?? null;
   if(!db){$("#sync").textContent="Adatbázis nem érhető el";renderList();return}
   $("#sync").textContent="Élő, közös lista";

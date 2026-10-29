@@ -91,13 +91,23 @@ Nincs küldő, másoló vagy jóváhagyó gomb, csak a „Tiltólistán, nem kü
 - **Folyamat:**
   1. Kijelölés.
   2. Megerősítés.
-  3. A levelek kész szöveggel a `sendqueue` gyűjteménybe kerülnek (`state: "var"`).
-  4. A pult egyenként elküldi őket a Gmailből (`send_message`), 4–7 másodperc szünettel.
+  3. **Gmail-ellenőrzés** (lásd lent). Ami nem megy át rajta, az nem kerül a sorba.
+  4. A levelek kész szöveggel a `sendqueue` gyűjteménybe kerülnek (`state: "var"`).
+  5. A pult egyenként elküldi őket a Gmailből (`send_message`), 4–7 másodperc szünettel.
 - **Zár:** egyszerre csak egy nyitott lap küldhet (`settings/senderlock`, 90 másodperces bérlet). Küldés alatt a képernyő ébren marad (wake lock).
 - **Megszakadás:**
   - a sor megmarad;
   - a „Küldés folytatása” gomb folytatja;
   - a félbemaradt tételeknél előbb Gmail-keresés (`search_threads`) ellenőrzi, nem ment-e már ki.
+- **Ellenőrzés sorba tétel előtt** (`preCheck`, csak metaadat és a Gmail előnézete, levéltörzset nem olvas; csomagonként 10 cím egy keresésben, így 30 follow-up legfeljebb 6 keresés):
+  - **Follow-up – válasz:** `{from:<cím vagy domain> …} after:<legkorábbi küldés>`. A nem freemail címeknél a cég domainjéről jött bármely levél válasznak számít. Találatnál: `status: "valaszolt"`, `repliedAt`, `pultReplyAt`, a `note` végére „Válaszolt (a pult küldés előtt észlelte).” Toast: „2 cím közben válaszolt, nekik nem megy follow-up.”
+  - **Follow-up – visszapattanás:** `{from:mailer-daemon from:postmaster} newer_than:14d {"<cím>" …}`. A címet a hibaüzenet előnézetéből azonosítja; ha nem sikerül, felezve keres tovább. Találatnál `bounced: true`, `bouncedAt` (nem zárja le), így a cím az **Érvénytelen** szűrőbe kerül ([ERVENYTELEN.md](ERVENYTELEN.md)), és nem számít a készletbe.
+  - **Új levél – korábbi levél:** `in:sent newer_than:90d {to:<cím> …}`. Ha ebből a fiókból már ment neki levél, kimarad, a toast megnevezi.
+  - **Hiba:** ha a Gmail-keresés hibát ad, az érintett tételek kimaradnak („Nem tudtam ellenőrizni, ezért 5 follow-up kimaradt. Próbáld újra.”). Vakon semmi nem megy ki.
+  - Az egyenkénti küldés gomb ugyanezt az ellenőrzést futtatja.
+- **Ellenőrzés küldés pillanatában:** ha egy follow-up 30 percnél régebben került a sorba (pl. „Küldés folytatása”), közvetlenül küldés előtt még egy válasz-ellenőrzés. Válasz esetén `state: "kihagyva"`, `error: "közben válaszolt"`. Ha az ellenőrzés hibás, a tétel a sorban marad.
+- **Visszapattanók söprése:** a küldési kör végén és a pult megnyitásakor (legfeljebb óránként) egy `from:mailer-daemon newer_than:1d` keresés. A benne szereplő, már levelet kapott címek `bounced`-ra állnak, így még aznap az Érvénytelen szűrőbe kerülnek.
+- **Jelvények a Címlistán:** „Közben válaszolt” (zöld, 7 napig) és „Visszapattant ma” (piros).
 - **Napi korlát: 100 levél** (`DAILY_LIMIT`), az új levelek és a follow-upok együtt.
 - **Leállítás:** csak megállít, a maradék folytatható. A **„Mégse küldöm el…”** megerősítés után `megszakitva` állapotba teszi a várakozó tételeket.
 - **Háttérküldő:** a szerveroldali küldő (ütemezett feladat) ki van kapcsolva. A háttérfutás jogosultsága nem engedte a küldést, ezért a pult maga küld.
@@ -105,7 +115,7 @@ Nincs küldő, másoló vagy jóváhagyó gomb, csak a „Tiltólistán, nem kü
 ## 6. Follow-up szabályok
 - **Mikor esedékes:** 1. follow-up a levél után 6 nappal (`fuDays`), 2. follow-up az első után 8 nappal (`fu2Days`). A levél szálában megy (`replyThreadId`), ha a szál ismert.
 - **Csak az új címről:** follow-up csak a **levente3d.szeged@gmail.com** címről küldött levelekhez jár: `acct: "levente3d"`, vagy `sentAt` 2026-10-19-től (`fuSince`). A régi címről mentek mellett ez áll: „régi címről, nincs follow-up”.
-- **Mikor nincs follow-up:** aki válaszolt, aki visszapattant, és aki tiltólistán van.
+- **Mikor nincs follow-up:** aki válaszolt, aki visszapattant, és aki tiltólistán van. A reggeli napi kör mellett a pult is ellenőrzi: sorba tétel előtt és (30 percnél régebbi tételnél) küldés előtt megnézi a Gmailt, így a napközben érkezett válasz vagy visszapattanás után sem megy „csak emlékeztetnék” levél (részletek az 5. pontban).
 - **Privát üzenetek:** Instagramon és Facebookon „emlékeztető” a neve, és nincs követelmény a feladó címére.
 
 ## 7. Tiltólista (`settings/blocklist`)
@@ -186,6 +196,7 @@ A napi rutin szabályai a **levente3d-kampany** skillben vannak (`skill/levente3
 | 10. 26. | Follow-up csak az új Gmail-címről küldött levelekhez. Csatornánkénti teendő-jelvények, „Itt vár munka” sáv, nagyobb gombok. |
 | 10. 27–28. | Instagram és Facebook külön csoport, új kategóriák (jóga, tánc, fitnesz, terápia, ügyvéd, szabadulószoba). Küldési sor; a háttérküldő helyett oldalról küldés folytatással. |
 | 10. 28. | UX-átnézés: „Mind kijelölése (N)”, sorállapotok, „Küldés bizonytalan” gombokkal, 44 px-es érintési felületek, megerősítés a sor elvetéséhez. Napi korlát 60 → 100. A „Ma elküldve” kártya a korláthoz mér. |
+| 10. 29. | Follow-up előtti Gmail-ellenőrzés (válasz, visszapattanás), új levél előtt 90 napos duplikáció-ellenőrzés, visszapattanók söprése a kör végén, „Közben válaszolt” / „Visszapattant ma” jelvény. |
 | 10. 29. | Címkészlet-kártya (60-as cél, heti 50 új), gyors jóváhagyás a Javaslatok szűrőben (duplikáció-figyelés, elvetési ok, megerősített „Mind jóváhagyása”), `settings/summary` frissítése a pultból. |
 | 10. 29. | Keresési terv a válaszarány szerint súlyozva, terület km-ben (50/100/150), a pult csak a `plan` mezőt írja, jóga/tánc/fitnesz/terápia kimarad, „Kategóriák eredménye” kártya. |
 | 10. 29. | **Érvénytelen** szűrő a pótlás nélküli visszapattanókhoz: új e-mail, DM, Google-keresés, lezárás ([ERVENYTELEN.md](ERVENYTELEN.md)). |
