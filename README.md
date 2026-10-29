@@ -2,6 +2,7 @@
 
 - **`web/`**: nyilvános weboldal (`index.html` + `img/`). Élő: https://claude.ai/artifact/WZLdSDK19twEH9KM9WbH56
 - **`dashboard/`**: kampánypult (címlista, Gmail-küldés, sablonok, rendelések, árkalkulátor, 3D-generátor). Élő: https://claude.ai/artifact/44semk3pH1ffrYo8XycBoS
+  - Dokumentáció: [`dashboard/DOKUMENTACIO.md`](dashboard/DOKUMENTACIO.md), az érvénytelen címek kezelése: [`dashboard/ERVENYTELEN.md`](dashboard/ERVENYTELEN.md)
 
 - **`nevjegy/`**: névjegykártya, 85 × 55 mm, 3 mm kifutóval. A `_CMYK` változatok ISO Coated v2 (FOGRA39) profillal készültek, a fekete szöveg és a QR-kód tiszta fekete (K100), a legnagyobb festékfedés 218%. A `_CMYK` nélküliek RGB-k, ezeket akkor küldd, ha a nyomda maga alakít át.
   - `v4`: a QR a weboldalra visz, felirata „MUNKÁIM · AJÁNLAT”. Ha lesz saját domain, a weboldal ugyanezen a linken marad, és oda tehető az új cím.
