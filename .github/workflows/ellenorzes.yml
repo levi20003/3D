@@ -1,0 +1,47 @@
+# Napi ellenőrzés: elérhető-e az oldal, és van-e törött kép vagy link.
+# Hiba esetén a futás piros lesz (a GitHub e-mailt küld róla), és nyit egy hibajegyet.
+name: Weboldal ellenőrzése
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # minden nap 7:00/8:00 magyar idő szerint
+  push:
+    paths: ["web/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Él-e az oldal
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          URL="$(cat web/CNAME 2>/dev/null | sed 's#^#https://#' || true)"
+          [ -z "$URL" ] && URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
+          echo "Ellenőrzött cím: $URL"
+          curl -fsSL --retry 3 --retry-delay 20 -o page.html "$URL"
+          grep -q "Levente 3D" page.html
+      - name: Törött képek és linkek
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress --max-retries 3 --timeout 30
+            --exclude "mail.google.com" --exclude "^tel:" --exclude "^mailto:"
+            --exclude "fonts.googleapis.com" --exclude "fonts.gstatic.com"
+            --root-dir ${{ github.workspace }}/web
+            web/index.html
+          fail: true
+      - name: Hibajegy nyitása
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'Weboldal hiba in:title' --json number -q '.[].number')" ]; then exit 0; fi
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Weboldal hiba ($(date +%F))" \
+            --body "A napi ellenőrzés hibát talált: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
