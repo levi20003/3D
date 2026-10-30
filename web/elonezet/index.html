@@ -234,7 +234,9 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
 .hchips a:hover{border-color:var(--muted)}
 .hchips a[aria-current="true"]{border-color:var(--olive);box-shadow:inset 0 0 0 1px var(--olive);color:var(--olive)}
 .htext{grid-area:text;min-width:0}
-.hero .heroimg{grid-area:img;align-self:center}
+.hero .heroimg{grid-area:img;align-self:center;background:none;overflow:visible}
+.hero .heroimg img{border-radius:2px;background:var(--soft)}
+.hero .heroimg figcaption{position:static;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:12px 0 0}
 .lvt{position:absolute;left:10px;top:10px;font:600 11px var(--f-mono);text-transform:uppercase;letter-spacing:.1em;background:#22241a;color:#f6f5f0;padding:5px 9px;border-radius:2px;z-index:1}
 @media (max-width:900px){
   .hero{grid-template-areas:"chips" "img" "text";row-gap:20px}
@@ -634,7 +636,7 @@ const HERO={
   nyomda:{t:'Ami nem nyomható papírra, <em>azt legyártom.</em>',l:"Kapocs, távtartó, vezetőelem és QR-kódos pulttábla az ügyfeleiteknek, 1–100 db, Szegedről.",ph:"kapocs",cl:()=>"Valódi darab · "+NYOMDA_NEV,cb:"Ø110 mm, PLA",kind:"Sorozat",kt:"nyomda"},
   dekor:{t:'Térbeli elem <em>a táblák mellé.</em>',l:"Térbeli logó, plexitalp, display kis szériában, az ügyfél színeiben.",ph:"konyv",cl:()=>"Valódi darab · hasonló munka",cb:"Áttört könyvjelző, PLA",kind:"Logós ajándék",kt:"dekor"},
   uzlet:{t:'A pultodon <em>is feltűnik.</em>',l:"Névtábla, QR-kódos foglalás- és értékeléstábla a saját logóddal.",ph:"polc",cl:()=>"Valódi darab",cb:"Kétszintes polc, PLA",kind:"Tábla, névtábla",kt:"bolt"},
-  egyedi:{t:'Egyedi darabok, <em>gyorsan, Szegedről.</em>',l:"Pótalkatrészt, prototípust és saját logós terméket gyártok egy darabtól a kis szériáig. Egy fotó és néhány méret alapján 24 órán belül ajánlatot küldök, a darabok jellemzően 2–3 munkanap alatt elkészülnek.",ph:"lampa",cl:()=>"Valódi darab, retusálás nélkül",cb:"Spirálmintás lámpa · fehér PLA",kind:"",kt:""}};
+  egyedi:{t:'Egyedi darab, <em>gyorsan, Szegedről.</em>',l:"Pótalkatrészt, prototípust és saját logós terméket gyártok egy darabtól a kis szériáig. Egy fotó és néhány méret alapján 24 órán belül ajánlatot küldök, a darabok jellemzően 2–3 munkanap alatt elkészülnek.",ph:"lampa",cl:()=>"Valódi darab, retusálás nélkül",cb:"Spirálmintás lámpa · fehér PLA",kind:"",kt:""}};
 let heroV="nyomda",heroKt="nyomda";
 function pickKind(k){if(!k)return;const b=document.querySelector(`#q-kinds [data-kind="${k}"]`);if(b&&b.getAttribute("aria-pressed")!=="true")b.click()}
 function setHero(v,kt){const H=HERO[v]||HERO.nyomda;heroV=v in HERO?v:"nyomda";heroKt=kt!==undefined?kt:H.kt;
