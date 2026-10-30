@@ -90,6 +90,16 @@ A kategória-chipek helyett lenyíló kategória- és városszűrő a kereső me
 - **Duplikált javaslat:** ha a doc_id vagy a (nem freemail) domain már szerepel egy másik címnél bármilyen állapotban (az elvetettet is beleértve), illetve DM-nél azonos cégnév, a sor figyelmeztetést kap („Már szerepel: …”), és nem hagyható jóvá, csak elvethető.
 - **Mind jóváhagyása (N):** megerősítést kér, egyenként ír, és kihagyja a tiltólistás és a duplikált sorokat. A sáv kiírja: „3 kihagyva: 2 már szerepel, 1 tiltólistás”. Jóváhagyás után sem megy ki semmi magától.
 
+### Mai köteg és auto-jóváhagyás
+- **Mai köteg (N):** a Javaslatok szűrőben. A prioritásos kategóriák legfeljebb 30 javaslatát egy listában mutatja, egy megerősítéssel mindet `uj`-ra állítja (`approvedAt`). A tiltólistás és a duplikált sorok kimaradnak, a sáv kiírja, hány.
+- A javaslatok sorrendje: előbb a prioritásos kategóriák (a mentett `settings.priority`, ha nincs, a javaslat), utána a többi.
+- **Auto-jóváhagyás** (Beállítások, alapból ki): kategóriánként kapcsolható, de csak ahol legalább 20 e-mailből 30% fölött a válasz. Bekapcsolva a pult betöltéskor egyszer `uj`-ra állítja az ilyen kategóriájú, `source`-szal rendelkező, nem tiltólistás, nem duplikált javaslatokat (`autoApproved: true`), és naplózza a `settings/autoapprove` dokumentumba (`log: [{date, time, cats, ids}]`, utolsó 60). A küldés kézi marad.
+
+### Ajánlások
+- **Ügyfél** állapotú sornál „Ajánlást kérek”: kész szöveget másol a vágólapra (köszönet, ajánláskérés, 10% kedvezmény mindkét félnek), és beírja a `referralAskedAt` mezőt. Levelet nem küld.
+- Új vagy javasolt címnél a Részletekben „Ki ajánlotta?”: `referredBy` (az ügyfél doc_id-ja).
+- Áttekintés, Címkészlet-kártya: „Ajánlások: X kérve · Y új cím ajánlásból · Z ügyfél ajánlásból”.
+
 ### Tiltott cég
 Nincs küldő, másoló vagy jóváhagyó gomb, csak a „Tiltólistán, nem küldünk neki” felirat.
 
@@ -131,6 +141,7 @@ Nincs küldő, másoló vagy jóváhagyó gomb, csak a „Tiltólistán, nem kü
 - Érvényes a gyors felvételre, a kézi pótlásra, a küldésre, a kijelölésre és a napi keresésre is.
 
 ## 8. Keresési terv (Lefedettség fül, `settings/search`)
+- **Válaszarány kategóriánként (fókusz):** a Lefedettség fül tetején kiküldve, válasz, arány, ügyfél és külön az e-mailes arány. Javaslat: elöl a közvetítők (nyomda és csomagoló, reklám-dekor), plusz ahol 10+ e-mailből 30% fölött válaszolnak; „csak DM” ahol 10+ e-mailből 10% alatt. A **Prioritás mentése** gomb a `settings/main` `priority` és `dmOnly` mezőjébe írja; ezután kerül a tervbe `plan.priority` és `plan.dmOnly`, plusz egy szabály. Mentés nélkül a pult nem írja.
 - **Ki használja:** a hétköznap 10:00-kor futó **címgyűjtő**. A 7:25-ös napi kör nem gyűjt címet, csak a visszapattanókat és a válaszokat kezeli.
 - **Terület:** `settings/main.area` egyetlen szám km-ben (50, 100 vagy 150, alapból 150). A Lefedettség fülön választható: Szeged + 50 km (19 település), + 100 km (33), + 150 km (45). A `plan.cities` ebből áll össze. A keresés előbb az 50 km-es kör azon településeire megy, ahol a kategóriának kevés címe van; a távolabbi körök és a már sűrű városok (pl. Szeged a nyomdáknál) csak utánuk jönnek. A régi 1–4-es sorszámot a pult km-ként értelmezi (1 = 50, 2 = 100, 3–4 = 150).
 - **Súlyozott keret:** a napi keresések száma (`perRun`, alapból 15) a kategóriák válaszaránya szerint oszlik el. Súly = (válasz + 1) / (kiküldött + 4). Minden fókuszkategória kap legalább 1 keresést; ahol már legalább 30 levél ment ki, és a válaszarány 5% alatt van, ott 1 marad („gyenge válasz, csak minta”). A maradék a súly négyzete arányában a legjobb kategóriákba megy. A válaszarány csak az érett levelekből számít: legalább 6 napos, nem visszapattant.
@@ -146,13 +157,14 @@ Nincs küldő, másoló vagy jóváhagyó gomb, csak a „Tiltólistán, nem kü
 ## 9. Adatmodell (`window.claude.use("db")`)
 | Gyűjtemény / dokumentum | Tartalom |
 |---|---|
-| `contacts/{doc_id}` | doc_id: kisbetűs e-mail, DM-nél `dm-<név>-<város>`. Fő mezők: `email`, `name`, `cat` (`catLabel`), `city`, `hook`, `note`, `source`, `status`, `sentAt`, `followupAt`, `followup2At`, `threadId`, `acct`, `channel` (`dm`), `ig`/`fb`, `dmVia`, `bounced`, `bouncedAt`, `replaceDone`, `replacedBy`, `replaces`, `invalidDone`, `sendUnsure`, `approvedAt`, `addedAt` (felvétel napja), `rejectedAt`, `rejectReason`, `repliedAt`, `clientAt` (a kézi „Válaszolt” / „Ügyfél” állapotváltáskor) |
+| `contacts/{doc_id}` | doc_id: kisbetűs e-mail, DM-nél `dm-<név>-<város>`. Fő mezők: `email`, `name`, `cat` (`catLabel`), `city`, `hook`, `note`, `source`, `status`, `sentAt`, `followupAt`, `followup2At`, `threadId`, `acct`, `channel` (`dm`), `ig`/`fb`, `dmVia`, `bounced`, `bouncedAt`, `replaceDone`, `replacedBy`, `replaces`, `invalidDone`, `sendUnsure`, `approvedAt`, `autoApproved`, `referralAskedAt`, `referredBy`, `addedAt` (felvétel napja), `rejectedAt`, `rejectReason`, `repliedAt`, `clientAt` (a kézi „Válaszolt” / „Ügyfél” állapotváltáskor) |
 | `sendqueue/{id}` | id: `uj-<email>` vagy `fu1-`/`fu2-<email>`. Mezők: `email`, `name`, `kind`, `stage`, `args {to, subject, body, replyThreadId?}`, `patch` (benne `"{MA}"` = küldés napja), `state` (`var`, `kuld`, `kesz`, `kihagyva`, `hiba`, `megszakitva`), `queuedAt`, `claimedAt`, `sentAt`, `error` |
 | `templates/{kulcs}` | A Sablonok fülön módosított levelek (a beépített alapokat írják felül) |
 | `orders`, `ledger`, `todos` | Rendelések, bevétel és kiadás, növekedési lépések |
-| `settings/main` | `goal` (napi cél, 30), `fuDays`, `fu2Days`, `sig`, `link`, `area`, `focus`, `perRun`, `searchSkip`, `goals`, `rates`, `fuSince` |
+| `settings/main` | `goal` (napi cél, 30), `fuDays`, `fu2Days`, `sig`, `link`, `area`, `focus`, `perRun`, `searchSkip`, `goals`, `rates`, `fuSince`, `priority`, `dmOnly`, `priorityAt`, `autoApprove` |
 | `settings/search` | `plan` (`targets`, `fallback`, `rules`, `focus`, `cities`), `updated`, `lastRun` |
 | `settings/blocklist` | `domains`, `emails`, `keywords`, `rule` |
+| `settings/autoapprove` | Auto-jóváhagyás naplója: `log [{date, time, cats, ids}]`, `updated` |
 | `settings/summary` | A Claude-ok előbb ezt olvassák. A pult minden betöltéskor és küldési kör után frissíti (10 mp késleltetéssel, csak ha változott, `update`-tel, a más által írt mezőket, pl. `needReply`, `finance`, `note`, meghagyja): `updated`, `contacts` (állapotonként, plusz `total`, `fu`, `dmQueue`), `pool {uj, javasolt, total, target: 60}`, `week {from, added, sent, followups, replies, newClients}` (hétfőtől), `today {sent, followups}`, `followupDue`, `followupDue1`, `followupDue2`, `invalid`, `replyRateByCat` (`{kat: {sent, replied, rate}}`, érett levelekből). A `week.replies` és `newClients` csak a `repliedAt` / `clientAt` mezős címeket számolja. |
 | `settings/senderlock` | Küldési zár (`acquire`, 90 másodperces bérlet) |
 
@@ -202,6 +214,7 @@ A napi rutin szabályai a **levente3d-kampany** skillben vannak (`skill/levente3
 | 10. 26. | Follow-up csak az új Gmail-címről küldött levelekhez. Csatornánkénti teendő-jelvények, „Itt vár munka” sáv, nagyobb gombok. |
 | 10. 27–28. | Instagram és Facebook külön csoport, új kategóriák (jóga, tánc, fitnesz, terápia, ügyvéd, szabadulószoba). Küldési sor; a háttérküldő helyett oldalról küldés folytatással. |
 | 10. 28. | UX-átnézés: „Mind kijelölése (N)”, sorállapotok, „Küldés bizonytalan” gombokkal, 44 px-es érintési felületek, megerősítés a sor elvetéséhez. Napi korlát 60 → 100. A „Ma elküldve” kártya a korláthoz mér. |
+| 10. 30. | Válaszarány-fókusz és prioritás mentése, Mai köteg (30 javaslat egy megerősítéssel), auto-jóváhagyás (csak 20+ levél és 30% fölött), ajánlói rendszer (Ajánlást kérek, Ki ajánlotta?). |
 | 10. 30. | „Mai kör” lépésvezető egy gombbal, letisztult Címlista (lenyíló szűrők, rövidebb sorok), magyarázó szövegek törölve. |
 | 10. 29. | Follow-up előtti Gmail-ellenőrzés (válasz, visszapattanás), új levél előtt 90 napos duplikáció-ellenőrzés, visszapattanók söprése a kör végén, „Közben válaszolt” / „Visszapattant ma” jelvény. |
 | 10. 29. | Címkészlet-kártya (60-as cél, heti 50 új), gyors jóváhagyás a Javaslatok szűrőben (duplikáció-figyelés, elvetési ok, megerősített „Mind jóváhagyása”), `settings/summary` frissítése a pultból. |
