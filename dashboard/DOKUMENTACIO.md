@@ -64,6 +64,12 @@ A pult a claude.ai-on, bejelentkezve működik. Ha helyben nyitod meg (`file://`
 | Elvetve | Elvetett javaslat, nem jön vissza |
 | Érvénytelen | Visszapattant, nincs pótlása, kézzel kell rendezni ([ERVENYTELEN.md](ERVENYTELEN.md)) |
 
+### Mai kör (Áttekintés és Címlista teteje)
+Négy lépés darabszámmal: **1. Jóváhagyás → 2. Follow-up → 3. Új levél → 4. DM**. A soron következő lépés kiemelt, alatta egy nagy gomb. Follow-upnál és új levélnél a gomb kijelöli az összes küldhető címet (a napi korlátig), és a megerősítő sávot hozza: a levelek csak az „Igen, küldés” után mennek ki, a Gmail-ellenőrzéssel együtt. A fejlécben: mai küldés a célhoz és a címkészlet.
+
+### Egyszerűsítés (10. 30.)
+A kategória-chipek helyett lenyíló kategória- és városszűrő a kereső mellett. Csak azok az állapotszűrők látszanak, amelyekben van cím. A sorokban nincs kategória/város oszlop és megjegyzés (ezek a Részletek alatt vannak), a dátum röviden („10 napja”, „1. FU 10. 28.”). A gyors felvétel lenyíló lett a lista alján. A magyarázó szövegek kikerültek a fülekről.
+
 ### Kártyák
 - **Címkészlet** (Áttekintés és Címlista): kiküldhető (`uj`) + jóváhagyásra váró (`javasolt`) cím, e-mail és DM együtt, tiltólistás nélkül, a 60-as célhoz mérve. 60 alatt sárga, 30 alatt piros. Alatta: „Ezen a héten bekerült: X / 50” (hétfőtől, a felvétel dátuma szerint: `addedAt`, ha nincs, a `source` utolsó dátuma). Ugyanez a szám kerül a `settings/summary.pool` mezőbe.
 - **Értesítő sáv** a Címlista tetején: ha a készlet 60 alatt van és 10-nél több javaslat vár, „N cím vár jóváhagyásra, 2 perc az egész”, gombbal a Javaslatok szűrőre.
@@ -196,6 +202,7 @@ A napi rutin szabályai a **levente3d-kampany** skillben vannak (`skill/levente3
 | 10. 26. | Follow-up csak az új Gmail-címről küldött levelekhez. Csatornánkénti teendő-jelvények, „Itt vár munka” sáv, nagyobb gombok. |
 | 10. 27–28. | Instagram és Facebook külön csoport, új kategóriák (jóga, tánc, fitnesz, terápia, ügyvéd, szabadulószoba). Küldési sor; a háttérküldő helyett oldalról küldés folytatással. |
 | 10. 28. | UX-átnézés: „Mind kijelölése (N)”, sorállapotok, „Küldés bizonytalan” gombokkal, 44 px-es érintési felületek, megerősítés a sor elvetéséhez. Napi korlát 60 → 100. A „Ma elküldve” kártya a korláthoz mér. |
+| 10. 30. | „Mai kör” lépésvezető egy gombbal, letisztult Címlista (lenyíló szűrők, rövidebb sorok), magyarázó szövegek törölve. |
 | 10. 29. | Follow-up előtti Gmail-ellenőrzés (válasz, visszapattanás), új levél előtt 90 napos duplikáció-ellenőrzés, visszapattanók söprése a kör végén, „Közben válaszolt” / „Visszapattant ma” jelvény. |
 | 10. 29. | Címkészlet-kártya (60-as cél, heti 50 új), gyors jóváhagyás a Javaslatok szűrőben (duplikáció-figyelés, elvetési ok, megerősített „Mind jóváhagyása”), `settings/summary` frissítése a pultból. |
 | 10. 29. | Keresési terv a válaszarány szerint súlyozva, terület km-ben (50/100/150), a pult csak a `plan` mezőt írja, jóga/tánc/fitnesz/terápia kimarad, „Kategóriák eredménye” kártya. |
