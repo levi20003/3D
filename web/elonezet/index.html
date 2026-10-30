@@ -1,11 +1,11 @@
 <title>Levente 3D Szeged</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Egyedi műanyag alkatrész, prototípus és logós kiegészítő 3D nyomtatással Szegeden. Átvétel személyesen vagy csomagautomatában.">
+<meta name="description" content="Egyedi műanyag alkatrész, prototípus és logós kiegészítő 3D nyomtatással Szegeden.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='3 3 26 28'%3E%3Crect width='32' height='34' x='0' y='0' fill='%236f7245'/%3E%3Crect x='3' y='3' width='8' height='5.5' rx='1.4' fill='%23f3f2ea'/%3E%3Crect x='3' y='10.5' width='8' height='5.5' rx='1.4' fill='%23f3f2ea'/%3E%3Crect x='3' y='18' width='8' height='5.5' rx='1.4' fill='%23f3f2ea'/%3E%3Crect x='3' y='25.5' width='26' height='5.5' rx='1.4' fill='%23d6bc96'/%3E%3C/svg%3E">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="hu_HU">
 <meta property="og:title" content="Levente 3D · 3D nyomtatás Szeged">
-<meta property="og:description" content="Egyedi műanyag alkatrész, prototípus és logós kiegészítő. Ajánlat 24 órán belül, átvétel Szegeden vagy csomagautomatában.">
+<meta property="og:description" content="Egyedi műanyag alkatrész, prototípus és logós kiegészítő. Ajánlat 24 órán belül.">
 <meta property="og:image" content="img/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Levente 3D","description":"Egyedi műanyag alkatrész, prototípus és logós kiegészítő 3D nyomtatással Szegeden, 1–100 darabig. Ajánlat 24 órán belül.","telephone":"+36705961640","email":"levente3d.szeged@gmail.com","address":{"@type":"PostalAddress","addressLocality":"Szeged","addressCountry":"HU"},"areaServed":["Szeged","Csongrád-Csanád vármegye","Magyarország"],"openingHours":"Mo-Su 00:00-23:59","knowsAbout":["3D nyomtatás","pótalkatrész","prototípus","logós ajándék"]}</script>
@@ -98,7 +98,7 @@ hr.rule{border:0;border-top:1px solid var(--rule);margin:0}
 .galcta .btn{align-self:flex-start;margin-top:6px}
 .galcta:hover{border-style:solid}
 
-.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:32px;counter-reset:s}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px;counter-reset:s}
 .step{border-top:1px solid var(--ink);padding-top:18px;min-width:0}
 .step .n{font-family:var(--f-mono);font-size:13px;color:var(--sand-ink);letter-spacing:.1em}
 .step h3{font-family:var(--f-display);font-weight:600;font-size:18px;margin:10px 0 8px}
@@ -309,6 +309,8 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
   .hero{padding-block:20px 48px;row-gap:16px}
   .heroimg img{max-height:min(520px,50vh)}
 }
+#h-capl:empty{display:none}
+.ktgrid figcaption span,.interim figcaption span{display:none}
 </style>
 
 <header class="cover"><img src="img/borito-logo.jpg" alt="Levente 3D" width="2400" height="856" fetchpriority="high">
@@ -321,7 +323,6 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
       <a class="hide-s" href="#otletek">Ötletek</a>
       <a class="hide-s" href="#munkak">Munkák</a>
       <a class="hide-s" href="#folyamat">Folyamat</a>
-      <a class="hide-s" href="#atvetel">Átvétel</a>
       <a class="hide-s" href="#gyik">Kérdések</a>
       <a class="btn olive" href="#ajanlat">Ajánlatkérés</a>
     </nav>
@@ -337,7 +338,7 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
     </nav>
     <figure class="heroimg">
       <img id="h-img" src="img/kapocs.jpg" alt="Tekercs-összefogó kapocs kézben, 3D nyomtatva" width="900" height="1200" fetchpriority="high">
-      <figcaption><span id="h-capl">Valódi darab · szegedi nyomda</span><b id="h-cap">Ø110 mm, PLA</b></figcaption>
+      <figcaption><span id="h-capl">szegedi nyomda</span><b id="h-cap">Tekercs-összefogó kapocs · Ø110 mm</b></figcaption>
     </figure>
     <div class="htext">
       <p class="eyebrow">3D nyomtatás · Szeged</p>
@@ -365,7 +366,7 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
     <div class="interim" id="kt-interim" hidden></div>
     <div class="ktgrid" id="kt-grid"></div>
     <div class="ideas" id="kt-ideas"></div>
-    <div class="ktfoot" id="kt-foot"><p>Egy fotó és pár méret elég, és 24 órán belül árat küldök. Egy darabot mintának ingyen elkészítek.</p><a class="btn olive" href="#ajanlat">Ajánlatot kérek</a></div>
+    <div class="ktfoot" id="kt-foot"><p>Fotó + méret, 24 órán belül ár. Az első darab minta ingyen.</p><a class="btn olive" href="#ajanlat">Ajánlatot kérek</a></div>
   </section>
 </div>
 
@@ -375,20 +376,18 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
   <section id="szolgaltatas">
     <div class="sec-head">
       <div><p class="label">Szolgáltatás</p><h2>Amit leginkább készítek</h2></div>
-      <p class="sec-lede">Olyan darabokat, amelyekből kevés kell, gyorsan, és máshol nem kaphatók, vagy aránytalanul drágák lennének.</p>
     </div>
     <div class="offer">
-      <article><h3>Gyártás és karbantartás</h3><p>Eltört vagy már nem gyártott alkatrészek pótlása, szerelési sablonok, tartók és burkolatok.</p><ul><li>pótalkatrész</li><li>sablon, készülék</li><li>prototípus</li></ul></article>
-      <article><h3>Nyomda és csomagolás</h3><p>A géphez és az anyaghoz igazított apró elemek, amelyek készen nem kaphatók.</p><ul><li>tekercs-összefogó kapocs</li><li>távtartó</li><li>vezetőelem</li></ul></article>
-      <article><h3>Ajándék és rendezvény</h3><p>Kis szériás termékek polcra, logós céges ajándékok, esküvői és alkalmi darabok.</p><ul><li>logós ajándék</li><li>könyvjelző</li><li>tortadísz</li></ul></article>
-      <article><h3>Üzlet, szállás, rendelő</h3><p>Az arculathoz illő táblák és kiegészítők, amelyek a vendégnek is feltűnnek.</p><ul><li>ajtó- és névtábla</li><li>QR-kódos tábla</li><li>pultdísz</li></ul></article>
+      <article><h3>Gyártás és karbantartás</h3><ul><li>pótalkatrész</li><li>sablon, készülék</li><li>prototípus</li></ul></article>
+      <article><h3>Nyomda és csomagolás</h3><ul><li>tekercs-összefogó kapocs</li><li>távtartó</li><li>vezetőelem</li></ul></article>
+      <article><h3>Ajándék és rendezvény</h3><ul><li>logós ajándék</li><li>könyvjelző</li><li>tortadísz</li></ul></article>
+      <article><h3>Üzlet, szállás, rendelő</h3><ul><li>ajtó- és névtábla</li><li>QR-kódos tábla</li><li>pultdísz</li></ul></article>
     </div>
   </section>
 
   <section id="otletek">
     <div class="sec-head">
       <div><p class="label">Ötletek iparáganként</p><h2>Válassza ki, mivel foglalkozik</h2></div>
-      <p class="sec-lede">Minden területhez összegyűjtöttem, mit szoktam készíteni, és mit tudnék Önöknek is.</p>
     </div>
     <nav class="trades" id="trades" aria-label="Iparágak"></nav>
   </section>
@@ -396,22 +395,20 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
   <section id="munkak">
     <div class="sec-head">
       <div><p class="label">Munkák</p><h2>Néhány elkészült darab</h2></div>
-      <p class="sec-lede">Valódi fotók, retusálás nélkül. A felület és a részletek a kézbe vett darabon is ilyenek.</p>
     </div>
     <div class="gal">
-      <figure><img src="img/konyvjelzo.jpg" alt="Áttört, könyvespolc mintás könyvjelző" width="900" height="1200" loading="lazy"><figcaption><b>Áttört könyvjelző</b><span>Könyvesboltnak, ajándéknak, logóval is</span></figcaption></figure>
-      <figure><img src="img/kapocs.jpg" alt="A legyártott tekercs-összefogó kapocs kézben" width="900" height="1200" loading="lazy"><figcaption><b>Tekercs-összefogó kapocs</b><span>Szegedi nyomdának, Ø110 × 20 mm, 1 000 Ft/db</span></figcaption></figure>
-      <figure><img src="img/szobor.jpg" alt="Ölelkező pár szobor" width="900" height="1195" loading="lazy"><figcaption><b>Ölelkező pár</b><span>Esküvői ajándék, tortadísz, évforduló</span></figcaption></figure>
-      <figure><img src="img/polc-kozmetikai.jpg" alt="Kétszintes rózsaszín polc parfümmel és kozmetikumokkal" width="1280" height="1830" loading="lazy"><figcaption><b>Kétszintes polc</b><span>Kozmetikumok, parfüm, fürdőszoba</span></figcaption></figure>
-      <figure><img src="img/lampa-gyuru.jpg" alt="Gyűrött felületű fehér asztali lámpa USB kábellel" width="1280" height="1800" loading="lazy"><figcaption><b>Textúrált lámpa</b><span>USB-s asztali lámpa · gyűrött felület</span></figcaption></figure>
-      <a class="galcta" href="#ajanlat"><span class="label">Az Ön darabja</span><b>Mit készítsek legközelebb?</b><span>Egy fotó és pár méret elég. 24 órán belül árat küldök.</span><span class="btn olive">Ajánlatot kérek</span></a>
+      <figure><img src="img/konyvjelzo.jpg" alt="Áttört, könyvespolc mintás könyvjelző" width="900" height="1200" loading="lazy"><figcaption><b>Áttört könyvjelző</b></figcaption></figure>
+      <figure><img src="img/kapocs.jpg" alt="A legyártott tekercs-összefogó kapocs kézben" width="900" height="1200" loading="lazy"><figcaption><b>Tekercs-összefogó kapocs</b></figcaption></figure>
+      <figure><img src="img/szobor.jpg" alt="Ölelkező pár szobor" width="900" height="1195" loading="lazy"><figcaption><b>Ölelkező pár</b></figcaption></figure>
+      <figure><img src="img/polc-kozmetikai.jpg" alt="Kétszintes rózsaszín polc parfümmel és kozmetikumokkal" width="1280" height="1830" loading="lazy"><figcaption><b>Kétszintes polc</b></figcaption></figure>
+      <figure><img src="img/lampa-gyuru.jpg" alt="Gyűrött felületű fehér asztali lámpa USB kábellel" width="1280" height="1800" loading="lazy"><figcaption><b>Textúrált lámpa</b></figcaption></figure>
+      <a class="galcta" href="#ajanlat"><span class="label">Az Ön darabja</span><b>Mit készítsek legközelebb?</b><span>Fotó + méret, 24 órán belül ár.</span><span class="btn olive">Ajánlatot kérek</span></a>
     </div>
   </section>
 
   <section id="arak">
     <div class="sec-head">
       <div><p class="label">Árak</p><h2>Mennyibe kerül? Irányárak</h2></div>
-      <p class="sec-lede">Egyedi munkánál a pontos ár a mérettől, az anyagtól és a darabszámtól függ. Ezek a sávok abban segítenek, hogy lássa, nagyjából hol jár.</p>
     </div>
     <div class="pcards" id="pcards"></div>
     <p class="note" id="p-foot" style="margin:14px 0 0"></p>
@@ -431,48 +428,32 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
 
   <section id="folyamat">
     <div class="sec-head">
-      <div><p class="label">Folyamat</p><h2>Az ötlettől az átvételig</h2></div>
-      <p class="sec-lede">Műszaki rajzra nincs szükség. Egy fotó vonalzóval vagy néhány méret elég az induláshoz.</p>
+      <div><p class="label">Folyamat</p><h2>Így működik</h2></div>
     </div>
     <div class="steps">
-      <div class="step"><div class="n">01 · Ön</div><h3>Fotó és méretek</h3><p>Küldjön képet a darabról vagy egy vázlatot, a fő méretekkel és a darabszámmal.</p></div>
-      <div class="step"><div class="n">02 · 24 órán belül</div><h3>Ajánlat</h3><p>Pontos árat és átadási napot küldök. Sorozat előtt kérésre mintadarabot is.</p></div>
-      <div class="step"><div class="n">03 · 2–3 munkanap</div><h3>Gyártás</h3><p>A jóváhagyás után legyártom a darabokat, és tolómérővel ellenőrzöm a méreteket.</p></div>
-      <div class="step"><div class="n">04 · Átvétel</div><h3>Kézbesítés</h3><p>Szegeden személyesen átadom, máshová csomagautomatába vagy postán küldöm.</p></div>
+      <div class="step"><div class="n">01 · Ön</div><h3>Fotó és méretek</h3><p>Fotó vagy vázlat, méretek, darabszám.</p></div>
+      <div class="step"><div class="n">02 · 24 órán belül</div><h3>Ajánlat</h3><p>Pontos ár, kérésre mintadarab.</p></div>
+      <div class="step"><div class="n">03 · 2–3 munkanap</div><h3>Gyártás</h3><p>Tolómérővel ellenőrizve.</p></div>
     </div>
   </section>
 
-  <section id="atvetel">
-    <div class="sec-head">
-      <div><p class="label">Átvétel</p><h2>Személyesen vagy csomagautomatában</h2></div>
-      <p class="sec-lede">Az ország bármely részére küldök. Az ajánlatkérésnél válassza ki, hogyan kéri, és a szállítási díjat az ajánlatban külön feltüntetem.</p>
-    </div>
-    <div class="ship">
-      <article><span class="tag">Szeged</span><h3>Személyes átadás</h3><p>Szegeden díjmentesen, egyeztetett helyen és időpontban adom át a darabokat.</p></article>
-      <article class="main"><span class="tag">Országosan</span><h3>Csomagautomata</h3><p>A kész rendelést a választott automatába adom fel, a nyitókódot SMS-ben vagy e-mailben kapja meg. Az automata nevét vagy címét az ajánlatkérő űrlapon adhatja meg.</p>
-        <div class="links"><a href="https://foxpost.hu" target="_blank" rel="noopener">Foxpost</a><a href="https://www.packeta.hu" target="_blank" rel="noopener">Packeta</a><a href="https://www.posta.hu" target="_blank" rel="noopener">MPL</a></div></article>
-      <article><span class="tag">Országosan</span><h3>Postai küldés</h3><p>Nagyobb vagy több részből álló rendelésnél házhoz szállítással, a megadott címre.</p></article>
-    </div>
-  </section>
 
   <section id="gyik">
     <div class="sec-head">
       <div><p class="label">Kérdések</p><h2>Gyakori kérdések</h2></div>
     </div>
     <div class="faq">
-      <details><summary>Mennyibe kerül egy darab?</summary><p>Az ár a mérettől, az anyagmennyiségtől és a darabszámtól függ. Példa: a tekercs-összefogó kapocs darabja 1 000 Ft volt. A fotó és a méretek alapján 24 órán belül pontos ajánlatot küldök. Nagyobb mennyiségre és visszatérő megrendelésre kedvezményt adok.</p></details>
-      <details><summary>Mi kell az ajánlathoz?</summary><p>Egy fotó a darabról, lehetőleg vonalzóval mellette, a fő méretek és a darabszám. Ha van rajz vagy 3D fájl (STL, 3MF), az még gyorsabb.</p></details>
-      <details><summary>Mekkora lehet egy darab?</summary><p>Egy darabban legfeljebb 18 × 18 × 18 cm. A nagyobb tárgyakat részekre bontva gyártom, és pontosan illeszkedő elemekként adom át.</p></details>
-      <details><summary>Kérhetek saját logót vagy feliratot?</summary><p>Igen. Küldje el a logót PNG, SVG vagy PDF formátumban, és kiemelt vagy bemélyített változatot tervezek belőle.</p></details>
-      <details><summary>Van lehetőség mintadarabra?</summary><p>Sorozatgyártás előtt egy mintadarabot készítek, hogy élőben ellenőrizhesse a méretet és az illeszkedést.</p></details>
-      <details><summary>Hogyan kapom meg a rendelést?</summary><p>Szegeden személyesen adom át. Más településre csomagautomatába (Foxpost, Packeta, MPL) vagy postán küldöm.</p></details>
+      <details><summary>Mennyibe kerül egy darab?</summary><p>Mérettől és darabszámtól függ. Példa: tekercs-összefogó kapocs, 1 000 Ft/db. Lásd az irányárakat.</p></details>
+      <details><summary>Mi kell az ajánlathoz?</summary><p>Fotó vonalzóval, fő méretek, darabszám. STL vagy 3MF fájl még jobb.</p></details>
+      <details><summary>Mekkora lehet egy darab?</summary><p>Egy darabban legfeljebb 18 × 18 × 18 cm, a nagyobbat részekből.</p></details>
+      <details><summary>Kérhetek saját logót vagy feliratot?</summary><p>Igen, PNG, SVG vagy PDF fájlból.</p></details>
+      <details><summary>Van lehetőség mintadarabra?</summary><p>Igen, sorozat előtt egy mintadarabot készítek.</p></details>
     </div>
   </section>
 
   <section id="ajanlat">
     <div class="sec-head">
       <div><p class="label">Ajánlatkérés</p><h2>Írja le, mire van szüksége</h2></div>
-      <p class="sec-lede">Az űrlap egy kész levelet állít össze. A fotót ahhoz a levélhez csatolja.</p>
     </div>
     <div class="quote">
       <form class="q" id="qf" novalidate>
@@ -495,26 +476,6 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
         </div>
         <label class="f">Mikorra van rá szükség?<input id="q-when" placeholder="pl. jövő hét péntek"></label>
 
-        <fieldset>
-          <legend>Átvétel módja</legend>
-          <div class="seg">
-            <label><input type="radio" name="q-ship" id="q-ship-sz" value="szeged" checked><b>Személyesen</b><small>Szegeden, díjmentes</small></label>
-            <label><input type="radio" name="q-ship" id="q-ship-ca" value="automata"><b>Csomagautomata</b><small>Országosan</small></label>
-            <label><input type="radio" name="q-ship" id="q-ship-po" value="posta"><b>Posta</b><small>Házhoz szállítás</small></label>
-          </div>
-          <div class="subpanel" id="sp-automata" hidden>
-            <div class="row2">
-              <label class="f">Szolgáltató<select id="q-prov"><option>Foxpost</option><option>Packeta</option><option>MPL</option><option>Mindegy</option></select></label>
-              <label class="f">Irányítószám, település<input id="q-city" placeholder="pl. 1117 Budapest"></label>
-            </div>
-            <label class="f"><span>Automata neve vagy címe <span class="h">(ha már tudja)</span></span><input id="q-locker" placeholder="pl. Foxpost, Allee bevásárlóközpont"></label>
-            <p class="note">Ha nem tudja, melyik automata van a közelben, hagyja üresen, és a település alapján javaslok egyet.</p>
-          </div>
-          <div class="subpanel" id="sp-posta" hidden>
-            <label class="f">Szállítási cím<input id="q-addr" autocomplete="street-address" placeholder="Irányítószám, település, utca, házszám"></label>
-          </div>
-        </fieldset>
-
         <label class="f"><span>Telefonszám <span class="h">(nem kötelező)</span></span><input id="q-phone" autocomplete="tel" inputmode="tel"></label>
         <div class="ctas">
           <button class="btn olive" type="submit">Levél megnyitása Gmailben</button>
@@ -525,12 +486,11 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
       </form>
       <div>
         <div class="contact">
-          <div class="cline"><div><span>E-mail</span><a id="c-mail" href="mailto:levente3d.szeged@gmail.com">levente3d.szeged@gmail.com</a></div><button class="copy" type="button" data-copy="c-mail">Másolás</button></div>
-          <div class="cline"><div><span>Telefon</span><a id="c-tel" href="tel:+36705961640">+36 70 596 1640</a></div><button class="copy" type="button" data-copy="c-tel">Másolás</button></div>
-          <div class="cline"><div><span>Helyszín</span><b>Szeged · országos kiszállítás</b></div></div>
+          <div class="cline"><div><span>E-mail</span><a id="c-mail" href="mailto:levente3d.szeged@gmail.com">levente3d.szeged@gmail.com</a></div></div>
+          <div class="cline"><div><span>Telefon</span><a id="c-tel" href="tel:+36705961640">+36 70 596 1640</a></div></div>
+          <div class="cline"><div><span>Helyszín</span><b>Szeged</b></div></div>
           <div class="cline"><div><span>Elérhetőség</span><b>Minden nap 0–24 órában</b></div></div>
         </div>
-        <p class="note">Ha nem Gmailt használ, a Saját levelezőben gomb a gépén beállított levelezőprogramot nyitja meg. Ha ez sem működik, másolja ki a szöveget, és küldje el a fenti címre.</p>
       </div>
     </div>
   </section>
@@ -560,9 +520,6 @@ const NYOMDA_NEV=ENGEDELY_PERFECT_PROFIL?"Perfect Profil Kft., Szeged":"szegedi 
 const TO="levente3d.szeged@gmail.com";
 const $=id=>document.getElementById(id);
 const v=id=>($(id)?.value||"").trim();
-const ship=()=>document.querySelector('input[name="q-ship"]:checked')?.value||"szeged";
-function syncShip(){const s=ship();$("sp-automata").hidden=s!=="automata";$("sp-posta").hidden=s!=="posta"}
-document.querySelectorAll('input[name="q-ship"]').forEach(r=>r.addEventListener("change",syncShip));syncShip();
 let kind="";
 $("q-kinds").addEventListener("click",e=>{const b=e.target.closest("[data-kind]");if(!b)return;
   const on=b.getAttribute("aria-pressed")!=="true";kind=on?b.dataset.kind:"";
@@ -575,26 +532,20 @@ function build(){
   if(v("q-qty"))L.push("Darabszám: "+v("q-qty"));
   if(v("q-size"))L.push("Fő méretek: "+v("q-size")+" mm");
   if(v("q-when"))L.push("Határidő: "+v("q-when"));
-  const s=ship();
-  if(s==="szeged")L.push("Átvétel: személyesen, Szegeden");
-  if(s==="automata"){L.push("Átvétel: csomagautomata ("+v("q-prov")+")");if(v("q-city"))L.push("Település: "+v("q-city"));L.push("Automata: "+(v("q-locker")||"kérem, javasoljon egyet a közelben"))}
-  if(s==="posta"){L.push("Átvétel: postai küldés");if(v("q-addr"))L.push("Szállítási cím: "+v("q-addr"))}
   L.push("","A fotót csatolom.","","Üdvözlettel:",v("q-name")+(v("q-co")?", "+v("q-co"):""));
   if(v("q-phone"))L.push(v("q-phone"));
   return {subj,body:L.join("\n")};
 }
 function valid(){const m=$("q-msg");if(!v("q-name")||!v("q-what")){m.textContent="Adja meg a nevét, és írja le röviden, mire van szüksége.";return false}
-  if(ship()==="automata"&&!v("q-city")&&!v("q-locker")){m.textContent="Csomagautomatához adja meg a települést vagy az automata nevét.";return false}
-  if(ship()==="posta"&&!v("q-addr")){m.textContent="Postai küldéshez adja meg a szállítási címet.";return false}
   m.textContent="";return true}
 $("qf").addEventListener("submit",e=>{e.preventDefault();if(!valid())return;const {subj,body}=build();
   const a=document.createElement("a");a.href="https://mail.google.com/mail/?view=cm&fs=1&to="+encodeURIComponent(TO)+"&su="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
-  $("q-msg").textContent="A levél egy új lapon nyílik meg. Csatolja a fotót, és küldje el. Ha nem nyílt meg, használja a Szöveg másolása gombot.";});
+  $("q-msg").textContent="Csatolja a fotót, és küldje el.";});
 $("q-copy").addEventListener("click",async()=>{if(!valid())return;const {subj,body}=build();try{await navigator.clipboard.writeText("Tárgy: "+subj+"\n\n"+body);$("q-msg").textContent="Kimásolva. Küldje el a "+TO+" címre a fotóval együtt."}catch(e){$("q-msg").textContent="A másolás nem sikerült. Írjon közvetlenül a "+TO+" címre."}});
 document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",async()=>{const t=$(b.dataset.copy).textContent;try{await navigator.clipboard.writeText(t);b.textContent="Kimásolva"}catch(e){b.textContent="Jelölje ki"}setTimeout(()=>b.textContent="Másolás",1800)}));
 $("q-mailto").addEventListener("click",()=>{if(!valid())return;const {subj,body}=build();
   const a=document.createElement("a");a.href="mailto:"+TO+"?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
-  $("q-msg").textContent="Ha megnyílt a levelezője, csatolja a fotót, és küldje el. Ha nem nyílt meg, használja a Szöveg másolása gombot.";});
+  $("q-msg").textContent="Csatolja a fotót, és küldje el.";});
 /* Inside the embedded page a plain tel:/mailto: link loads an error page in the frame, so these open outside it; a visible, copyable number is the fallback. */
 const TEL="+36 70 596 1640";let tt;
 document.querySelectorAll('a[href^="mailto:"]').forEach(a=>{a.target="_blank";a.rel="noopener"});
@@ -651,10 +602,10 @@ const KT_OWN=new Set(["nyomda","ipar","epitesz","szepseg","bolt","eskuvo"]);
 const KT_NEAR={dekor:"konyv",studio:"polc",szallas:"lampa",vendeglato:"konyv",sport:"konyv",hobbi:"polc",szuvenir:"szobor",szabadulo:"kapocs",terapia:"ekszer",ugyved:"konyv"};
 Object.entries(KT).forEach(([k,v])=>{v.hero=KT_HERO[k]||"egyedi";v.own=KT_OWN.has(k);v.near=KT_NEAR[k]||v.p[0]||"kapocs"});
 const HERO={
-  nyomda:{t:'Ami nem nyomható papírra, <em>azt legyártom.</em>',l:"Kapocs, távtartó, vezetőelem és QR-kódos pulttábla az ügyfeleiteknek, 1–100 db, Szegedről.",ph:"kapocs",cl:()=>"Valódi darab · "+NYOMDA_NEV,cb:"Ø110 mm, PLA",kind:"Sorozat",kt:"nyomda"},
-  dekor:{t:'Térbeli elem <em>a táblák mellé.</em>',l:"Térbeli logó, plexitalp, display kis szériában, az ügyfél színeiben.",ph:"konyv",cl:()=>"Valódi darab · hasonló munka",cb:"Áttört könyvjelző, PLA",kind:"Logós ajándék",kt:"dekor"},
-  uzlet:{t:'A pultodon <em>is feltűnik.</em>',l:"Névtábla, QR-kódos foglalás- és értékeléstábla a saját logóddal.",ph:"polc",cl:()=>"Valódi darab",cb:"Kétszintes polc, PLA",kind:"Tábla, névtábla",kt:"bolt"},
-  egyedi:{t:'Egyedi darab, <em>gyorsan, Szegedről.</em>',l:"Pótalkatrészt, prototípust és saját logós terméket gyártok egy darabtól a kis szériáig. Egy fotó és néhány méret alapján 24 órán belül ajánlatot küldök, a darabok jellemzően 2–3 munkanap alatt elkészülnek.",ph:"lampa",cl:()=>"Valódi darab, retusálás nélkül",cb:"Spirálmintás lámpa · fehér PLA",kind:"",kt:""}};
+  nyomda:{t:'Ami nem nyomható papírra, <em>azt legyártom.</em>',l:"Kapocs, távtartó, vezetőelem és QR-kódos pulttábla az ügyfeleiteknek, 1–100 db, Szegedről.",ph:"kapocs",cl:()=>NYOMDA_NEV,cb:"Tekercs-összefogó kapocs · Ø110 mm",kind:"Sorozat",kt:"nyomda"},
+  dekor:{t:'Térbeli elem <em>a táblák mellé.</em>',l:"Térbeli logó, plexitalp, display kis szériában, az ügyfél színeiben.",ph:"konyv",cl:()=>"",cb:"Áttört könyvjelző",kind:"Logós ajándék",kt:"dekor"},
+  uzlet:{t:'A pultodon <em>is feltűnik.</em>',l:"Névtábla, QR-kódos foglalás- és értékeléstábla a saját logóddal.",ph:"polc",cl:()=>"",cb:"Kétszintes polc",kind:"Tábla, névtábla",kt:"bolt"},
+  egyedi:{t:'Egyedi darab, <em>gyorsan, Szegedről.</em>',l:"Pótalkatrész, prototípus, logós termék, egy darabtól kis szériáig.",ph:"lampa",cl:()=>"",cb:"Spirálmintás lámpa",kind:"",kt:""}};
 let heroV="nyomda",heroKt="nyomda";
 function pickKind(k){if(!k)return;const b=document.querySelector(`#q-kinds [data-kind="${k}"]`);if(b&&b.getAttribute("aria-pressed")!=="true")b.click()}
 function setHero(v,kt){const H=HERO[v]||HERO.nyomda;heroV=v in HERO?v:"nyomda";heroKt=kt!==undefined?kt:H.kt;
@@ -701,14 +652,14 @@ function arCella(p,q){const a=egyseg(p,q);return a==null?"minta ingyen*":"~"+sz(
 function pickProduct(p){pickKind(p.kind);const w=$("q-what");if(w&&!w.value.trim())w.value=`${p.n}, ${p.m}. Darabszám: `}
 const pc=$("pcards");
 ARAK.forEach(p=>{const [src]=PH[p.ph];const art=document.createElement("article");art.className="pcard";
-  art.innerHTML=`<figure><img src="${src}" alt="" loading="lazy" width="900" height="675"><span class="ptag">Hasonló valódi darab</span></figure>
+  art.innerHTML=`<figure><img src="${src}" alt="" loading="lazy" width="900" height="675"><span class="ptag">Hasonló munka</span></figure>
   <div class="pbody"><span class="irany">Irányár</span><h3></h3>
   <p class="pfrom">10 db-tól <b>~${sz(p.ar[10])} Ft/db</b></p>
   <table class="ptab"><caption style="position:absolute;left:-9999px">Irányár, Ft/db</caption><tr>${QS.map(q=>`<th${q===HOTQ?' class="hot"':""}>${q} db</th>`).join("")}</tr><tr>${QS.map(q=>`<td${q===HOTQ?' class="hot"':""}>${arCella(p,q)}</td>`).join("")}</tr></table>
   <p class="hotnote">${HOTQ} db: ezt kérik a legtöbben</p><p class="pin"></p><a class="btn olive" href="#ajanlat">Pontos árat kérek →</a></div>`;
   art.querySelector("h3").innerHTML=`${p.n} <span>${p.m}</span>`;art.querySelector(".pin").textContent="Benne: "+p.benne;
   art.querySelector(".btn").addEventListener("click",()=>pickProduct(p));pc.append(art)});
-$("p-foot").textContent=`Minden ár irányár, Ft/db, áfa nélkül értendő tájékoztatás. * Céges megrendelőnek az első darab minta, ingyen; egyébként a legkisebb rendelés ${ft(MIN_DIJ)}.`;
+$("p-foot").textContent=`Irányár, Ft/db. * Céges első darab: minta ingyen, egyébként min. ${ft(MIN_DIJ)}.`;
 
 /* ----- Becslő ----- */
 const EST={p:ARAK[0].k,q:25,l:"igen"};
@@ -722,8 +673,7 @@ function becsles(){const p=ARAK.find(x=>x.k===EST.p),q=EST.q,a=egyseg(p,q);
   return {p,q,qtxt,lo:kerek(lo),hi,perDb:q>1||a!=null,minta:a==null}}
 function renderEst(){const b=becsles();
   $("e-range").textContent=b.minta?`kb. ${sz(b.lo)}–${sz(b.hi)} Ft (1 db)`:`kb. ${sz(b.lo)}–${sz(b.hi)} Ft/db`;
-  $("e-total").textContent=(b.minta?"Céges megrendelőnek az első darab mintaként ingyen. ":b.q>1?`Összesen kb. ${ft(b.lo*b.q)}–${ft(b.hi*b.q)}${b.q===50?" (50 db-nál)":""}. `:"")+
-    (EST.l==="nincs"?"Logó-fájl nélkül a feliratot vagy formát leírás, fotó alapján megtervezem; ez a sáv felső része felé viheti az árat.":"A logót PNG, SVG vagy PDF fájlként kérem.");
+  $("e-total").textContent=(b.minta?"Céges első darab: minta ingyen.":b.q>1?`Összesen kb. ${ft(b.lo*b.q)}–${ft(b.hi*b.q)}${b.q===50?" (50 db)":""}.`:"")+(EST.l==="nincs"?" Logó nélkül inkább a sáv teteje.":"");
   const subj=`Ajánlatkérés: ${b.p.n}, ${b.qtxt}`;
   const body=["Jó napot kívánok!","","Árajánlatot szeretnék kérni:",`Termék: ${b.p.n} (${b.p.m})`,`Darabszám: ${b.qtxt}`,`Logó-fájl: ${EST.l==="igen"?"van, csatolom":"nincs, leírom vagy fotót küldök"}`,`A weboldal becslője szerint: ${$("e-range").textContent} (irányár)`,"","Üdvözlettel:",""].join("\n");
   $("e-mail").href="mailto:"+TO+"?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body)}
