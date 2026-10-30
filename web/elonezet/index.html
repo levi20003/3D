@@ -238,7 +238,8 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
 @media (max-width:560px){.ktgrid{gap:14px}.idea{padding:18px}.idea b{font-size:18px}}
 
 /* Szakmánként váltó nyitókép: chipek, fotó, szöveg. Asztalin fotó jobbra, mobilon chipek → fotó → szöveg. */
-.hero{grid-template-areas:"chips img" "text img";row-gap:18px;align-items:start}
+.hero{grid-template-columns:minmax(0,1fr);grid-template-areas:"text";row-gap:18px;align-items:start}
+.htext{max-width:760px}
 .hchips{grid-area:chips;display:flex;flex-wrap:wrap;gap:8px;align-self:end;min-width:0}
 .hchips a{font:500 14.5px var(--f-body);text-decoration:none;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:999px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap}
 .hchips a:hover{border-color:var(--muted)}
@@ -249,7 +250,7 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
 .hero .heroimg figcaption{position:static;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:12px 0 0}
 .lvt{position:absolute;left:10px;top:10px;font:600 11px var(--f-mono);text-transform:uppercase;letter-spacing:.1em;background:#22241a;color:#f6f5f0;padding:5px 9px;border-radius:2px;z-index:1}
 @media (max-width:900px){
-  .hero{grid-template-areas:"chips" "img" "text";row-gap:20px}
+  .hero{grid-template-areas:"text"}
   .hchips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-20px;padding-inline:20px}
   .hchips::-webkit-scrollbar{display:none}
   .hchips a{flex:none}
@@ -333,13 +334,6 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
 <div class="w">
 
   <div class="hero" id="hero">
-    <nav class="hchips" id="hchips" aria-label="Kinek készül?">
-      <a href="#nyomda" data-hv="nyomda">Nyomdáknak</a><a href="#dekor" data-hv="dekor">Reklámcégeknek</a><a href="#bolt" data-hv="uzlet">Üzleteknek</a><a href="#egyedi" data-hv="egyedi">Egyedi darab</a>
-    </nav>
-    <figure class="heroimg">
-      <img id="h-img" src="img/kapocs.jpg" alt="Tekercs-összefogó kapocs kézben, 3D nyomtatva" width="900" height="1200" fetchpriority="high">
-      <figcaption><span id="h-capl">szegedi nyomda</span><b id="h-cap">Tekercs-összefogó kapocs · Ø110 mm</b></figcaption>
-    </figure>
     <div class="htext">
       <p class="eyebrow">3D nyomtatás · Szeged</p>
       <h1 id="h-title">Ami nem nyomható papírra, <em>azt legyártom.</em></h1>
@@ -401,7 +395,6 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
       <figure><img src="img/kapocs.jpg" alt="A legyártott tekercs-összefogó kapocs kézben" width="900" height="1200" loading="lazy"><figcaption><b>Tekercs-összefogó kapocs</b></figcaption></figure>
       <figure><img src="img/szobor.jpg" alt="Ölelkező pár szobor" width="900" height="1195" loading="lazy"><figcaption><b>Ölelkező pár</b></figcaption></figure>
       <figure><img src="img/polc-kozmetikai.jpg" alt="Kétszintes rózsaszín polc parfümmel és kozmetikumokkal" width="1280" height="1830" loading="lazy"><figcaption><b>Kétszintes polc</b></figcaption></figure>
-      <figure><img src="img/lampa-gyuru.jpg" alt="Gyűrött felületű fehér asztali lámpa USB kábellel" width="1280" height="1800" loading="lazy"><figcaption><b>Textúrált lámpa</b></figcaption></figure>
       <a class="galcta" href="#ajanlat"><span class="label">Az Ön darabja</span><b>Mit készítsek legközelebb?</b><span>Fotó + méret, 24 órán belül ár.</span><span class="btn olive">Ajánlatot kérek</span></a>
     </div>
   </section>
@@ -581,7 +574,7 @@ const PH={
 const KT={
  nyomda:{n:"Nyomdák, csomagolók",t:"Nyomdáknak és csomagolóknak",l:"Apró, géphez és anyaghoz igazított elemek, és termékek, amiket az Önök ügyfeleinek is el lehet adni.",p:["kapocs"],i:[["Távtartó, vezetőelem","A géphez és a tekercshez méretre"],["QR-kódos pulttábla","Az ügyfeleiknek, viszonteladói áron"],["Prospektus- és névjegytartó","A nyomtatványaik mellé, A5 vagy DL"],["Logós kulcstartó","Kis széria, 20–50 db"]]},
  dekor:{n:"Reklám, dekor, gravírozás",t:"Reklám-, dekor- és gravírozó cégeknek",l:"Térbeli elemek és rögzítők, amelyek kiegészítik a táblákat, matricákat és gravírozott termékeket.",p:["konyv"],i:[["Térbeli logó és felirat","Beltérre, az ügyfél színeiben"],["Plexitábla talp, távtartó","Fali és asztali táblákhoz"],["Display, termék-tartó","Pultra, kirakatba"],["QR-kódos asztali tábla","Viszonteladásra is"]]},
- epitesz:{n:"Építész, belsőépítész, lakberendező",t:"Építészeknek, belsőépítészeknek, lakberendezőknek",l:"Makettelemek, mintatartók és egyedi lakberendezési darabok, akár egyetlen példányban.",p:["lampa","lampa2","polc"],i:[["Makettelem","Fa, alak, bútor, például 1:50-ben"],["Anyagminta-tartó","Mintakártyáknak, bemutatóterembe"],["Bútorfogantyú, takaróelem","Ha a gyári már nem kapható"]]},
+ epitesz:{n:"Építész, belsőépítész, lakberendező",t:"Építészeknek, belsőépítészeknek, lakberendezőknek",l:"Makettelemek, mintatartók és egyedi lakberendezési darabok, akár egyetlen példányban.",p:["lampa","polc"],i:[["Makettelem","Fa, alak, bútor, például 1:50-ben"],["Anyagminta-tartó","Mintakártyáknak, bemutatóterembe"],["Bútorfogantyú, takaróelem","Ha a gyári már nem kapható"]]},
  ipar:{n:"Gyártás, szerviz",t:"Gyártó és szerviz cégeknek",l:"Eltört vagy már nem gyártott műanyag alkatrészek pótlása, sablonok és rögzítők, fotó és pár méret alapján.",p:["kapocs"],i:[["Pótalkatrész","Eltört vagy már nem kapható darab helyett"],["Sablon, szerelési készülék","Ismétlődő műveletekhez"],["Burkolat, kábeltartó","Egyedi méretre"],["Címketartó, jelölő","Polcra, gépre"]]},
  studio:{n:"Jóga, tánc, fitnesz",t:"Jógastúdióknak, tánciskoláknak, edzőtermeknek",l:"A recepcióra és a tagoknak szóló apró darabok, a stúdió logójával és színeiben.",p:[],i:[["QR-kódos recepciós tábla","Órarend, foglalás, Google-értékelés"],["Logós kulcstartó","A tagoknak, ajándéknak"],["Tagkártya- és telefontartó","A recepcióra vagy a terembe"],["Fali tartó","Szőnyegnek, blokknak, kulacsnak"],["Logós érem","Házi versenyre, gálára"]]},
  szepseg:{n:"Szalon, kozmetika",t:"Szalonoknak, kozmetikusoknak, műhelyeknek",l:"Pultra és ajtóra illő darabok, amelyek a vendégnek is feltűnnek.",p:["polc","ekszer"],i:[["Névtábla, ajtótábla","A szalon nevével, logójával"],["QR-kódos pulttábla","Foglalás, Google-értékelés"],["Névjegy- és termékdisplay","A pultra"]]},
@@ -609,13 +602,9 @@ const HERO={
 let heroV="nyomda",heroKt="nyomda";
 function pickKind(k){if(!k)return;const b=document.querySelector(`#q-kinds [data-kind="${k}"]`);if(b&&b.getAttribute("aria-pressed")!=="true")b.click()}
 function setHero(v,kt){const H=HERO[v]||HERO.nyomda;heroV=v in HERO?v:"nyomda";heroKt=kt!==undefined?kt:H.kt;
-  const [src,alt]=PH[H.ph];const im=$("h-img");if(!im.src.endsWith(src)){im.src=src;im.alt=alt}
-  $("h-title").innerHTML=H.t;$("h-lede").textContent=H.l;$("h-capl").textContent=H.cl();$("h-cap").textContent=H.cb;
-  $("hchips").querySelectorAll("[data-hv]").forEach(a=>a.setAttribute("aria-current",String(a.dataset.hv===heroV)))}
+  $("h-title").innerHTML=H.t;$("h-lede").textContent=H.l;}
 $("h-go").addEventListener("click",()=>pickKind(HERO[heroV].kind));
 $("h-gal").addEventListener("click",e=>{if(heroKt&&KT[heroKt]){e.preventDefault();showKt(heroKt,true)}});
-$("hchips").addEventListener("click",e=>{const a=e.target.closest("[data-hv]");if(!a)return;e.preventDefault();const k=a.getAttribute("href").slice(1);
-  if(KT[k])showKt(k,false);else{hideKt();setHero(a.dataset.hv,"")}try{history.replaceState(null,"","#"+k)}catch(_){}});
 function hideKt(){$("kt").hidden=true;tr.querySelectorAll("a").forEach(a=>a.setAttribute("aria-current","false"))}
 function ktInterim(k,v){const f=ktFig(v.near);const fc=f.querySelector("figcaption");const l=document.createElement("p");l.className="label";l.textContent="Hasonlót már készítettem";fc.prepend(l);
   const w=document.createElement("div");const lb=document.createElement("p");lb.className="label";lb.textContent="Önöknek ilyet készítenék";const ul=document.createElement("ul");
@@ -639,7 +628,7 @@ function showKt(k,scroll){const v=KT[k];tr.querySelectorAll("a").forEach(a=>a.se
  $("kt").hidden=false;setHero(v.hero,k);
  if(scroll)$("kt").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"})}
 tr.addEventListener("click",e=>{const a=e.target.closest("[data-kt]");if(!a)return;e.preventDefault();showKt(a.dataset.kt,true);try{history.replaceState(null,"","#"+a.dataset.kt)}catch(_){}});
-function fromHash(){const h=(location.hash||"").slice(1);if(KT[h])showKt(h,false);else if(h==="egyedi"){hideKt();setHero("egyedi","")}else if(!h){hideKt();setHero("nyomda")}}
+function fromHash(){const h=(location.hash||"").slice(1);if(KT[h])showKt(h,false);else if(h==="egyedi"){hideKt();setHero("egyedi","")}else if(!h){hideKt();setHero("nyomda","")}}
 if(ENGEDELY_PERFECT_PROFIL){const r=document.querySelector("#referencia h2");if(r)r.textContent="Tekercs-összefogó kapocs a Perfect Profil Kft.-nek"}
 addEventListener("hashchange",fromHash);fromHash();
 
