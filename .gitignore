@@ -12,3 +12,6 @@ build/
 *.swp
 *.swo
 ~*
+
+# Generált Instagram-képek
+social/out/

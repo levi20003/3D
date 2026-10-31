@@ -30,3 +30,4 @@ levente3d.szeged@gmail.com · +36 70 596 1640 · Szeged
 - **`befektetes/store/`**: Play Áruház-anyagok mintaadatokból (ikon, kiemelt grafika, képernyőképek) és a lépésről lépésre útmutató: `PLAY-STORE.md`.
 - **`befektetes/docs/PROJEKT-DOKUMENTACIO.md`**: teljes projektdokumentáció (technikai, IT, marketing, jog, roadmap).
 - **`portfolio-lens/`**: egyoldalas weboldal (EN/HU) és adatvédelmi tájékoztató. Élő: https://levi20003.github.io/3D/portfolio-lens/
+- **`social/`**: automatikus Instagram-tartalom (képgenerátor, naptár, közzététel). Útmutató: `social/README.md`.

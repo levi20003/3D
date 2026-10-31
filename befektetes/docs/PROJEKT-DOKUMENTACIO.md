@@ -246,6 +246,11 @@ Részletes lépések: `befektetes/store/PLAY-STORE.md`. Összefoglalva:
 * `store/TESZTELOK-POSZTOK.md`: tesztelőcsere (r/AndroidClosedTesting, r/TestersCommunity), r/SideProject, pénzügyi subredditek, magyar csoportok, rövid közösségi posztok, DM-sablonok.
 * Play-szövegek EN/HU.
 
+### 7.4b Automatizált Instagram-tartalom (okt. 31.)
+* **`social/`**: tartalomgyár: 15 poszt (HU/EN), számolt példákkal, az app demó képernyőivel; 1080×1350 JPEG carousel; naptár (hétfő/szerda/péntek); közzététel az Instagram hivatalos API-jával; ütemezett GitHub Actions workflow (`.github/workflows/social.yml`).
+* Három út: félautomata (letölthető képek), teljesen automatikus (Meta app + token a GitHub Secretsben), vagy a Posty összekötő. Részletek: `social/README.md`.
+* Feltételek: Instagram professzionális fiók, Meta fejlesztői app, a workflow az alapértelmezett ágra kerüljön, a token 60 naponta megújítandó.
+
 ### 7.5 Javasolt következő marketinglépések
 1. **0–2 hét:** 12+ tesztelő toborzása; Google-csoport; 14 napos zárt teszt; visszajelzések gyűjtése (egyszerű űrlap).
 2. **2–4 hét:** éles Play-megjelenés; Product Hunt / r/SideProject / HU Facebook csoportok; rövid demóvideó (Reels/TikTok: „A portfóliód egyetlen részvényként”).

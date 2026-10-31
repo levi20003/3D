@@ -1,0 +1,78 @@
+name: Instagram poszt (Portfolio Lens)
+
+# Hétfőn, szerdán és pénteken 15:00 UTC-kor (16:00 vagy 17:00 magyar idő) elkészíti a naptár szerinti posztot.
+# Ha az IG_USER_ID és IG_ACCESS_TOKEN titkos érték be van állítva, ki is teszi az Instagramra,
+# egyébként csak elkészíti a képeket, és letölthető csomagként (artifact) elérhetővé teszi.
+# FIGYELEM: az ütemezett futtatás csak az alapértelmezett (default) ágról indul.
+on:
+  schedule:
+    - cron: '0 15 * * 1,3,5'
+  workflow_dispatch:
+    inputs:
+      post:
+        description: 'Poszt azonosítója (üresen a naptár szerinti mai poszt)'
+        required: false
+        default: ''
+      publish:
+        description: 'Kitegye az Instagramra? (true/false)'
+        required: false
+        default: 'false'
+      lang:
+        description: 'Nyelv (hu/en, üresen a config.json szerint)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      POST_ID: ${{ inputs.post }}
+      LANG_OVERRIDE: ${{ inputs.lang }}
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Playwright telepítése
+        run: |
+          npm install --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+      - name: Képek renderelése
+        run: |
+          ARGS="--today"
+          if [ -n "$POST_ID" ]; then ARGS="--post $POST_ID"; fi
+          if [ -n "$LANG_OVERRIDE" ]; then ARGS="$ARGS --lang $LANG_OVERRIDE"; fi
+          node social/run.cjs render $ARGS --out social/out
+      - name: Képek feltöltése csomagként
+        uses: actions/upload-artifact@v4
+        with:
+          name: instagram-poszt
+          path: social/out
+          if-no-files-found: ignore
+      - name: Közzététel az Instagramon
+        if: github.event_name == 'schedule' || inputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$IG_ACCESS_TOKEN" ] || [ -z "$IG_USER_ID" ]; then
+            echo "Nincs beállítva az IG_USER_ID / IG_ACCESS_TOKEN, a közzététel kimarad. A képek a csomagban vannak."
+            exit 0
+          fi
+          if grep -q '"none": true' social/out/manifest.json; then echo "Ma nincs poszt."; exit 0; fi
+          # a képek nyilvános URL-re kellenek az Instagramnak: egy eldobható ágra (social-assets) kerülnek, a története nem hízik
+          cd social/out
+          git init -q -b social-assets
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Instagram képek"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" social-assets
+          cd ../..
+          sleep 20
+          node social/run.cjs publish --manifest social/out/manifest.json --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/social-assets"
