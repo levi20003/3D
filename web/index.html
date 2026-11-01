@@ -508,7 +508,7 @@ function valid(){const m=$("q-msg");m.classList.remove("err");if(!v("q-name")||!
   if(ship()==="posta"&&!v("q-addr")){m.textContent="Postai küldéshez adja meg a szállítási címet.";return false}
   m.textContent="";return true}
 /* Sending: on its own site the form posts straight to FormSubmit (no account, delivers to TO). Inside the claude.ai frame no request can leave the page, so it opens the same form on the own site, already filled in. */
-const SITE="https://levi20003.github.io/3d/";
+const SITE="https://levi20003.github.io/3D/";
 const FIELDS=["q-name","q-co","q-email","q-what","q-qty","q-size","q-when","q-prov","q-city","q-locker","q-addr","q-phone"];
 const inFrame=(()=>{try{return window.top!==window.self}catch(_){return true}})();
 const DK="l3d-ajanlat";
