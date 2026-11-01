@@ -1,0 +1,40 @@
+# A weboldal (web/) kiadása GitHub Pagesre, minden módosítás után automatikusan.
+name: Weboldal kiadása
+
+on:
+  push:
+    branches: [ccr-66095490-wn8jjo, main]
+    paths: ["web/**", ".github/workflows/weboldal.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kiadandó fájlok (az előnézet nélkül)
+        run: |
+          mkdir _site
+          cp web/index.html _site/
+          cp -r web/img _site/
+          [ -f web/CNAME ] && cp web/CNAME _site/ || true
+          [ -f web/404.html ] && cp web/404.html _site/ || true
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

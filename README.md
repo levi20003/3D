@@ -1,6 +1,9 @@
 # Levente 3D · 3D nyomtatás Szeged
 
 - **`web/`**: nyilvános weboldal (`index.html` + `img/`). Élő: https://claude.ai/artifact/WZLdSDK19twEH9KM9WbH56
+  - Saját tárhely: GitHub Pages, https://levi20003.github.io/3d/ (saját domain után az lesz a cím). Minden `web/` módosítás után a „Weboldal kiadása” munkafolyamat automatikusan kiteszi (a `web/elonezet/` nem kerül ki).
+  - Napi ellenőrzés („Weboldal ellenőrzése”): ha az oldal nem érhető el, vagy törött kép/link van benne, a GitHub e-mailt küld, és nyit egy hibajegyet.
+  - Saját domain: a domain nevét egy sorban írd a `web/CNAME` fájlba (pl. `levente3d.hu`), a domainszolgáltatónál pedig állíts be CNAME rekordot `levi20003.github.io` értékkel (gyökérdomainnél A rekordokat: 185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153). A névjegy QR-kódját ezután a saját domainre kell újragenerálni.
 - **`dashboard/`**: kampánypult (címlista, Gmail-küldés, sablonok, rendelések, árkalkulátor, 3D-generátor). Élő: https://claude.ai/artifact/44semk3pH1ffrYo8XycBoS
   - Dokumentáció: [`dashboard/DOKUMENTACIO.md`](dashboard/DOKUMENTACIO.md), az érvénytelen címek kezelése: [`dashboard/ERVENYTELEN.md`](dashboard/ERVENYTELEN.md)
 
