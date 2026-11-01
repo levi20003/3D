@@ -529,7 +529,9 @@ $("qf").addEventListener("submit",async e=>{e.preventDefault();if(!valid())retur
   try{const r=await fetch("https://formsubmit.co/ajax/"+TO,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
       body:JSON.stringify({name:v("q-name"),email:v("q-email"),_subject:subj,_template:"box",_captcha:"false",_honey:"",
         _autoresponse:"Köszönöm az ajánlatkérését! 24 órán belül válaszolok. Ha van fotója a darabról, válaszként csatolhatja ehhez a levélhez. Levente 3D, +36 70 596 1640",
-        "Üzenet":body})});
+        "Mit kér":v("q-what"),"Munka típusa":kind||"-","Darabszám":v("q-qty")||"-","Méret (mm)":v("q-size")||"-","Határidő":v("q-when")||"-",
+        "Átvétel":ship()==="szeged"?"személyesen, Szeged":ship()==="automata"?("csomagautomata, "+v("q-prov")+", "+(v("q-city")||"")+" "+(v("q-locker")||"")).trim():("posta, "+v("q-addr")),
+        "Cég":v("q-co")||"-","Telefon":v("q-phone")||"-","Teljes üzenet":body})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||String(j.success)!=="true")throw new Error(j.message||("HTTP "+r.status));
     try{localStorage.removeItem(DK)}catch(_){}
