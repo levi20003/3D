@@ -502,7 +502,7 @@ function build(){
   if(v("q-phone"))L.push(v("q-phone"));
   return {subj,body:L.join("\n")};
 }
-function valid(){const m=$("q-msg");m.classList.remove("err");if(!v("q-name")||!v("q-what")){m.textContent="Adja meg a nevét, és írja le röviden, mire van szüksége.";return false}
+function valid(){const m=$("q-msg");m.classList.remove("err");if(!v("q-name")||v("q-what").replace(/[^\p{L}\p{N}]/gu,"").length<8){m.textContent="Adja meg a nevét, és írja le pár szóban, mire van szüksége (pl. mi a darab, mire kell).";$(v("q-name")?"q-what":"q-name").focus();return false}
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v("q-email"))){m.textContent="Adja meg az e-mail-címét, hogy el tudjam küldeni az ajánlatot.";$("q-email").focus();return false}
   if(ship()==="automata"&&!v("q-city")&&!v("q-locker")){m.textContent="Csomagautomatához adja meg a települést vagy az automata nevét.";return false}
   if(ship()==="posta"&&!v("q-addr")){m.textContent="Postai küldéshez adja meg a szállítási címet.";return false}
