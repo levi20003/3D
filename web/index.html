@@ -157,6 +157,14 @@ legend{font-size:13.5px;font-weight:500;padding:0;margin-bottom:10px}
 .toast a{color:inherit;font-weight:600;white-space:nowrap}
 .toast button{font:500 14px var(--f-body);background:var(--bg);color:var(--ink);border:0;border-radius:999px;padding:8px 12px;cursor:pointer;flex:none}
 .formmsg{font-size:14px;color:var(--olive);min-height:1.2em;margin:0}
+.formmsg.err{color:#a3361f}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.sent{background:var(--surface);border:1px solid var(--olive);border-radius:2px;padding:32px;display:grid;gap:12px;align-content:start}
+.sent .label,.sent p,.sent h3{margin:0}
+.sent h3{font-family:var(--f-display);font-weight:600;font-size:22px;line-height:1.2}
+.sent p{color:var(--muted)}
+.sent .btn{justify-self:start}
+button.btn[disabled]{opacity:.6;cursor:progress}
 
 footer{margin-top:96px;border-top:1px solid var(--rule);padding-block:28px 44px;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 
@@ -381,7 +389,7 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
   <section id="ajanlat">
     <div class="sec-head">
       <div><p class="label">Ajánlatkérés</p><h2>Írja le, mire van szüksége</h2></div>
-      <p class="sec-lede">Az űrlap egy kész levelet állít össze. A fotót ahhoz a levélhez csatolja.</p>
+      <p class="sec-lede">Töltse ki, és az ajánlatkérés közvetlenül innen megérkezik hozzám. 24 órán belül válaszolok e-mailben.</p>
     </div>
     <div class="quote">
       <form class="q" id="qf" novalidate>
@@ -424,14 +432,24 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
           </div>
         </fieldset>
 
-        <label class="f"><span>Telefonszám <span class="h">(nem kötelező)</span></span><input id="q-phone" autocomplete="tel" inputmode="tel"></label>
+        <div class="row2">
+          <label class="f"><span>E-mail-cím <span class="h">* ide küldöm az ajánlatot</span></span><input id="q-email" type="email" autocomplete="email" inputmode="email" required></label>
+          <label class="f"><span>Telefonszám <span class="h">(nem kötelező)</span></span><input id="q-phone" autocomplete="tel" inputmode="tel"></label>
+        </div>
+        <label class="hp" aria-hidden="true">Ne töltse ki<input id="q-hp" tabindex="-1" autocomplete="off"></label>
         <div class="ctas">
-          <button class="btn olive" type="submit">Levél megnyitása Gmailben</button>
-          <button class="btn line" type="button" id="q-mailto">Saját levelezőben</button>
-          <button class="btn line" type="button" id="q-copy">Szöveg másolása</button>
+          <button class="btn olive" type="submit" id="q-send">Ajánlatkérés elküldése</button>
+          <button class="btn line" type="button" id="q-mailto" hidden>Küldés a saját levelezőből</button>
+          <button class="btn line" type="button" id="q-copy" hidden>Szöveg másolása</button>
         </div>
         <p class="formmsg" id="q-msg" role="status"></p>
       </form>
+      <div class="sent" id="q-done" hidden tabindex="-1">
+        <p class="label">Elküldve</p>
+        <h3>Köszönöm, megkaptam az ajánlatkérését!</h3>
+        <p>24 órán belül válaszolok ide: <b id="q-done-mail"></b>. Ha van fotója a darabról, válaszként csatolhatja a levelemhez, vagy küldje a <a href="mailto:levente3d.szeged@gmail.com">levente3d.szeged@gmail.com</a> címre.</p>
+        <button class="btn line" type="button" id="q-again">Új ajánlatkérés</button>
+      </div>
       <div>
         <div class="contact">
           <div class="cline"><div><span>E-mail</span><a id="c-mail" href="mailto:levente3d.szeged@gmail.com">levente3d.szeged@gmail.com</a></div><button class="copy" type="button" data-copy="c-mail">Másolás</button></div>
@@ -439,7 +457,7 @@ dialog.lb button{position:absolute;top:-14px;right:-14px;width:42px;height:42px;
           <div class="cline"><div><span>Helyszín</span><b>Szeged · országos kiszállítás</b></div></div>
           <div class="cline"><div><span>Elérhetőség</span><b>Minden nap 0–24 órában</b></div></div>
         </div>
-        <p class="note">Ha nem Gmailt használ, a Saját levelezőben gomb a gépén beállított levelezőprogramot nyitja meg. Ha ez sem működik, másolja ki a szöveget, és küldje el a fenti címre.</p>
+        <p class="note">Az űrlap a beírt szöveget megjegyzi ezen az eszközön, amíg el nem küldi, így nem vész el. Fotót a visszaigazoló levelemre válaszolva küldhet.</p>
       </div>
     </div>
   </section>
@@ -480,22 +498,50 @@ function build(){
   if(s==="szeged")L.push("Átvétel: személyesen, Szegeden");
   if(s==="automata"){L.push("Átvétel: csomagautomata ("+v("q-prov")+")");if(v("q-city"))L.push("Település: "+v("q-city"));L.push("Automata: "+(v("q-locker")||"kérem, javasoljon egyet a közelben"))}
   if(s==="posta"){L.push("Átvétel: postai küldés");if(v("q-addr"))L.push("Szállítási cím: "+v("q-addr"))}
-  L.push("","A fotót csatolom.","","Üdvözlettel:",v("q-name")+(v("q-co")?", "+v("q-co"):""));
+  L.push("","Üdvözlettel:",v("q-name")+(v("q-co")?", "+v("q-co"):""),v("q-email"));
   if(v("q-phone"))L.push(v("q-phone"));
   return {subj,body:L.join("\n")};
 }
-function valid(){const m=$("q-msg");if(!v("q-name")||!v("q-what")){m.textContent="Adja meg a nevét, és írja le röviden, mire van szüksége.";return false}
+function valid(){const m=$("q-msg");m.classList.remove("err");if(!v("q-name")||!v("q-what")){m.textContent="Adja meg a nevét, és írja le röviden, mire van szüksége.";return false}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v("q-email"))){m.textContent="Adja meg az e-mail-címét, hogy el tudjam küldeni az ajánlatot.";$("q-email").focus();return false}
   if(ship()==="automata"&&!v("q-city")&&!v("q-locker")){m.textContent="Csomagautomatához adja meg a települést vagy az automata nevét.";return false}
   if(ship()==="posta"&&!v("q-addr")){m.textContent="Postai küldéshez adja meg a szállítási címet.";return false}
   m.textContent="";return true}
-$("qf").addEventListener("submit",e=>{e.preventDefault();if(!valid())return;const {subj,body}=build();
-  const a=document.createElement("a");a.href="https://mail.google.com/mail/?view=cm&fs=1&to="+encodeURIComponent(TO)+"&su="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
-  $("q-msg").textContent="A levél egy új lapon nyílik meg. Csatolja a fotót, és küldje el. Ha nem nyílt meg, használja a Szöveg másolása gombot.";});
+/* Sending: on its own site the form posts straight to FormSubmit (no account, delivers to TO). Inside the claude.ai frame no request can leave the page, so it opens the same form on the own site, already filled in. */
+const SITE="https://levi20003.github.io/3d/";
+const FIELDS=["q-name","q-co","q-email","q-what","q-qty","q-size","q-when","q-prov","q-city","q-locker","q-addr","q-phone"];
+const inFrame=(()=>{try{return window.top!==window.self}catch(_){return true}})();
+const DK="l3d-ajanlat";
+function saveDraft(){try{const d={kind,ship:ship()};FIELDS.forEach(f=>d[f]=v(f));localStorage.setItem(DK,JSON.stringify(d))}catch(_){}}
+function fill(d){if(!d)return;FIELDS.forEach(f=>{if(d[f]&&$(f))$(f).value=d[f]});
+  if(d.ship){const r=document.querySelector('input[name="q-ship"][value="'+d.ship+'"]');if(r){r.checked=true;syncShip()}}
+  if(d.kind){const b=$("q-kinds").querySelector('[data-kind="'+d.kind+'"]');if(b){kind=d.kind;$("q-kinds").querySelectorAll("[data-kind]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));$("q-what").placeholder=b.dataset.ph}}}
+try{fill(JSON.parse(localStorage.getItem(DK)||"null"))}catch(_){}
+try{const q=new URLSearchParams(location.search);if(q.get("q-what")){const d={};q.forEach((x,k)=>d[k]=x);fill(d);saveDraft()}}catch(_){}
+$("qf").addEventListener("input",saveDraft);$("qf").addEventListener("change",saveDraft);
+function fallback(t){const m=$("q-msg");m.classList.add("err");m.textContent=t;$("q-mailto").hidden=false;$("q-copy").hidden=false}
+$("qf").addEventListener("submit",async e=>{e.preventDefault();if(!valid())return;const {subj,body}=build();saveDraft();
+  if(inFrame){const q=new URLSearchParams();FIELDS.forEach(f=>{if(v(f))q.set(f,v(f))});if(kind)q.set("kind",kind);q.set("ship",ship());
+    const a=document.createElement("a");a.href=SITE+"?"+q.toString()+"#ajanlat";a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
+    $("q-msg").textContent="Az űrlap új lapon nyílt meg, kitöltve. Ott nyomja meg az Ajánlatkérés elküldése gombot.";return}
+  if(v("q-hp"))return;
+  const btn=$("q-send");btn.disabled=true;btn.textContent="Küldés…";$("q-msg").textContent="";
+  try{const r=await fetch("https://formsubmit.co/ajax/"+TO,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
+      body:JSON.stringify({name:v("q-name"),email:v("q-email"),_subject:subj,_template:"box",_captcha:"false",_honey:"",
+        _autoresponse:"Köszönöm az ajánlatkérését! 24 órán belül válaszolok. Ha van fotója a darabról, válaszként csatolhatja ehhez a levélhez. Levente 3D, +36 70 596 1640",
+        "Üzenet":body})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||String(j.success)!=="true")throw new Error(j.message||("HTTP "+r.status));
+    try{localStorage.removeItem(DK)}catch(_){}
+    $("q-done-mail").textContent=v("q-email");$("qf").hidden=true;$("q-done").hidden=false;$("q-done").focus();
+  }catch(err){fallback("A küldés most nem sikerült. A beírt szöveg megmaradt: próbálja újra, vagy küldje el a saját levelezőjéből.")}
+  finally{btn.disabled=false;btn.textContent="Ajánlatkérés elküldése"}});
+$("q-again").addEventListener("click",()=>{$("qf").reset();syncShip();kind="";$("q-kinds").querySelectorAll("[data-kind]").forEach(x=>x.setAttribute("aria-pressed","false"));$("q-msg").textContent="";$("q-done").hidden=true;$("qf").hidden=false;$("q-name").focus()});
 $("q-copy").addEventListener("click",async()=>{if(!valid())return;const {subj,body}=build();try{await navigator.clipboard.writeText("Tárgy: "+subj+"\n\n"+body);$("q-msg").textContent="Kimásolva. Küldje el a "+TO+" címre a fotóval együtt."}catch(e){$("q-msg").textContent="A másolás nem sikerült. Írjon közvetlenül a "+TO+" címre."}});
 document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",async()=>{const t=$(b.dataset.copy).textContent;try{await navigator.clipboard.writeText(t);b.textContent="Kimásolva"}catch(e){b.textContent="Jelölje ki"}setTimeout(()=>b.textContent="Másolás",1800)}));
 $("q-mailto").addEventListener("click",()=>{if(!valid())return;const {subj,body}=build();
   const a=document.createElement("a");a.href="mailto:"+TO+"?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
-  $("q-msg").textContent="Ha megnyílt a levelezője, csatolja a fotót, és küldje el. Ha nem nyílt meg, használja a Szöveg másolása gombot.";});
+  $("q-msg").textContent="Ha megnyílt a levelezője, küldje el onnan. Ha nem nyílt meg, használja a Szöveg másolása gombot.";});
 /* Inside the embedded page a plain tel:/mailto: link loads an error page in the frame, so these open outside it; a visible, copyable number is the fallback. */
 const TEL="+36 70 596 1640";let tt;
 const framed=(()=>{try{return window.top!==window.self}catch(_){return true}})();
