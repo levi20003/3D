@@ -1,5 +1,6 @@
 // Teszt-mock a kampánypulthoz (window.claude: db + Gmail). Valódi címet nem tartalmaz; a címeket a teszt adja át window.__C-ben.
-// window.__GM = {replies:[...], bounces:[...], sent:[...], fail:true}: a search_threads válaszai. A send_message csak naplóz (window.__calls).
+// window.__GM = {replies:[...], bounces:[...], sent:[...], fail:true}: a search_threads válaszai. A send_message és a create_draft csak naplóz (window.__calls), valódi levél vagy piszkozat nem készül.
+// window.__GM.threads = {<threadId>: {id, messages:[{id, sender, subject, date, plaintextBody}]}}: a get_thread válaszai. window.__SAMPLE: a Claude-hívó képesség (sample.json) hamis válasza; ha nincs megadva, a pult szabály alapján dolgozik.
 (()=>{const W=window.__writes=[],CALLS=window.__calls=[];
 const store=window.__store={contacts:{...window.__C},sendqueue:{...window.__Q},"settings":{sender:window.__S||{},...(window.__SET||{})}};
 const subs=[];
@@ -14,6 +15,9 @@ const docr=(col,id)=>({
 const coll=(col)=>{const c={onSnapshot(cb){const f=()=>cb(snap(col));subs.push(f);setTimeout(f,40);return()=>{}},where(){return c},orderBy(){return c},limit(){return c},doc(id){return docr(col,id)},async add(d){const id="x"+Math.random().toString(36).slice(2);await docr(col,id).set(d);return {id}}};return c};
 const db={collection:coll,doc:(p)=>{const [c,i]=p.split("/");return docr(c,i)}};
 const mcp={async callTool(s,t,a){CALLS.push([s,t,a]);const G=window.__GM||{};
+  if(t==="get_thread"){const th=(G.threads||{})[a.threadId];if(!th)throw Object.assign(new Error("nincs szál"),{code:"tool_error"});return {payload:th}}
+  if(t==="create_draft")return {payload:{id:"draft1",threadId:"th1"}};
+  if(t==="send_message")return {payload:{id:"m1",threadId:a.replyThreadId||"tnew"}};
   if(t!=="search_threads")return {payload:{}};
   if(G.fail)throw Object.assign(new Error("Gmail hiba"),{code:"upstream_error"});
   const q=String(a.query||"").toLowerCase(),th=[];let i=0;
@@ -22,4 +26,4 @@ const mcp={async callTool(s,t,a){CALLS.push([s,t,a]);const G=window.__GM||{};
   else if(/in:sent/.test(q)){for(const e of (G.sent||[]))if(q.includes("to:"+e))th.push({id:"s"+(i++),messages:[{id:"m",sender:"levente3d.szeged@gmail.com",toRecipients:[e]}]})}
   else for(const e of (G.replies||[]))if(has(e))th.push({id:"r"+(i++),messages:[{id:"m",sender:"Valaki <"+e+">",toRecipients:["levente3d.szeged@gmail.com"]}]});
   return {payload:th.length?{threads:th}:{}}}};
-window.claude={use:async(n)=>{if(n==="db")return db;if(n==="mcp")return mcp;throw Object.assign(new Error("no"),{code:"not_in_manifest"})}};})();
+window.claude={use:async(n)=>{if(n==="db")return db;if(n==="mcp")return mcp;if(n==="sample"&&window.__SAMPLE){const f=async()=>({text:""});f.json=async(inp)=>{(window.__samples=window.__samples||[]).push(String(inp).slice(0,200));return window.__SAMPLE};return f}if(n==="sample")return null;throw Object.assign(new Error("no"),{code:"not_in_manifest"})}};})();

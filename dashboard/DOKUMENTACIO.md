@@ -167,8 +167,10 @@ Nincs küldő, másoló vagy jóváhagyó gomb, csak a „Tiltólistán, nem kü
 | `settings/autoapprove` | Auto-jóváhagyás naplója: `log [{date, time, cats, ids}]`, `updated` |
 | `settings/summary` | A Claude-ok előbb ezt olvassák. A pult minden betöltéskor és küldési kör után frissíti (10 mp késleltetéssel, csak ha változott, `update`-tel, a más által írt mezőket, pl. `needReply`, `finance`, `note`, meghagyja): `updated`, `contacts` (állapotonként, plusz `total`, `fu`, `dmQueue`), `pool {uj, javasolt, total, target: 60}`, `week {from, added, sent, followups, replies, newClients}` (hétfőtől), `today {sent, followups}`, `followupDue`, `followupDue1`, `followupDue2`, `invalid`, `replyRateByCat` (`{kat: {sent, replied, rate}}`, érett levelekből). A `week.replies` és `newClients` csak a `repliedAt` / `clientAt` mezős címeket számolja. |
 | `settings/senderlock` | Küldési zár (`acquire`, 90 másodperces bérlet) |
+| `offers/{doc_id}` | Ajánlati terv (doc_id = a cég `contacts` doc_id-ja): `intent`, `summary`, `replyTo`, `bring[]`, `custom`, `pricing`, `questions[]`, `tips[]`, `draft {subject, body}`, `via` (`Claude` / `szabály`), `threadId`, `msgId`, `reply`, `createdAt`, `status` (`uj`, `piszkozat`, `elkuldve`, `talalkozo`, `kesz`, `hiba`), `checked[]`, `meetingAt`, `error` |
+| `settings/offerkit` | Ajánlati tudásbázis (Beállítások → Ajánlati tudásbázis): `products [{name, size, material, file, cats}]`, `prices {kategória: [sáv]}`, `rules []`. Ha hiányzik, a pult az alapértékekkel létrehozza. |
 
-A pult jogosultságai: `db`, `downloads`, valamint `mcp` (Gmail: `send_message`, `search_threads`).
+A pult jogosultságai: `db`, `downloads`, `sample` (Claude-hívás az ajánlati tervhez), valamint `mcp` (Gmail: `send_message`, `search_threads`, `get_thread`, `create_draft`).
 
 ## 10. Automatizmusok
 | Ütemezett feladat | Mikor | Mit csinál |
@@ -193,11 +195,21 @@ Egy gyűjtő, egy időpont: új címet csak a 10:00-s címgyűjtő gyűjt, és c
 
 A napi rutin szabályai a **levente3d-kampany** skillben vannak (`skill/levente3d-kampany/SKILL.md`, és ZIP-ben `skill/levente3d-kampany.zip`). A skill módosítása után a ZIP-et kézzel kell feltölteni a claude.ai-on: Beállítások → Skills. Előbb töröld a régit, utána töltsd fel az újat.
 
+## 10/b. Ajánlati terv
+Ha egy cég válaszolt (`valaszolt`), a pult elolvassa a szálat (Gmail `get_thread`, az idézett rész nélkül), és tervet készít belőle az **Áttekintés** tetején, a **Válaszok** kártyán: mit akarnak, mit vigyél (pipálható, mentődik), ár, kérdések, tippek és egy válaszlevél.
+- **Mikor:** a pult megnyitásakor (legfeljebb óránként), egy cég „Válaszolt” jelölésekor, és a címlista sorában az „Ajánlati terv” gombbal. Egy körben legfeljebb 5 cég, csak az elmúlt 14 nap válaszai.
+- **Hogyan:** ha a Claude-hívás elérhető, Claude írja a tervet a `settings/offerkit` tudásbázisból; ha nem, szabály alapú tartalék. Egyértelmű elutasításnál („most nem aktuális”) és automatikus válasznál Claude-ot nem hív.
+- **Elutasítás:** nincs terv, a cég `lezarva`, megjegyzéssel. **Automatikus válasz:** nincs terv, a cég visszakerül `elkuldve` állapotba (`autoReplyAt`).
+- **Gombok:** *Piszkozat a Gmailbe* (piszkozat a `replyTo` címre, a szálba, nem küldi el), *Elküldöm* (megerősítés után a meglévő küldési soron át, `offer-<id>` tétel), *Szerkesztés*, *Találkozó rögzítése* (`meetingAt`, és teendő az előző napra: „Minták összekészítése: …”), *Kész* (ügyfél lett vagy lezárva). Hibánál *Újra*.
+- **Állapot:** terv után a cég `ajanlat` („Ajánlat”), a „Válaszolt” szűrő ezeket is mutatja. Új sablonok: `valasz_talalkozo`, `valasz_arajanlat`.
+- **Soha nem küld magától.** A napi kör kiegészítése: `RUTIN-napi-kor-uj-prompt.md`.
+
 ## 11. Fejlesztés
 - **Közös szerkesztés:** a pultot a claude.ai projekt és a Claude Code is módosítja. Mielőtt bármit változtatsz, **mindig az élő változatot olvasd be** (`Artifact read`), és arra építs. A szolgáltatás elutasítja azt a publikálást, ami nem a legfrissebb változatra épül.
 - **Publikálás előtt:**
   - nézd meg, nincs-e `kuld` állapotú tétel a `sendqueue`-ban, mert a publikálás újratölti a nyitott lapokat, és megszakítja a küldést;
-  - a `capabilities` mezőt ne add meg, így a meglévő jogosultságok maradnak.
+  - nézd meg a `settings/sender.busyUntil` mezőt is (épp küld-e a pult);
+  - a `capabilities` mezőt ne add meg, így a meglévő jogosultságok maradnak (kivéve, ha új jogosultság kell: akkor a teljes listát add meg).
 - **Tesztelés:**
   - helyi másolaton, hamis `window.claude`-dal (mock adatbázis és Gmail), Playwright-tal;
   - telefon (390 px) és laptop (1366 px) méretben, világos és sötét témában;
