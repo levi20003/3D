@@ -52,6 +52,14 @@ h1 .bt{font-weight:500;color:var(--muted)}
 .chip.hot:not([aria-pressed="true"]) .c{color:var(--accent)}
 .nextbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:12px 14px;margin-bottom:12px}
 .nextbar span{flex:1 1 240px;font-weight:600}
+.pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:0 0 12px}
+.pipe .pc{flex:1 1 120px;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--panel);min-height:44px}
+.pipe .pc b{display:block;font-family:var(--f-display);font-size:22px;font-variant-numeric:tabular-nums;line-height:1.15}
+.pipe .pc span{font-size:12px;color:var(--muted)}
+.pipe .ok{border-color:var(--ok);background:var(--ok-soft)} .pipe .ok b{color:var(--ok)}
+.pipe .warn{border-color:var(--warn);background:var(--warn-soft)} .pipe .warn b{color:var(--warn)}
+.pipe .bad{border-color:var(--bad);background:var(--bad-soft)} .pipe .bad b{color:var(--bad)}
+.pipe .pmsg{flex:2 1 220px;display:flex;align-items:center;font-weight:600;color:var(--bad)}
 .btn.primary{font-size:14px;padding:9px 15px;box-shadow:0 1px 0 rgba(0,0,0,.06),0 4px 12px -4px rgba(95,98,57,.45)}
 .btn.big{font-size:15px;padding:11px 18px;border-radius:10px}
 .row .acts .btn.primary{min-height:38px}
@@ -427,6 +435,7 @@ table.lt tr.lr:hover td{background:var(--bg)}
     <div class="small" id="sync">Kapcsolódás az adatbázishoz…</div>
     <div class="who-chip"><span class="avatar" aria-hidden="true">L</span><span><b>Levente</b><br><span class="small">levente3d.szeged@gmail.com</span></span></div>
   </header>
+  <div class="pipe" id="pipe" aria-live="polite"></div>
 
   <div class="stats" id="stats">
     <button class="stat" data-go="uj"><div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span><div class="l">Kiküldendő</div></div><div class="n" id="st-uj">–</div><div class="s" id="st-uj-s"></div></button>
@@ -1965,7 +1974,14 @@ function poolHTML(p,go){const lv=p.total<30?"lv-bad":p.total<POOL_TARGET?"lv-war
     <div class="pn">${p.total} / ${POOL_TARGET}</div><div class="bar"><i style="width:${Math.min(100,p.total/POOL_TARGET*100)}%"></i></div>
     <div class="small">${p.uj} kiküldhető · ${p.javasolt} jóváhagyásra vár</div>
     <div class="small">Ezen a héten bekerült: <b>${p.added} / ${WEEK_TARGET}</b></div>${go?(r=>`<div class="small">Ajánlások: <b>${r.asked}</b> kérve · <b>${r.newC}</b> új cím ajánlásból · <b>${r.cli}</b> ügyfél ajánlásból</div>`)(refStats()):""}`]}
-function renderPool(){const p=poolStats();
+// Pipeline-sáv: mindig a betöltött contacts-ból számol (nem tárolt érték)
+function pipeStats(){let uj=0,jav=0,w7=0;const d=new Date();d.setDate(d.getDate()-6);const from=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  for(const c of contacts.values()){if(isBlocked(c))continue;const s=c.status||"uj";if(s==="uj"&&!c.bounced)uj++;else if(s==="javasolt")jav++;if(s!=="elvetve"&&!c.bounced&&addedOf(c)>=from)w7++}
+  return {uj,jav,sum:uj+jav,w7}}
+function renderPipe(){const el=$("#pipe");if(!el)return;if(!contacts.size){el.innerHTML="";return}const p=pipeStats();
+  const lv=p.sum>80?"ok":p.sum>=60?"warn":"bad";
+  el.innerHTML=`<div class="pc"><b>${p.uj}</b><span>kiküldendő</span></div><div class="pc"><b>${p.jav}</b><span>javasolt</span></div><div class="pc ${lv}"><b>${p.sum}</b><span>összesen (cél 60–80+)</span></div><div class="pc${p.w7<WEEK_TARGET?" bad":""}"><b>${p.w7} / ${WEEK_TARGET}</b><span>új cím, 7 nap</span></div>${p.sum<60?`<div class="pmsg">Kevés a címlista, a címgyűjtő rutin fusson</div>`:""}`}
+function renderPool(){try{renderPipe()}catch(e){}const p=poolStats();
   for(const [id,go] of [["#ov-pool",true],["#q-pool",false]]){const el=$(id);if(!el)continue;const [lv,h]=poolHTML(p,go);el.className="card pool "+lv;el.innerHTML=h}
   const n=$("#poolNote");if(n)n.innerHTML=p.total<POOL_TARGET&&p.javasolt>10&&fStatus!=="javasolt"?`<div class="nextbar"><span>${p.javasolt} cím vár jóváhagyásra, 2 perc az egész</span><button class="btn primary jb" type="button" data-go="javasolt">Jóváhagyás most</button></div>`:""}
 // Duplikált javaslat: ugyanaz a doc_id vagy (nem freemail) domain már szerepel egy másik címnél, bármilyen állapotban
